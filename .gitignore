@@ -1,0 +1,80 @@
+## Build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+
+## Visual Studio
+.vs/
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.VC.opendb
+
+## Rider / JetBrains
+.idea/
+*.sln.iml
+
+## VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+## NuGet
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+project.assets.json
+artifacts/
+
+## ASP.NET / local runtime files
+wwwroot/lib/
+appsettings.Local.json
+appsettings.*.Local.json
+appsettings.*.local.json
+
+## Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+secrets.json
+
+## Logs
+*.log
+logs/
+Log/
+
+## Local databases
+*.db
+*.sqlite
+*.sqlite3
+*.mdf
+*.ldf
+
+## Test and coverage output
+TestResults/
+coverage/
+coverage.*
+*.coverage
+*.coveragexml
+
+## Publish / deployment output
+publish/
+*.publishsettings
+
+## OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
