@@ -1,0 +1,329 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Manrope:wght@600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">try{
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "primary-fixed-dim": "#adc7ff",
+                "primary": "#005bbf",
+                "secondary": "#505f76",
+                "tertiary-fixed-dim": "#c4c7c9",
+                "secondary-fixed": "#d3e4fe",
+                "on-error": "#ffffff",
+                "on-primary-fixed-variant": "#004493",
+                "on-tertiary-container": "#ffffff",
+                "on-secondary": "#ffffff",
+                "surface-tint": "#005bc0",
+                "on-primary-fixed": "#001a41",
+                "on-primary-container": "#ffffff",
+                "inverse-primary": "#adc7ff",
+                "surface-bright": "#f9f9ff",
+                "inverse-on-surface": "#ecf1ff",
+                "tertiary-fixed": "#e0e3e5",
+                "background": "#f9f9ff",
+                "on-secondary-fixed": "#0b1c30",
+                "on-secondary-fixed-variant": "#38485d",
+                "on-tertiary-fixed": "#191c1e",
+                "primary-container": "#1a73e8",
+                "on-surface": "#111c2d",
+                "outline-variant": "#c1c6d6",
+                "surface": "#f9f9ff",
+                "on-primary": "#ffffff",
+                "on-tertiary-fixed-variant": "#444749",
+                "on-secondary-container": "#54647a",
+                "secondary-container": "#d0e1fb",
+                "on-surface-variant": "#414754",
+                "surface-container-lowest": "#ffffff",
+                "surface-container-highest": "#d8e3fb",
+                "surface-container": "#e7eeff",
+                "error-container": "#ffdad6",
+                "primary-fixed": "#d8e2ff",
+                "on-tertiary": "#ffffff",
+                "inverse-surface": "#263143",
+                "surface-container-low": "#f0f3ff",
+                "error": "#ba1a1a",
+                "tertiary-container": "#747779",
+                "surface-container-high": "#dee8ff",
+                "on-background": "#111c2d",
+                "surface-dim": "#cfdaf2",
+                "outline": "#727785",
+                "tertiary": "#5b5e60",
+                "secondary-fixed-dim": "#b7c8e1",
+                "on-error-container": "#93000a",
+                "surface-variant": "#d8e3fb"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "margin-desktop": "32px",
+                "container-max-width": "1280px",
+                "margin-mobile": "16px",
+                "gutter": "24px",
+                "base": "8px"
+        },
+        "fontFamily": {
+                "label-md": [
+                        "Inter"
+                ],
+                "label-sm": [
+                        "Inter"
+                ],
+                "headline-lg": [
+                        "Manrope"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "headline-xl": [
+                        "Manrope"
+                ],
+                "headline-lg-mobile": [
+                        "Manrope"
+                ],
+                "body-md": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "label-md": [
+                        "14px",
+                        {
+                                "lineHeight": "1.4",
+                                "letterSpacing": "0.01em",
+                                "fontWeight": "500"
+                        }
+                ],
+                "label-sm": [
+                        "12px",
+                        {
+                                "lineHeight": "1.2",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "1.25",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-lg": [
+                        "18px",
+                        {
+                                "lineHeight": "1.6",
+                                "fontWeight": "400"
+                        }
+                ],
+                "headline-xl": [
+                        "48px",
+                        {
+                                "lineHeight": "1.2",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-lg-mobile": [
+                        "24px",
+                        {
+                                "lineHeight": "1.3",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-md": [
+                        "16px",
+                        {
+                                "lineHeight": "1.5",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+}catch(_e){}</script></head><body class="bg-background text-on-surface">
+<!-- TopNavBar (Shared Component) -->
+<nav class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 shadow-sm">
+<div class="flex items-center justify-between px-gutter max-w-container-max-width mx-auto h-16">
+<div class="flex items-center gap-base">
+<span class="font-headline-lg text-[20px] font-bold text-primary cursor-pointer">FPT UniRAG</span>
+<div class="hidden md:flex gap-gutter">
+</div>
+</div>
+</div>
+</nav>
+<!-- SideNavBar (Shared Component) -->
+<aside class="h-screen w-64 fixed left-0 top-0 hidden md:flex flex-col bg-surface-container-lowest border-r border-outline-variant/20 p-base gap-base z-40 pt-20">
+<div class="flex items-center gap-base px-base mb-base">
+<div class="w-10 h-10 bg-primary-container rounded-xl flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined" data-icon="school" style="font-variation-settings: &quot;FILL&quot; 1;">school</span>
+</div>
+<div>
+<p class="font-label-md text-primary font-bold">FPT UniRAG</p>
+<p class="text-label-sm text-secondary">Academic AI Assistant</p>
+</div>
+</div>
+<nav class="flex flex-col gap-1 flex-1">
+<a class="flex items-center gap-base px-base py-base text-on-secondary-fixed-variant hover:bg-surface-container rounded-lg transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md">Home</span>
+</a>
+<a class="bg-secondary-container text-on-secondary-container rounded-lg font-bold flex items-center gap-base px-base py-base transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings" style="font-variation-settings: &quot;FILL&quot; 1;" data-original-icon="admin_panel_settings">admin_panel_settings</span>
+<span class="font-label-md">Admin Panel</span>
+</a>
+</nav>
+<div class="flex flex-col gap-1 border-t border-outline-variant/20 pt-base">
+<a class="flex items-center gap-base px-base py-base text-on-secondary-fixed-variant hover:bg-surface-container rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-label-md">Help</span>
+</a>
+<a class="flex items-center gap-base px-base py-base text-on-secondary-fixed-variant hover:bg-surface-container rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-label-md">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="md:ml-64 pt-24 pb-12 px-gutter min-h-screen">
+<div class="max-w-[800px] mx-auto">
+<!-- Breadcrumbs -->
+<div class="flex items-center gap-1 text-secondary font-label-sm mb-base">
+<a class="hover:text-primary transition-colors" href="#">Admin Panel</a>
+<span class="material-symbols-outlined text-[16px]" data-icon="chevron_right" data-original-icon="chevron_right">chevron_right</span>
+<a class="hover:text-primary transition-colors" href="#">Courses &amp; Subjects</a>
+<span class="material-symbols-outlined text-[16px]" data-icon="chevron_right" data-original-icon="chevron_right">chevron_right</span>
+<span class="text-primary font-bold">New Subject</span>
+</div>
+<!-- Page Header -->
+<div class="flex items-center justify-between mb-gutter">
+<div>
+<h1 class="font-headline-lg text-on-surface mb-1">Create New Subject</h1>
+<p class="font-body-md text-secondary">Register a new academic unit into the FPT UniRAG knowledge ecosystem.</p>
+</div>
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined text-secondary" data-icon="close">close</span>
+</button>
+</div>
+<!-- Form Card -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl overflow-hidden shadow-sm">
+<!-- Progress Indicator -->
+<div class="flex h-1 bg-surface-container">
+<div class="w-1/3 bg-primary-container"></div>
+<div class="w-2/3 bg-transparent"></div>
+</div>
+<div class="p-gutter md:p-10">
+<form class="space-y-gutter">
+<!-- Subject Identity Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<div class="space-y-1">
+<label class="font-label-md text-on-surface-variant block">Subject Code</label>
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-base flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-secondary text-[20px]" data-icon="tag">tag</span>
+</div>
+<input class="block w-full pl-[44px] pr-base py-base bg-surface-container-low border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container transition-all text-primary font-medium" placeholder="e.g. PRN211" type="text">
+</div>
+<p class="text-label-sm text-secondary">Must be a unique institutional identifier.</p>
+</div>
+<div class="space-y-1">
+<label class="font-label-md text-on-surface-variant block">Subject Name</label>
+<input class="block w-full px-base py-base bg-surface-container-low border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container transition-all font-body-md" placeholder="e.g. Advanced Cross-Platform Programming with .NET" type="text">
+</div></div>
+<!-- Subject Name -->
+<div class="space-y-1">
+<label class="font-label-md text-on-surface-variant block">Subject Description</label>
+<textarea class="block w-full px-base py-base bg-surface-container-low border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container transition-all font-body-md min-h-[120px]" placeholder="Provide a brief overview of the subject syllabus and learning objectives..."></textarea>
+</div>
+<!-- Footer Actions -->
+<div class="flex items-center justify-end gap-gutter pt-gutter border-t border-outline-variant/20 mt-gutter">
+<button class="px-gutter py-base rounded-xl font-label-md text-secondary hover:bg-surface-container-high transition-all" type="button">
+                                Cancel
+                            </button>
+<button class="px-10 py-base rounded-xl font-label-md bg-primary text-white shadow-lg hover:shadow-xl hover:opacity-90 active:scale-[0.98] transition-all flex items-center gap-1" type="submit">
+                                Create Subject
+                                <span class="material-symbols-outlined text-[18px]" data-icon="arrow_forward" data-original-icon="arrow_">arrow_forward</span>
+</button>
+</div>
+</form>
+</div>
+</div>
+<!-- Contextual Help Card -->
+<div class="mt-gutter p-gutter rounded-xl bg-secondary-container/30 border border-secondary-container flex gap-gutter items-start">
+<div class="w-12 h-12 shrink-0 rounded-full bg-white flex items-center justify-center text-primary shadow-sm">
+<span class="material-symbols-outlined" data-icon="lightbulb" style="font-variation-settings: &quot;FILL&quot; 1;">lightbulb</span>
+</div>
+<div class="flex-1">
+<h4 class="font-label-md text-on-secondary-container mb-1">Pro Tip: Knowledge Partitioning</h4>
+<p class="text-body-md text-on-secondary-container opacity-80 leading-relaxed">
+                        After creating this subject, you'll be prompted to upload relevant PDF files. Our AI engine will automatically vectorise these documents, allowing students to query specific syllabus items instantly.
+                    </p>
+</div>
+</div>
+</div>
+</main>
+<!-- Mobile Navigation (Responsive Pivot) -->
+<nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface/90 backdrop-blur-md border-t border-outline-variant/20 flex items-center justify-around px-base z-50">
+<button class="flex flex-col items-center gap-1 text-secondary">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="text-[10px] font-bold">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-secondary">
+<span class="material-symbols-outlined" data-icon="school">school</span>
+<span class="text-[10px] font-bold">Courses</span>
+</button>
+<button class="w-12 h-12 -mt-8 bg-primary rounded-full flex items-center justify-center text-white shadow-lg">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings" style="font-variation-settings: &quot;FILL&quot; 1;">admin_panel_settings</span>
+<span class="text-[10px] font-bold">Admin</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-secondary">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="text-[10px] font-bold">Profile</span>
+</button>
+</nav>
+<script>
+        // Micro-interactions and atmospheric logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputs = document.querySelectorAll('input, select, textarea');
+            
+            inputs.forEach(input => {
+                input.addEventListener('focus', () => {
+                    const parent = input.closest('.relative') || input.parentElement;
+                    parent.classList.add('scale-[1.01]');
+                    setTimeout(() => parent.classList.remove('scale-[1.01]'), 200);
+                });
+            });
+
+            // Prevent default form submission for demo
+            const form = document.querySelector('form');
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const btn = e.target.querySelector('button[type="submit"]');
+                const originalText = btn.innerHTML;
+                
+                btn.innerHTML = '<span class="material-symbols-outlined animate-spin" data-icon="progress_activity">progress_activity</span> Processing...';
+                btn.disabled = true;
+                btn.classList.add('opacity-80');
+
+                setTimeout(() => {
+                    btn.innerHTML = '<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span> Success';
+                    btn.classList.replace('bg-primary', 'bg-green-600');
+                    
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.classList.replace('bg-green-600', 'bg-primary');
+                        btn.disabled = false;
+                        btn.classList.remove('opacity-80');
+                    }, 2000);
+                }, 1500);
+            });
+        });
+    </script>
+</body></html>

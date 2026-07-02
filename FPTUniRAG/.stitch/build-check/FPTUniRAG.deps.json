@@ -1,0 +1,55 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "FPTUniRAG/1.0.0": {
+        "dependencies": {
+          "FPTUniRAG.BusinessLayer": "1.0.0"
+        },
+        "runtime": {
+          "FPTUniRAG.dll": {}
+        }
+      },
+      "FPTUniRAG.BusinessLayer/1.0.0": {
+        "dependencies": {
+          "FPTUniRAG.DataAccessLayer": "1.0.0"
+        },
+        "runtime": {
+          "FPTUniRAG.BusinessLayer.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "FPTUniRAG.DataAccessLayer/1.0.0": {
+        "runtime": {
+          "FPTUniRAG.DataAccessLayer.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "FPTUniRAG/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "FPTUniRAG.BusinessLayer/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "FPTUniRAG.DataAccessLayer/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
