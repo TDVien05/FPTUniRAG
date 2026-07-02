@@ -1,0 +1,284 @@
+@page "/StudentDashboard"
+@{
+    Layout = null;
+    ViewData["Title"] = "Student UniRAG Dashboard - FPT UniRAG";
+}
+<!DOCTYPE html>
+<html class="light" lang="en" style="width: 1280px; height: 1024px; overflow: hidden; position: relative;">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Manrope:wght@600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        try {
+            tailwind.config = {
+                darkMode: "class",
+                theme: {
+                    extend: {
+                        colors: {
+                            "primary-fixed-dim": "#adc7ff",
+                            "primary": "#005bbf",
+                            "secondary": "#505f76",
+                            "tertiary-fixed-dim": "#c4c7c9",
+                            "secondary-fixed": "#d3e4fe",
+                            "on-error": "#ffffff",
+                            "on-primary-fixed-variant": "#004493",
+                            "on-tertiary-container": "#ffffff",
+                            "on-secondary": "#ffffff",
+                            "surface-tint": "#005bc0",
+                            "on-primary-fixed": "#001a41",
+                            "on-primary-container": "#ffffff",
+                            "inverse-primary": "#adc7ff",
+                            "surface-bright": "#f9f9ff",
+                            "inverse-on-surface": "#ecf1ff",
+                            "tertiary-fixed": "#e0e3e5",
+                            "background": "#f9f9ff",
+                            "on-secondary-fixed": "#0b1c30",
+                            "on-secondary-fixed-variant": "#38485d",
+                            "on-tertiary-fixed": "#191c1e",
+                            "primary-container": "#1a73e8",
+                            "on-surface": "#111c2d",
+                            "outline-variant": "#c1c6d6",
+                            "surface": "#f9f9ff",
+                            "on-primary": "#ffffff",
+                            "on-tertiary-fixed-variant": "#444749",
+                            "on-secondary-container": "#54647a",
+                            "secondary-container": "#d0e1fb",
+                            "on-surface-variant": "#414754",
+                            "surface-container-lowest": "#ffffff",
+                            "surface-container-highest": "#d8e3fb",
+                            "surface-container": "#e7eeff",
+                            "error-container": "#ffdad6",
+                            "primary-fixed": "#d8e2ff",
+                            "on-tertiary": "#ffffff",
+                            "inverse-surface": "#263143",
+                            "surface-container-low": "#f0f3ff",
+                            "error": "#ba1a1a",
+                            "tertiary-container": "#747779",
+                            "surface-container-high": "#dee8ff",
+                            "on-background": "#111c2d",
+                            "surface-dim": "#cfdaf2",
+                            "outline": "#727785",
+                            "tertiary": "#5b5e60",
+                            "secondary-fixed-dim": "#b7c8e1",
+                            "on-error-container": "#93000a",
+                            "surface-variant": "#d8e3fb"
+                        },
+                        borderRadius: {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "0.75rem",
+                            "full": "9999px"
+                        },
+                        spacing: {
+                            "margin-desktop": "32px",
+                            "container-max-width": "1280px",
+                            "margin-mobile": "16px",
+                            "gutter": "24px",
+                            "base": "8px"
+                        },
+                        fontFamily: {
+                            "label-md": ["Inter"],
+                            "label-sm": ["Inter"],
+                            "headline-lg": ["Manrope"],
+                            "body-lg": ["Inter"],
+                            "headline-xl": ["Manrope"],
+                            "headline-lg-mobile": ["Manrope"],
+                            "body-md": ["Inter"],
+                            "code": ["JetBrains Mono"]
+                        },
+                        fontSize: {
+                            "label-md": ["14px", { "lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                            "label-sm": ["12px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                            "headline-lg": ["32px", { "lineHeight": "1.25", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                            "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                            "headline-xl": ["48px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                            "headline-lg-mobile": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                            "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                            "code": ["14px", { "lineHeight": "1.6", "fontWeight": "400" }]
+                        }
+                    }
+                }
+            };
+        } catch (_e) { }
+    </script>
+</head>
+<body class="font-body-md text-on-background overflow-hidden">
+    <header class="fixed top-0 left-0 right-0 z-50 bg-surface/80 backdrop-blur-md border-b border-outline-variant h-16">
+        <div class="flex justify-between items-center w-full px-base py-base max-w-[1280px] mx-auto h-full">
+            <div class="flex items-center gap-gutter">
+                <span class="font-headline-lg text-[24px] font-bold text-primary">FPT UniRAG</span>
+                <nav class="hidden md:flex gap-base items-center ml-gutter">
+                    <a class="text-primary font-bold border-b-2 border-primary py-1 font-label-md text-label-md" href="#">Subject Overview</a>
+                </nav>
+            </div>
+            <div class="flex items-center gap-gutter">
+                <div class="flex items-center gap-[4px] px-base py-1.5 bg-green-50 text-green-700 rounded-full border border-green-100">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    <span class="font-label-sm text-label-sm">Connected</span>
+                </div>
+                <button class="p-2 rounded-full hover:bg-surface-container-high transition-colors" type="button">
+                    <span class="material-symbols-outlined text-on-surface-variant">dark_mode</span>
+                </button>
+                <div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+                    <img class="w-full h-full object-cover" alt="Student profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPOF8Zm4TudYz3etaPAWIM6TiQYmI8gcttE_l_2GotWPlIMVcmJviHCAtmFomCQEbUAq345xF13_bucO_huBytx-sdEDlwsuekHIfNjPa4L0eSVTrgYntDcfu4UI8N6TG9WvL4GaNGhoGzRnedcAinh4i7yV7kHjqrsYC4Q0hr3epzyNnPHky9qBdu4vXz6duhd3sGcEzViIByrEJPqlTD4CQeQxGdRYOoBWTdOQVRatPO_OaQ9uSWQC_N-oLqGZKAubC6SPwjtdb8" />
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex h-screen pt-16">
+        <aside class="hidden md:flex flex-col h-full w-72 bg-surface-container-low border-r border-outline-variant p-base gap-[8px]">
+            <div class="flex items-center gap-base px-base py-base mb-base">
+                <div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white">
+                    <span class="material-symbols-outlined">school</span>
+                </div>
+                <div>
+                    <h2 class="font-headline-lg text-[20px] leading-tight text-primary">My Courses</h2>
+                    <p class="font-label-sm text-label-sm text-secondary">Academic Year 2024</p>
+                </div>
+            </div>
+
+            <button class="w-full mt-base py-3 px-base border-2 border-dashed border-outline-variant text-secondary rounded-xl font-label-md text-label-md flex items-center justify-center gap-[8px] hover:border-primary hover:text-primary transition-colors" type="button">
+                <span class="material-symbols-outlined text-[20px]">search</span>
+                Search Subjects
+            </button>
+
+            <div class="mt-auto flex flex-col gap-[4px] border-t border-outline-variant pt-base">
+                <button class="text-secondary px-4 py-3 hover:bg-surface-container-high rounded-xl flex items-center gap-base text-left transition-all" type="button">
+                    <span class="material-symbols-outlined">settings</span>
+                    <span class="font-label-md text-label-md">Settings</span>
+                </button>
+                <button class="text-secondary px-4 py-3 hover:bg-surface-container-high rounded-xl flex items-center gap-base text-left transition-all" type="button">
+                    <span class="material-symbols-outlined">help_outline</span>
+                    <span class="font-label-md text-label-md">Support</span>
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-grow flex flex-col relative bg-background h-full">
+            <div class="flex-grow overflow-y-auto p-gutter">
+                <div class="max-w-[800px] mx-auto w-full flex flex-col gap-gutter pb-32">
+                    <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-gutter shadow-sm">
+                        <div class="flex flex-col items-center text-center gap-base">
+                            <div class="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-base">
+                                <span class="material-symbols-outlined text-[32px]">auto_awesome</span>
+                            </div>
+                            <h1 class="font-headline-lg text-headline-lg text-on-surface">Ask anything about this subject</h1>
+                            <p class="text-secondary max-w-md font-body-md text-body-md">Your academic assistant is ready. Query lecture notes, textbook chapters, or coding concepts for Introduction to Computing.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-gutter">
+                        <div class="flex justify-end">
+                            <div class="bg-surface-container-lowest border border-outline-variant rounded-xl px-gutter py-base max-w-[85%] shadow-sm">
+                                <p class="text-on-surface font-body-md text-body-md">Can you explain the difference between RAM and ROM in simple terms?</p>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-start gap-base">
+                            <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white shrink-0">
+                                <span class="material-symbols-outlined text-[18px]">bolt</span>
+                            </div>
+                            <div class="bg-surface-container-low rounded-xl px-gutter py-base max-w-[90%] border border-transparent shadow-sm">
+                                <div class="font-body-md text-body-md text-on-surface-variant space-y-base">
+                                    <p>Think of <strong>RAM</strong> (Random Access Memory) and <strong>ROM</strong> (Read-Only Memory) as different types of office storage:</p>
+                                    <ul class="list-disc pl-gutter space-y-[4px]">
+                                        <li><strong>RAM</strong> is like your <strong>desk surface</strong>. It's where you put things you're actively working on. It's fast, but everything is cleared when you "leave for the day" (turn off the power).</li>
+                                        <li><strong>ROM</strong> is like a <strong>printed instruction manual</strong>. It contains the essential startup instructions for your computer. It can't be easily changed and stays there even when the power is off.</li>
+                                    </ul>
+                                    <div class="bg-surface-container-highest p-base rounded-lg font-code text-code border border-outline-variant my-base">
+                                        <code>
+                                            // Quick Comparison Table<br />
+                                            RAM: Volatile, Fast, Rewritable<br />
+                                            ROM: Non-volatile, Slower, Read-only (mostly)
+                                        </code>
+                                    </div>
+                                    <div class="flex flex-wrap gap-[4px] mt-base">
+                                        <span class="px-2 py-0.5 bg-surface-container-high rounded-full text-label-sm font-label-sm text-secondary">Source: Ch1_Intro_to_Computing.pdf</span>
+                                        <span class="px-2 py-0.5 bg-surface-container-high rounded-full text-label-sm font-label-sm text-secondary">Ref: Lecture_Notes_Week2.docx</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="absolute bottom-0 left-0 right-0 p-gutter bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
+                <div class="max-w-[800px] mx-auto w-full pointer-events-auto">
+                    <div class="relative bg-surface-container-lowest border border-outline-variant rounded-xl shadow-lg transition-shadow focus-within:shadow-xl p-[4px]">
+                        <textarea class="w-full bg-transparent border-none focus:ring-0 resize-none px-gutter py-base font-body-md text-body-md" placeholder="Ask a question..." rows="1"></textarea>
+                        <div class="flex items-center justify-between px-gutter py-base">
+                            <div class="flex gap-base">
+                                <button class="p-2 text-secondary hover:bg-surface-container-high rounded-full transition-colors" type="button">
+                                    <span class="material-symbols-outlined">attach_file</span>
+                                </button>
+                                <button class="p-2 text-secondary hover:bg-surface-container-high rounded-full transition-colors" type="button">
+                                    <span class="material-symbols-outlined">mic</span>
+                                </button>
+                            </div>
+                            <button class="bg-primary hover:bg-primary/90 text-white w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-95" type="button">
+                                <span class="material-symbols-outlined">send</span>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-center text-label-sm font-label-sm text-secondary mt-base">FPT UniRAG can make mistakes. Verify important academic information.</p>
+                </div>
+            </div>
+        </main>
+
+        <aside class="hidden lg:flex flex-col w-80 bg-surface-container-low border-l border-outline-variant p-base overflow-y-auto">
+            <div class="flex items-center gap-[8px] mb-gutter px-base">
+                <span class="material-symbols-outlined text-primary">menu_book</span>
+                <h3 class="font-headline-lg text-[20px] text-on-surface">Sources</h3>
+            </div>
+            <div class="flex flex-col gap-base">
+                <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-base flex flex-col gap-[8px] shadow-sm">
+                    <div class="flex items-start justify-between">
+                        <div class="p-2 bg-blue-50 text-primary rounded-lg">
+                            <span class="material-symbols-outlined">picture_as_pdf</span>
+                        </div>
+                        <div class="px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-label-sm font-label-sm border border-green-100">98% Confidence</div>
+                    </div>
+                    <div>
+                        <h4 class="font-label-md text-label-md text-on-surface truncate">Ch1_Intro_to_Computing.pdf</h4>
+                        <p class="text-label-sm font-label-sm text-secondary">Added Oct 12, 2024</p>
+                    </div>
+                    <button class="w-full mt-base py-2 bg-surface-container border border-outline-variant hover:bg-surface-container-high rounded-lg text-label-md font-label-md transition-colors" type="button">View document</button>
+                </div>
+
+                <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-base flex flex-col gap-[8px] shadow-sm">
+                    <div class="flex items-start justify-between">
+                        <div class="p-2 bg-blue-50 text-primary rounded-lg">
+                            <span class="material-symbols-outlined">description</span>
+                        </div>
+                        <div class="px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-label-sm font-label-sm border border-green-100">92% Confidence</div>
+                    </div>
+                    <div>
+                        <h4 class="font-label-md text-label-md text-on-surface truncate">Lecture_Notes_Week2.docx</h4>
+                        <p class="text-label-sm font-label-sm text-secondary">Added Oct 15, 2024</p>
+                    </div>
+                    <button class="w-full mt-base py-2 bg-surface-container border border-outline-variant hover:bg-surface-container-high rounded-lg text-label-md font-label-md transition-colors" type="button">View document</button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        const textarea = document.querySelector("textarea");
+        if (textarea) {
+            textarea.addEventListener("input", function () {
+                this.style.height = "auto";
+                this.style.height = this.scrollHeight + "px";
+            });
+        }
+    </script>
+</body>
+</html>
