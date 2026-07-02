@@ -1,0 +1,269 @@
+@page "/TeacherDocuments"
+@{
+    Layout = null;
+    ViewData["Title"] = "Document Management - Teacher List - FPT UniRAG";
+}
+<!DOCTYPE html>
+<html class="light" lang="en" style="">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Manrope:wght@600;700&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        try {
+            tailwind.config = {
+                darkMode: "class",
+                theme: {
+                    extend: {
+                        colors: {
+                            "primary-fixed-dim": "#adc7ff",
+                            "primary": "#005bbf",
+                            "secondary": "#505f76",
+                            "tertiary-fixed-dim": "#c4c7c9",
+                            "secondary-fixed": "#d3e4fe",
+                            "on-error": "#ffffff",
+                            "on-primary-fixed-variant": "#004493",
+                            "on-tertiary-container": "#ffffff",
+                            "on-secondary": "#ffffff",
+                            "surface-tint": "#005bc0",
+                            "on-primary-fixed": "#001a41",
+                            "on-primary-container": "#ffffff",
+                            "inverse-primary": "#adc7ff",
+                            "surface-bright": "#f9f9ff",
+                            "inverse-on-surface": "#ecf1ff",
+                            "tertiary-fixed": "#e0e3e5",
+                            "background": "#f9f9ff",
+                            "on-secondary-fixed": "#0b1c30",
+                            "on-secondary-fixed-variant": "#38485d",
+                            "on-tertiary-fixed": "#191c1e",
+                            "primary-container": "#1a73e8",
+                            "on-surface": "#111c2d",
+                            "outline-variant": "#c1c6d6",
+                            "surface": "#f9f9ff",
+                            "on-primary": "#ffffff",
+                            "on-tertiary-fixed-variant": "#444749",
+                            "on-secondary-container": "#54647a",
+                            "secondary-container": "#d0e1fb",
+                            "on-surface-variant": "#414754",
+                            "surface-container-lowest": "#ffffff",
+                            "surface-container-highest": "#d8e3fb",
+                            "surface-container": "#e7eeff",
+                            "error-container": "#ffdad6",
+                            "primary-fixed": "#d8e2ff",
+                            "on-tertiary": "#ffffff",
+                            "inverse-surface": "#263143",
+                            "surface-container-low": "#f0f3ff",
+                            "error": "#ba1a1a",
+                            "tertiary-container": "#747779",
+                            "surface-container-high": "#dee8ff",
+                            "on-background": "#111c2d",
+                            "surface-dim": "#cfdaf2",
+                            "outline": "#727785",
+                            "tertiary": "#5b5e60",
+                            "secondary-fixed-dim": "#b7c8e1",
+                            "on-error-container": "#93000a",
+                            "surface-variant": "#d8e3fb"
+                        },
+                        borderRadius: {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "0.75rem",
+                            "full": "9999px"
+                        },
+                        spacing: {
+                            "margin-desktop": "32px",
+                            "container-max-width": "1280px",
+                            "margin-mobile": "16px",
+                            "gutter": "24px",
+                            "base": "8px"
+                        },
+                        fontFamily: {
+                            "label-md": ["Inter"],
+                            "label-sm": ["Inter"],
+                            "headline-lg": ["Manrope"],
+                            "body-lg": ["Inter"],
+                            "headline-xl": ["Manrope"],
+                            "headline-lg-mobile": ["Manrope"],
+                            "body-md": ["Inter"]
+                        },
+                        fontSize: {
+                            "label-md": ["14px", { "lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                            "label-sm": ["12px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                            "headline-lg": ["32px", { "lineHeight": "1.25", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                            "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                            "headline-xl": ["48px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                            "headline-lg-mobile": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                            "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }]
+                        }
+                    }
+                }
+            };
+        } catch (_e) { }
+    </script>
+</head>
+<body class="font-body-md text-on-surface bg-background">
+    <nav class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 shadow-sm">
+        <div class="flex items-center justify-between px-gutter max-w-[1280px] mx-auto h-16">
+            <div class="flex items-center gap-base md:gap-gutter">
+                <span class="font-headline-lg text-[24px] font-bold text-primary">FPT UniRAG</span>
+                <div class="hidden md:flex gap-gutter"></div>
+            </div>
+            <div class="flex items-center gap-base">
+                <button class="material-symbols-outlined text-secondary hover:bg-surface-container-low p-2 rounded-full transition-all" type="button">notifications</button>
+                <button class="material-symbols-outlined text-secondary hover:bg-surface-container-low p-2 rounded-full transition-all" type="button">settings</button>
+                <div class="h-8 w-8 rounded-full bg-primary-container flex items-center justify-center text-white overflow-hidden">
+                    <img class="w-full h-full object-cover" alt="Teacher User" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBN88jHsojQVWTMS61dr8G0sgFXLR98yeKEvZDH9-LLev21MksFOj0U2yc6Nx2tZ1JXG37OTkpSQo5h2f5Sd4dTgnOQNqb6UkjKzQQsiUP7n_OwsRuQnP7jxQwjsHobcoDbIWq3Bi-3nTanStCWzALQGEXjkbMRK-Dgwhmb08E5N5g-ayvnZycoIDfzkHuMc9UcfTVhmkw7mAZfgXO6KsyEhSSL_3LV95ac047-yaLNyOrEDFL0KISSKh6nuQh__uwIgKROtoNBSi23" />
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <aside class="h-screen w-64 fixed left-0 top-0 hidden md:flex flex-col bg-surface-container-lowest border-r border-outline-variant/20 pt-20 p-base gap-base">
+        <div class="flex flex-col gap-1 mb-6 px-2">
+            <span class="font-headline-lg text-[20px] font-bold text-primary leading-tight">FPT UniRAG</span>
+            <span class="font-label-sm text-secondary opacity-70 uppercase tracking-wider text-[10px]">Academic AI Assistant</span>
+        </div>
+        <nav class="flex flex-col gap-1">
+            <a class="flex items-center gap-base p-3 text-secondary hover:bg-surface-container-high rounded-lg transition-all" href="/TeacherHome">
+                <span class="material-symbols-outlined">home</span>
+                <span class="font-label-md">Home</span>
+            </a>
+            <a class="flex items-center gap-base p-3 bg-primary/10 text-primary rounded-lg transition-all" href="/TeacherDocuments">
+                <span class="material-symbols-outlined">folder_open</span>
+                <span class="font-label-md">Document Management</span>
+            </a>
+        </nav>
+        <div class="mt-auto flex flex-col gap-1 border-t border-outline-variant/10 pt-base">
+            <a class="flex items-center gap-base p-3 text-secondary hover:bg-surface-container-high rounded-lg transition-all" href="#">
+                <span class="material-symbols-outlined">help</span>
+                <span class="font-label-md">Help</span>
+            </a>
+            <a class="flex items-center gap-base p-3 text-secondary hover:bg-surface-container-high rounded-lg transition-all" href="/Login">
+                <span class="material-symbols-outlined">logout</span>
+                <span class="font-label-md">Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <main class="md:ml-64 pt-20 px-gutter pb-8 max-w-[1280px] mx-auto">
+        <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-gutter mb-8">
+            <div class="max-w-2xl">
+                <nav class="flex items-center gap-2 text-sm text-secondary mb-2">
+                    <span class="hover:text-primary cursor-pointer">Workspace</span>
+                    <span class="material-symbols-outlined text-xs">chevron_right</span>
+                    <span class="text-on-surface font-medium">Document Management</span>
+                </nav>
+                <h1 class="font-headline-lg text-on-surface">Knowledge Library</h1>
+                <p class="font-body-md text-secondary mt-1">Centralized document management for course materials and research papers.</p>
+            </div>
+            <div class="flex gap-4">
+                <div class="bg-surface-container-lowest border border-outline-variant/30 px-6 py-3 rounded-xl flex flex-col shadow-sm min-w-[140px]">
+                    <span class="text-secondary font-label-sm uppercase tracking-tight text-[10px]">Total Indexing</span>
+                    <span class="text-primary font-bold text-xl">12.4 GB</span>
+                </div>
+                <div class="bg-surface-container-lowest border border-outline-variant/30 px-6 py-3 rounded-xl flex flex-col shadow-sm min-w-[140px]">
+                    <span class="text-secondary font-label-sm uppercase tracking-tight text-[10px]">Total Queries</span>
+                    <span class="text-on-surface font-bold text-xl">1,842</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div class="lg:col-span-12 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-sm flex flex-col">
+                <div class="p-4 border-b border-outline-variant/20 flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <h2 class="font-label-md text-on-surface">Managed Subjects</h2>
+                        <div class="h-4 w-[1px] bg-outline-variant/30"></div>
+                        <span class="text-sm text-secondary">3 subjects</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-sm">search</span>
+                            <input class="pl-9 pr-4 py-1.5 bg-surface-container-low border border-outline-variant/20 text-sm rounded-lg focus:ring-1 focus:ring-primary/30 w-48 lg:w-72 outline-none" placeholder="Filter documents..." type="text" />
+                        </div>
+                        <button class="flex items-center gap-1 px-3 py-1.5 border border-outline-variant/20 text-sm rounded-lg hover:bg-surface-container-low text-secondary" type="button">
+                            <span class="material-symbols-outlined text-sm">filter_list</span>
+                            <span>Sort</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b border-outline-variant/10 text-secondary bg-surface-container-low/30">
+                                <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px]">Subject Code</th>
+                                <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px]">Subject Name</th>
+                                <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px]">Documents</th>
+                                <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px]">Last Updated</th>
+                                <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px] text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-outline-variant/10">
+                            <tr class="hover:bg-surface-container-low/50 transition-colors group">
+                                <td class="px-6 py-4 font-medium text-sm">CS101</td>
+                                <td class="px-6 py-4 text-sm text-on-surface">Introduction to Computer Science</td>
+                                <td class="px-6 py-4 text-sm text-secondary">12 files</td>
+                                <td class="px-6 py-4 text-sm text-secondary">Oct 24, 2023</td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex justify-end gap-2">
+                                        <button class="flex items-center gap-1 px-3 py-1 bg-primary text-white text-xs font-medium rounded hover:bg-primary/90 transition-all" type="button"><span class="material-symbols-outlined text-sm">edit</span>Update</button>
+                                        <button class="flex items-center gap-1 px-3 py-1 bg-transparent text-error text-xs font-medium rounded border border-error/20 hover:bg-error/5 transition-all" type="button"><span class="material-symbols-outlined text-sm">delete</span>Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-surface-container-low/50 transition-colors group">
+                                <td class="px-6 py-4 font-medium text-sm">MA201</td>
+                                <td class="px-6 py-4 text-sm text-on-surface">Calculus III</td>
+                                <td class="px-6 py-4 text-sm text-secondary">8 files</td>
+                                <td class="px-6 py-4 text-sm text-secondary">Oct 22, 2023</td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex justify-end gap-2">
+                                        <button class="flex items-center gap-1 px-3 py-1 bg-primary text-white text-xs font-medium rounded hover:bg-primary/90 transition-all" type="button"><span class="material-symbols-outlined text-sm">edit</span>Update</button>
+                                        <button class="flex items-center gap-1 px-3 py-1 bg-transparent text-error text-xs font-medium rounded border border-error/20 hover:bg-error/5 transition-all" type="button"><span class="material-symbols-outlined text-sm">delete</span>Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-surface-container-low/50 transition-colors group">
+                                <td class="px-6 py-4 font-medium text-sm">JV302</td>
+                                <td class="px-6 py-4 text-sm text-on-surface">Advanced Java Programming</td>
+                                <td class="px-6 py-4 text-sm text-secondary">15 files</td>
+                                <td class="px-6 py-4 text-sm text-secondary">Today, 10:24 AM</td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex justify-end gap-2">
+                                        <button class="flex items-center gap-1 px-3 py-1 bg-primary text-white text-xs font-medium rounded hover:bg-primary/90 transition-all" type="button"><span class="material-symbols-outlined text-sm">edit</span>Update</button>
+                                        <button class="flex items-center gap-1 px-3 py-1 bg-transparent text-error text-xs font-medium rounded border border-error/20 hover:bg-error/5 transition-all" type="button"><span class="material-symbols-outlined text-sm">delete</span>Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="p-4 bg-surface-container-low/30 border-t border-outline-variant/10 flex items-center justify-between">
+                    <span class="text-[12px] text-secondary">Showing 1 to 3 of 3 subjects</span>
+                    <div class="flex gap-2">
+                        <button class="px-4 py-1.5 border border-outline-variant/30 text-[12px] rounded-lg hover:bg-surface-container-low transition-all font-medium" type="button">Previous</button>
+                        <button class="px-4 py-1.5 bg-primary text-white text-[12px] rounded-lg hover:bg-primary/90 transition-all shadow-sm font-medium" type="button">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <nav class="md:hidden fixed bottom-0 left-0 w-full bg-surface/95 backdrop-blur-md border-t border-outline-variant/20 flex justify-around p-2 z-50">
+        <a class="flex flex-col items-center gap-1 text-secondary" href="/TeacherHome">
+            <span class="material-symbols-outlined">home</span>
+            <span class="text-[10px] font-medium">Home</span>
+        </a>
+        <a class="flex flex-col items-center gap-1 text-primary" href="/TeacherDocuments">
+            <span class="material-symbols-outlined">folder_open</span>
+            <span class="text-[10px] font-medium">Files</span>
+        </a>
+        <a class="flex flex-col items-center gap-1 text-secondary" href="#"></a>
+    </nav>
+</body>
+</html>

@@ -1,0 +1,332 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Upload Document - FPT UniRAG</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline-variant": "#c1c6d6",
+                    "tertiary": "#5b5e60",
+                    "on-error": "#ffffff",
+                    "surface-tint": "#005bc0",
+                    "on-secondary-fixed-variant": "#38485d",
+                    "error": "#ba1a1a",
+                    "inverse-surface": "#263143",
+                    "secondary": "#505f76",
+                    "on-secondary-container": "#54647a",
+                    "primary-container": "#1a73e8",
+                    "surface-container-low": "#f0f3ff",
+                    "surface-container-high": "#dee8ff",
+                    "on-primary-container": "#ffffff",
+                    "tertiary-container": "#747779",
+                    "on-tertiary": "#ffffff",
+                    "surface-container": "#e7eeff",
+                    "error-container": "#ffdad6",
+                    "surface-bright": "#f9f9ff",
+                    "on-tertiary-container": "#ffffff",
+                    "background": "#f9f9ff",
+                    "inverse-primary": "#adc7ff",
+                    "secondary-container": "#d0e1fb",
+                    "primary-fixed-dim": "#adc7ff",
+                    "on-error-container": "#93000a",
+                    "tertiary-fixed": "#e0e3e5",
+                    "surface": "#f9f9ff",
+                    "on-tertiary-fixed": "#191c1e",
+                    "primary": "#005bbf",
+                    "outline": "#727785",
+                    "on-primary-fixed": "#001a41",
+                    "on-primary": "#ffffff",
+                    "on-secondary-fixed": "#0b1c30",
+                    "tertiary-fixed-dim": "#c4c7c9",
+                    "primary-fixed": "#d8e2ff",
+                    "on-surface": "#111c2d",
+                    "on-secondary": "#ffffff",
+                    "surface-dim": "#cfdaf2",
+                    "secondary-fixed": "#d3e4fe",
+                    "inverse-on-surface": "#ecf1ff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-surface-variant": "#414754",
+                    "surface-container-highest": "#d8e3fb",
+                    "on-tertiary-fixed-variant": "#444749",
+                    "surface-variant": "#d8e3fb",
+                    "on-primary-fixed-variant": "#004493",
+                    "secondary-fixed-dim": "#b7c8e1",
+                    "on-background": "#111c2d"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "container-max-width": "1280px",
+                    "margin-mobile": "16px",
+                    "base": "8px",
+                    "margin-desktop": "32px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Manrope"],
+                    "label-sm": ["Inter"],
+                    "headline-xl": ["Manrope"],
+                    "headline-lg-mobile": ["Manrope"],
+                    "body-md": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg": ["32px", {"lineHeight": "1.25", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                    "headline-xl": ["48px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-nav-link {
+            background-color: #d0e1fb; /* secondary-container */
+            color: #54647a; /* on-secondary-container */
+            border-radius: 0.5rem;
+            font-weight: 700;
+        }
+        /* Custom scrollbar for academic feel */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #c1c6d6; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #727785; }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen">
+<!-- SideNavBar (Authority Source: JSON) -->
+<aside class="h-screen w-64 fixed left-0 top-0 hidden md:flex flex-col bg-surface-container-lowest dark:bg-surface-container-low border-r border-outline-variant/20 p-md gap-sm z-40">
+<div class="flex items-center gap-3 px-4 py-6">
+<div class="w-10 h-10 bg-primary flex items-center justify-center rounded-lg shadow-sm">
+<span class="material-symbols-outlined text-on-primary">school</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary leading-none">FPT UniRAG</h1>
+<p class="text-[10px] uppercase tracking-wider text-secondary font-bold mt-1">Academic AI Assistant</p>
+</div>
+</div>
+<nav class="flex-1 px-2 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-secondary-fixed-variant hover:bg-surface-container-high rounded-lg transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md">Home</span>
+</a>
+
+<a class="flex items-center gap-3 px-4 py-3 text-on-secondary-fixed-variant hover:bg-surface-container-high rounded-lg transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">admin_panel_settings</span>
+<span class="font-label-md">Admin Panel</span>
+</a>
+</nav>
+<div class="px-2 pb-6 space-y-1">
+
+<a class="flex items-center gap-3 px-4 py-2 text-on-secondary-fixed-variant hover:bg-surface-container-high rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md">Help</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 text-on-secondary-fixed-variant hover:bg-surface-container-high rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md">Logout</span>
+</a>
+</div>
+</aside>
+<!-- TopAppBar (Authority Source: JSON) -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-md border-b border-outline-variant/30 shadow-sm md:pl-64">
+<div class="flex items-center justify-between px-gutter max-w-container-max mx-auto h-16">
+<div class="flex items-center gap-8">
+
+<div class="flex gap-6">
+
+
+
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-secondary hover:bg-surface-container-low rounded-full transition-all active:opacity-80">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-secondary hover:bg-surface-container-low rounded-full transition-all active:opacity-80">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a university professor in a light blue academic setting, conveying wisdom and expertise through a warm smile and modern eyewear. The background is a blurred academic library with soft lighting that aligns with the corporate blue and white UI palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEsFdpvuh1yZrlJ6puIz-g9rTI6scDffOlFTdqvRg9KPzBrUWrczi1_zxMytmxtSe0D_VbhgXMnO1ZJ3HQ9KPMVXCH9PMOgV8KCL2Tc3bSLhcsCmwNsoaJB3Oqp7Fc7ME7-acYIGF8QKJoXySPOy_JyMBjyOHqhG2O_UhIgLVX711BYnWEuU9dHFKv1x5jkYXjGatQLALwfrLSFtocPQ0zm2cRK7HFSHV9PvKKEZpEib7cEH_GWIfPVKEdFVH4hJn_m-PrFSvMBzGQ">
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="md:pl-64 pt-24 pb-12 min-h-screen">
+<div class="max-w-container-max mx-auto px-gutter">
+<!-- Breadcrumbs & Header -->
+<div class="mb-8">
+<div class="flex items-center gap-2 text-secondary font-label-md mb-2">
+<span class="">Research Hub</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="text-primary">New Document Upload</span>
+</div>
+<h1 class="font-headline-xl text-on-surface">Expand Your Academic Repository</h1>
+<p class="text-body-lg text-tertiary mt-2">Upload lecture notes, research papers, or syllabus documents to train the RAG model for your students.</p>
+</div>
+<!-- Upload Form Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<!-- Main Form Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-8 shadow-sm lg:col-span-12">
+<form class="space-y-8" id="uploadForm">
+<!-- Document Title -->
+<div class="space-y-2">
+<label class="block font-label-md text-on-surface" for="doc-title">Document Title</label>
+<input class="w-full px-4 py-3 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none bg-surface-bright placeholder:text-outline" id="doc-title" name="doc-title" placeholder="e.g., Introduction to Advanced Quantum Algorithms" type="text">
+<p class="text-xs text-tertiary">Use a descriptive title that will help the AI categorize the content accurately.</p>
+</div>
+<!-- Chapter/Section Dropdown & Meta -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="block font-label-md text-on-surface" for="section">Chapter / Section</label>
+<input class="w-full px-4 py-3 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none bg-surface-bright placeholder:text-outline" id="section" name="section" placeholder="e.g., Chapter 1: Fundamentals" type="text">
+</div>
+<div class="space-y-2">
+<label class="block font-label-md text-on-surface" for="access">Access Permissions</label>
+<select class="w-full px-4 py-3 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none bg-surface-bright" id="access">
+<option value="public">All Enrolled Students</option>
+<option value="restricted">Teaching Assistants Only</option>
+<option value="private">Private Draft</option>
+</select>
+</div>
+</div>
+<!-- File Upload Area -->
+<div class="space-y-2">
+<label class="block font-label-md text-on-surface">File Upload</label>
+<div class="border-2 border-dashed border-outline-variant rounded-xl p-12 bg-surface-bright flex flex-col items-center justify-center text-center hover:border-primary hover:bg-primary-container/5 transition-all cursor-pointer group" id="dropzone">
+<div class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-[32px]">upload_file</span>
+</div>
+<h3 class="font-headline-lg-mobile text-on-surface mb-1">Click to upload or drag and drop</h3>
+<p class="text-body-md text-tertiary">PDF or Docx files are preferred (Max 50MB)</p>
+<input accept=".pdf,.docx" class="hidden" id="fileInput" type="file">
+</div>
+<!-- File Preview (Hidden by default) -->
+<div class="hidden flex items-center justify-between p-4 bg-secondary-container/30 rounded-lg border border-primary/20 mt-4 animate-in fade-in slide-in-from-top-2" id="filePreview">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">description</span>
+<div>
+<p class="font-label-md text-on-surface" id="fileName">quantum_computing_notes.pdf</p>
+<p class="text-[10px] text-secondary" id="fileSize">2.4 MB • Ready to upload</p>
+</div>
+</div>
+<button class="p-1 hover:bg-error-container hover:text-error rounded transition-colors" onclick="resetFile()" type="button">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col sm:flex-row items-center justify-end gap-4 pt-4 border-t border-outline-variant/30">
+<button class="w-full sm:w-auto px-8 py-3 text-secondary font-label-md hover:bg-surface-container-high rounded-lg transition-all border border-transparent" type="button">
+                                Cancel
+                            </button>
+<button class="w-full sm:w-auto px-8 py-3 bg-primary text-on-primary font-label-md rounded-lg hover:shadow-md hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2" type="submit">
+<span class="material-symbols-outlined text-[20px]">cloud_upload</span>
+                                Upload Document
+                            </button>
+</div>
+</form>
+</div>
+<!-- Guidance & Context Sidebar -->
+</div>
+</div>
+</main>
+<!-- Interactive Logic -->
+<script>
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const filePreview = document.getElementById('filePreview');
+        const fileNameDisp = document.getElementById('fileName');
+        const fileSizeDisp = document.getElementById('fileSize');
+
+        dropzone.addEventListener('click', () => fileInput.click());
+
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('border-primary', 'bg-primary-container/5');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('border-primary', 'bg-primary-container/5');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('border-primary', 'bg-primary-container/5');
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            const allowed = ['.pdf', '.docx'];
+            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            
+            if (allowed.includes(ext)) {
+                fileNameDisp.textContent = file.name;
+                fileSizeDisp.textContent = `${(file.size / (1024 * 1024)).toFixed(2)} MB • Ready to upload`;
+                filePreview.classList.remove('hidden');
+                dropzone.classList.add('hidden');
+            } else {
+                alert('Please upload a PDF or Docx file.');
+            }
+        }
+
+        function resetFile() {
+            fileInput.value = '';
+            filePreview.classList.add('hidden');
+            dropzone.classList.remove('hidden');
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalContent = btn.innerHTML;
+            
+            // Subtle loading state
+            btn.disabled = true;
+            btn.innerHTML = `<span class="animate-spin material-symbols-outlined">sync</span> Uploading...`;
+            
+            setTimeout(() => {
+                alert('Document uploaded successfully to the FPT UniRAG repository!');
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+                resetFile();
+                e.target.reset();
+            }, 2000);
+        });
+    </script>
+
+
+</body></html>
