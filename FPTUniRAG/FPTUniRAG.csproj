@@ -10,6 +10,9 @@
     <ProjectReference Include="..\FPTUniRAG.BusinessLayer\FPTUniRAG.BusinessLayer.csproj">
       <Private>True</Private>
     </ProjectReference>
+    <ProjectReference Include="..\FPTUniRAG.DataAccessLayer\FPTUniRAG.DataAccessLayer.csproj">
+      <Private>True</Private>
+    </ProjectReference>
   </ItemGroup>
 
 </Project>
