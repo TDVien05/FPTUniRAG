@@ -1,0 +1,8 @@
+@page
+@model LoginModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Login - FPT UniRAG";
+}
+
+@await Html.PartialAsync("_AuthCard", Model)

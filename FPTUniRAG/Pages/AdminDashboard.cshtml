@@ -1,0 +1,237 @@
+@page
+@inject IConfiguration Configuration
+@{
+    Layout = null;
+    ViewData["Title"] = "Admin Dashboard - FPT UniRAG";
+
+    var adminEmail = Configuration["AdminCredentials:Email"] ?? "admin@fpt.edu.vn";
+    var adminName = Configuration["AdminCredentials:DisplayName"] ?? "Admin User";
+    var adminInitials = Configuration["AdminCredentials:Initials"] ?? "AD";
+    var totalSubjects = 124;
+    var totalUsers = 4;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="admin-dashboard-page">
+    <main class="admin-shell" aria-label="FPT UniRAG admin dashboard">
+        <aside class="admin-sidebar" aria-label="Admin navigation">
+            <a class="admin-logo" href="/AdminDashboard" aria-label="FPT UniRAG dashboard">
+                <span class="admin-logo-mark" aria-hidden="true">
+                    <span class="material-symbols-outlined">school</span>
+                </span>
+                <span>
+                    <strong>FPT UniRAG</strong>
+                    <small>Academic RAG</small>
+                </span>
+            </a>
+
+            <nav class="admin-nav">
+                <a class="admin-nav-item active" href="/AdminDashboard" aria-current="page">
+                    <span class="material-symbols-outlined" aria-hidden="true">dashboard</span>
+                    Dashboard
+                </a>
+                <details class="admin-nav-group">
+                    <summary class="admin-nav-item">
+                        <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+                        Subjects
+                        <span class="material-symbols-outlined admin-nav-chevron" aria-hidden="true">expand_more</span>
+                    </summary>
+                    <div class="admin-subnav">
+                        <a href="/Subjects">New Subject</a>
+                        <a href="/Subjects/Delete">Delete Subject</a>
+                    </div>
+                </details>
+                <a class="admin-nav-item" href="/Accounts">
+                    <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+                    Accounts
+                </a>
+                <a class="admin-nav-item" href="/Analysis">
+                    <span class="material-symbols-outlined" aria-hidden="true">analytics</span>
+                    Analytics
+                </a>
+            </nav>
+
+            <section class="admin-sidebar-footer" aria-label="Sidebar actions">
+                <a class="admin-sidebar-footer-link" href="#">
+                    <span class="material-symbols-outlined" aria-hidden="true">help_outline</span>
+                    <span>Help</span>
+                </a>
+                <a class="admin-sidebar-footer-link" href="/Login">
+                    <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+                    <span>Logout</span>
+                </a>
+            </section>
+        </aside>
+
+        <section class="admin-main">
+            <div class="admin-content">
+                <section class="admin-stat-grid" aria-label="Dashboard statistics">
+                    <article class="admin-stat-card">
+                        <span class="admin-stat-icon blue"><span class="material-symbols-outlined" aria-hidden="true">menu_book</span></span>
+                        <div>
+                            <p>Total Subjects</p>
+                            <strong>@totalSubjects</strong>
+                            <small>+8 this semester</small>
+                        </div>
+                    </article>
+                    <article class="admin-stat-card">
+                        <span class="admin-stat-icon cyan"><span class="material-symbols-outlined" aria-hidden="true">groups</span></span>
+                        <div>
+                            <p>Total Users</p>
+                            <strong>@totalUsers</strong>
+                            <small>2 students, 1 teacher, 1 admin</small>
+                        </div>
+                    </article>
+                </section>
+
+                <div class="admin-grid">
+                    <div class="admin-left-stack">
+                        <section class="admin-panel admin-subject-panel">
+                            <div class="admin-panel-header">
+                                <div>
+                                    <h2>Subject Repository</h2>
+                                    <p>Manage academic subjects and indexed RAG documents.</p>
+                                </div>
+                                <a class="admin-secondary-button" href="/Accounts">View All</a>
+                            </div>
+
+                            <div class="admin-table-wrap">
+                                <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Subject</th>
+                                        <th>Owner</th>
+                                        <th>Last Update</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>SWD392</strong><span>Software Architecture</span></td>
+                                        <td>Minh Tran</td>
+                                        <td>Today, 09:42</td>
+                                        <td><span class="admin-badge success">Indexed</span></td>
+                                        <td class="admin-row-actions">
+                                            <button type="button" aria-label="Edit SWD392"><span class="material-symbols-outlined">edit</span></button>
+                                            <button type="button" aria-label="Open SWD392"><span class="material-symbols-outlined">open_in_new</span></button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>PRN222</strong><span>.NET Web Development</span></td>
+                                        <td>Hoa Dao</td>
+                                        <td>Yesterday, 15:10</td>
+                                        <td><span class="admin-badge success">Ready</span></td>
+                                        <td class="admin-row-actions">
+                                            <button type="button" aria-label="Edit PRN222"><span class="material-symbols-outlined">edit</span></button>
+                                            <button type="button" aria-label="Open PRN222"><span class="material-symbols-outlined">open_in_new</span></button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>NWC203</strong><span>Computer Networks</span></td>
+                                        <td>Quang Nguyen</td>
+                                        <td>Jul 01, 11:24</td>
+                                        <td><span class="admin-badge pending">Processing</span></td>
+                                        <td class="admin-row-actions">
+                                            <button type="button" aria-label="Edit NWC203"><span class="material-symbols-outlined">edit</span></button>
+                                            <button type="button" aria-label="Open NWC203"><span class="material-symbols-outlined">open_in_new</span></button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>AIL303</strong><span>Artificial Intelligence</span></td>
+                                        <td>An Le</td>
+                                        <td>Jun 30, 18:02</td>
+                                        <td><span class="admin-badge draft">Review</span></td>
+                                        <td class="admin-row-actions">
+                                            <button type="button" aria-label="Edit AIL303"><span class="material-symbols-outlined">edit</span></button>
+                                            <button type="button" aria-label="Open AIL303"><span class="material-symbols-outlined">open_in_new</span></button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <section class="admin-panel admin-user-panel">
+                            <div class="admin-panel-header">
+                                <div>
+                                    <h2>Account Management</h2>
+                                    <p>Review user role, status, and manage account access.</p>
+                                </div>
+                            </div>
+
+                            <div class="admin-table-wrap">
+                                <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Minh Tran</strong><span>SE Lecturer</span></td>
+                                        <td>minh.tran@fpt.edu.vn</td>
+                                        <td><span class="admin-badge info">Teacher</span></td>
+                                        <td><span class="admin-badge success">Active</span></td>
+                                        <td class="admin-user-actions">
+                                            <button class="admin-danger-button" type="button">Block</button>
+                                            <button class="admin-success-button" type="button">Reactive</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>An Le</strong><span>SE172001</span></td>
+                                        <td>an.le@fpt.edu.vn</td>
+                                        <td><span class="admin-badge cyan">Student</span></td>
+                                        <td><span class="admin-badge success">Active</span></td>
+                                        <td class="admin-user-actions">
+                                            <button class="admin-danger-button" type="button">Block</button>
+                                            <button class="admin-success-button" type="button">Reactive</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Hoa Dao</strong><span>Academic Office</span></td>
+                                        <td>hoa.dao@fpt.edu.vn</td>
+                                        <td><span class="admin-badge pending">Admin</span></td>
+                                        <td><span class="admin-badge success">Active</span></td>
+                                        <td class="admin-user-actions">
+                                            <button class="admin-danger-button" type="button">Block</button>
+                                            <button class="admin-success-button" type="button">Reactive</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Quang Nguyen</strong><span>SE172044</span></td>
+                                        <td>quang.nguyen@fpt.edu.vn</td>
+                                        <td><span class="admin-badge cyan">Student</span></td>
+                                        <td><span class="admin-badge draft">Blocked</span></td>
+                                        <td class="admin-user-actions">
+                                            <button class="admin-danger-button" type="button">Block</button>
+                                            <button class="admin-success-button" type="button">Reactive</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

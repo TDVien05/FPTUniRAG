@@ -1,0 +1,349 @@
+@page "/Analysis"
+@{
+    Layout = null;
+    ViewData["Title"] = "Admin Analytics & User Usage - FPT UniRAG";
+}
+<!DOCTYPE html>
+<html class="light" lang="en" style="width: 1280px; height: 1024px; overflow: hidden; position: relative;">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Manrope:wght@600;700&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        try {
+            tailwind.config = {
+                darkMode: "class",
+                theme: {
+                    extend: {
+                        colors: {
+                            "primary-fixed-dim": "#adc7ff",
+                            "primary": "#005bbf",
+                            "secondary": "#505f76",
+                            "tertiary-fixed-dim": "#c4c7c9",
+                            "secondary-fixed": "#d3e4fe",
+                            "on-error": "#ffffff",
+                            "on-primary-fixed-variant": "#004493",
+                            "on-tertiary-container": "#ffffff",
+                            "on-secondary": "#ffffff",
+                            "surface-tint": "#005bc0",
+                            "on-primary-fixed": "#001a41",
+                            "on-primary-container": "#ffffff",
+                            "inverse-primary": "#adc7ff",
+                            "surface-bright": "#f9f9ff",
+                            "inverse-on-surface": "#ecf1ff",
+                            "tertiary-fixed": "#e0e3e5",
+                            "background": "#f9f9ff",
+                            "on-secondary-fixed": "#0b1c30",
+                            "on-secondary-fixed-variant": "#38485d",
+                            "on-tertiary-fixed": "#191c1e",
+                            "primary-container": "#1a73e8",
+                            "on-surface": "#111c2d",
+                            "outline-variant": "#c1c6d6",
+                            "surface": "#f9f9ff",
+                            "on-primary": "#ffffff",
+                            "on-tertiary-fixed-variant": "#444749",
+                            "on-secondary-container": "#54647a",
+                            "secondary-container": "#d0e1fb",
+                            "on-surface-variant": "#414754",
+                            "surface-container-lowest": "#ffffff",
+                            "surface-container-highest": "#d8e3fb",
+                            "surface-container": "#e7eeff",
+                            "error-container": "#ffdad6",
+                            "primary-fixed": "#d8e2ff",
+                            "on-tertiary": "#ffffff",
+                            "inverse-surface": "#263143",
+                            "surface-container-low": "#f0f3ff",
+                            "error": "#ba1a1a",
+                            "tertiary-container": "#747779",
+                            "surface-container-high": "#dee8ff",
+                            "on-background": "#111c2d",
+                            "surface-dim": "#cfdaf2",
+                            "outline": "#727785",
+                            "tertiary": "#5b5e60",
+                            "secondary-fixed-dim": "#b7c8e1",
+                            "on-error-container": "#93000a",
+                            "surface-variant": "#d8e3fb"
+                        },
+                        borderRadius: {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "0.75rem",
+                            "full": "9999px"
+                        },
+                        spacing: {
+                            "margin-desktop": "32px",
+                            "container-max": "1280px",
+                            "margin-mobile": "16px",
+                            "gutter": "24px",
+                            "base": "8px"
+                        },
+                        fontFamily: {
+                            "label-md": ["Inter"],
+                            "label-sm": ["Inter"],
+                            "headline-lg": ["Manrope"],
+                            "body-lg": ["Inter"],
+                            "headline-xl": ["Manrope"],
+                            "headline-lg-mobile": ["Manrope"],
+                            "body-md": ["Inter"],
+                            "code": ["JetBrains Mono"]
+                        },
+                        fontSize: {
+                            "label-md": ["14px", { "lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                            "label-sm": ["12px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                            "headline-lg": ["32px", { "lineHeight": "1.25", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                            "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                            "headline-xl": ["48px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                            "headline-lg-mobile": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                            "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                            "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                            "headline-md": ["24px", { "lineHeight": "1.4", "fontWeight": "600" }],
+                            "code": ["14px", { "lineHeight": "1.6", "fontWeight": "400" }]
+                        }
+                    }
+                }
+            };
+        } catch (_e) { }
+    </script>
+</head>
+<body class="bg-background text-on-background overflow-x-hidden">
+    <aside class="h-screen w-64 fixed left-0 top-0 hidden md:flex flex-col bg-surface-container-lowest border-r border-outline-variant/20 z-40">
+        <div class="flex flex-col p-6 gap-2 h-full">
+            <div class="flex items-center gap-4 px-1 mb-8 mt-1">
+                <div class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center text-white">
+                    <span class="material-symbols-outlined" style='font-variation-settings: "FILL" 1;'>school</span>
+                </div>
+                <div>
+                    <h1 class="font-headline-md text-headline-md font-bold text-primary leading-tight">FPT UniRAG</h1>
+                    <p class="font-label-sm text-label-sm text-secondary">Academic AI Assistant</p>
+                </div>
+            </div>
+            <nav class="flex-1 flex flex-col gap-1">
+                <a class="flex items-center gap-4 p-4 text-on-secondary-fixed-variant hover:bg-surface-container-high rounded-lg transition-all font-label-md text-label-md group" href="/AdminDashboard">
+                    <span class="material-symbols-outlined">home</span>
+                    Home
+                </a>
+                <a class="flex items-center gap-4 p-4 text-on-secondary-fixed-variant hover:bg-surface-container-high rounded-lg transition-all font-label-md text-label-md group" href="/Analysis">
+                    <span class="material-symbols-outlined">analytics</span>
+                    Analytics
+                </a>
+                <a class="flex items-center gap-4 p-4 bg-secondary-container text-on-secondary-container rounded-lg font-bold font-label-md text-label-md shadow-sm" href="/AdminDashboard">
+                    <span class="material-symbols-outlined" style='font-variation-settings: "FILL" 1;'>admin_panel_settings</span>
+                    Admin Panel
+                </a>
+            </nav>
+            <button class="bg-primary text-on-primary py-4 px-6 rounded-xl font-label-md text-label-md mb-8 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2" type="button">
+                <span class="material-symbols-outlined text-[20px]">add</span>
+                New Research
+            </button>
+            <div class="mt-auto border-t border-outline-variant/10 pt-4 flex flex-col gap-1">
+                <a class="flex items-center gap-4 p-4 text-on-secondary-fixed-variant hover:bg-surface-container-high rounded-lg transition-all font-label-md text-label-md" href="#">
+                    <span class="material-symbols-outlined">help</span>
+                    Help
+                </a>
+                <a class="flex items-center gap-4 p-4 text-on-secondary-fixed-variant hover:bg-surface-container-high rounded-lg transition-all font-label-md text-label-md text-error" href="/Login">
+                    <span class="material-symbols-outlined">logout</span>
+                    Logout
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <main class="md:ml-64 min-h-screen pb-10">
+        <header class="fixed top-0 right-0 left-0 md:left-64 z-30 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 h-16 flex items-center shadow-sm">
+            <div class="flex items-center justify-between px-gutter w-full max-w-container-max mx-auto h-16">
+                <div class="flex items-center gap-6 flex-1">
+                    <div class="relative w-full max-w-md hidden sm:block">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary">search</span>
+                        <input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full text-body-sm font-body-sm focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Search analytics, subjects..." type="text" />
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button class="w-10 h-10 rounded-full flex items-center justify-center text-secondary hover:bg-surface-container-low transition-all" type="button">
+                        <span class="material-symbols-outlined">notifications</span>
+                    </button>
+                    <button class="w-10 h-10 rounded-full flex items-center justify-center text-secondary hover:bg-surface-container-low transition-all" type="button">
+                        <span class="material-symbols-outlined">settings</span>
+                    </button>
+                    <div class="h-8 w-[1px] bg-outline-variant/30 mx-1"></div>
+                    <div class="flex items-center gap-2 cursor-pointer hover:bg-surface-container-low p-1 rounded-full transition-all">
+                        <img class="w-8 h-8 rounded-full border border-primary/20 object-cover" alt="Admin User" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8sYnbJAHq94QvxdRgg6AC1K0uAtUBuA2P4mZALzC2n0i4SqdBx9M529cGIA2WkS8DP8WsSfgr29CzQu5VF_IKCHuqdPM8zyLkgVs_dbpqpABVHXhwPnkzzgrpkliaUcfKSSSmxUnzu3aGeYdNJkt2BJPZyvxEBDgQQ7bsgtgjiSTAWJEW3fvsLH3UN689nLJMiJNJbBB0sF08RxYpgJaXzDtU6NQrAUIXVwxyHfq7pLOdeQMLxViZEcZFsbxwPMpfP_llGPwA85Tf" />
+                        <span class="font-label-md text-label-md hidden lg:block text-on-surface">Admin User</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="pt-24 px-gutter max-w-container-max mx-auto">
+            <div class="flex items-center gap-2 text-secondary font-label-sm text-label-sm mb-6">
+                <span>Management</span>
+                <span class="material-symbols-outlined text-sm">chevron_right</span>
+                <span class="text-primary font-bold">Admin Dashboard</span>
+            </div>
+
+            <section class="mb-10">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="font-headline-md text-headline-md text-on-surface">Platform Analytics</h2>
+                        <p class="text-secondary font-body-sm text-body-sm">Monitor system usage and token consumption</p>
+                    </div>
+                    <div class="flex bg-surface-container-low p-1 rounded-lg">
+                        <button class="px-4 py-1.5 text-label-sm font-label-sm rounded-md bg-white shadow-sm text-primary" type="button">Day</button>
+                        <button class="px-4 py-1.5 text-label-sm font-label-sm rounded-md text-secondary hover:text-on-surface" type="button">Week</button>
+                        <button class="px-4 py-1.5 text-label-sm font-label-sm rounded-md text-secondary hover:text-on-surface" type="button">Month</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div class="lg:col-span-4 flex flex-col gap-6">
+                        <div class="bg-white rounded-xl border border-outline-variant/30 p-6 shadow-sm">
+                            <p class="text-secondary font-label-md text-label-md uppercase tracking-wider mb-1">Active Users</p>
+                            <div class="flex items-end gap-2 mb-2">
+                                <h3 class="text-headline-lg font-headline-lg text-on-surface">842</h3>
+                                <span class="text-green-600 font-label-sm text-label-sm flex items-center mb-1">
+                                    <span class="material-symbols-outlined text-[16px]">arrow_upward</span>
+                                    +5.2%
+                                </span>
+                            </div>
+                            <p class="text-secondary font-body-sm text-body-sm">Unique users in selected period</p>
+                        </div>
+
+                        <div class="bg-white rounded-xl border border-outline-variant/30 p-6 shadow-sm">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <p class="text-secondary font-label-md text-label-md uppercase tracking-wider mb-1">Tokens Consumed</p>
+                                    <h3 class="text-headline-lg font-headline-lg text-on-surface">1.2M</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-primary">database</span>
+                            </div>
+                            <div class="flex justify-between text-label-sm mb-1">
+                                <span class="text-secondary">Used: 1.2M</span>
+                                <span class="text-secondary">Budget: 2.0M</span>
+                            </div>
+                            <div class="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+                                <div class="bg-primary h-full w-[60%]"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-8 bg-white rounded-xl border border-outline-variant/30 p-6 shadow-sm">
+                        <div class="flex items-center justify-between mb-6">
+                            <h4 class="font-label-md text-label-md text-on-surface">Token Usage Trend</h4>
+                            <span class="material-symbols-outlined text-secondary cursor-pointer">more_vert</span>
+                        </div>
+                        <div class="h-48 w-full flex items-end gap-2 px-2">
+                            <div class="flex-1 bg-primary/10 rounded-t h-[40%] hover:bg-primary/20 transition-all"></div>
+                            <div class="flex-1 bg-primary/10 rounded-t h-[60%] hover:bg-primary/20 transition-all"></div>
+                            <div class="flex-1 bg-primary/10 rounded-t h-[45%] hover:bg-primary/20 transition-all"></div>
+                            <div class="flex-1 bg-primary/10 rounded-t h-[80%] hover:bg-primary/20 transition-all"></div>
+                            <div class="flex-1 bg-primary/10 rounded-t h-[55%] hover:bg-primary/20 transition-all"></div>
+                            <div class="flex-1 bg-primary/10 rounded-t h-[90%] hover:bg-primary/20 transition-all"></div>
+                            <div class="flex-1 bg-primary rounded-t h-[75%]"></div>
+                        </div>
+                        <div class="flex justify-between mt-4 text-[10px] text-secondary uppercase font-bold px-2">
+                            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="mb-10 bg-white rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm">
+                <div class="p-6 border-b border-outline-variant/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="font-headline-md text-headline-md text-on-surface">User Consumption &amp; Subscriptions</h2>
+                        <p class="text-secondary font-body-sm text-body-sm">Manage student accounts and resource allocation</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-sm">search</span>
+                            <input class="pl-9 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-label-sm focus:ring-2 focus:ring-primary/20 w-64" placeholder="Search students..." type="text" />
+                        </div>
+                        <button class="flex items-center gap-2 px-4 py-2 border border-outline-variant/30 rounded-lg text-label-sm font-medium text-secondary hover:bg-surface-container-low transition-all" type="button">
+                            <span class="material-symbols-outlined text-[18px]">download</span>
+                            Export
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-surface-container-low/50 border-b border-outline-variant/10">
+                            <tr class="text-secondary font-label-sm text-label-sm uppercase tracking-wider">
+                                <th class="px-6 py-4 font-medium">Student Account</th>
+                                <th class="px-6 py-4 font-medium">Tokens Used</th>
+                                <th class="px-6 py-4 font-medium">Subscription Plan</th>
+                                <th class="px-6 py-4 font-medium">Last Active</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-outline-variant/10">
+                            <tr class="hover:bg-surface-container-low/30 transition-all">
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-col">
+                                        <span class="font-medium text-on-surface">Nguyen Van A</span>
+                                        <span class="text-secondary text-xs">a.nguyen@fpt.edu.vn</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-on-surface">45,200</td>
+                                <td class="px-6 py-4"><span class="px-2 py-1 bg-primary/10 text-primary rounded text-[10px] font-bold uppercase">Enterprise</span></td>
+                                <td class="px-6 py-4 text-secondary text-sm">2 mins ago</td>
+                            </tr>
+                            <tr class="hover:bg-surface-container-low/30 transition-all">
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-col">
+                                        <span class="font-medium text-on-surface">Tran Thi B</span>
+                                        <span class="text-secondary text-xs">b.tran@fpt.edu.vn</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-on-surface">12,840</td>
+                                <td class="px-6 py-4"><span class="px-2 py-1 bg-secondary-container text-on-secondary-container rounded text-[10px] font-bold uppercase">Pro</span></td>
+                                <td class="px-6 py-4 text-secondary text-sm">1 hour ago</td>
+                            </tr>
+                            <tr class="hover:bg-surface-container-low/30 transition-all">
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-col">
+                                        <span class="font-medium text-on-surface">Le Van C</span>
+                                        <span class="text-secondary text-xs">c.le@fpt.edu.vn</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-on-surface">2,100</td>
+                                <td class="px-6 py-4"><span class="px-2 py-1 bg-surface-container text-secondary rounded text-[10px] font-bold uppercase">Basic</span></td>
+                                <td class="px-6 py-4 text-secondary text-sm">Yesterday</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="p-4 border-t border-outline-variant/10 flex justify-center">
+                    <button class="text-primary font-label-sm text-label-sm hover:underline" type="button">View all users</button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-surface/90 border-t border-outline-variant/10 px-4 py-2 flex justify-around items-center z-50">
+        <button class="flex flex-col items-center gap-1 text-secondary" type="button">
+            <span class="material-symbols-outlined">home</span>
+            <span class="text-[10px] font-medium">Home</span>
+        </button>
+        <button class="flex flex-col items-center gap-1 text-secondary" type="button">
+            <span class="material-symbols-outlined">school</span>
+            <span class="text-[10px] font-medium">Courses</span>
+        </button>
+        <div class="relative -top-6">
+            <button class="w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg shadow-primary/30" type="button">
+                <span class="material-symbols-outlined" style='font-variation-settings: "FILL" 1;'>add</span>
+            </button>
+        </div>
+        <button class="flex flex-col items-center gap-1 text-primary font-bold" type="button">
+            <span class="material-symbols-outlined" style='font-variation-settings: "FILL" 1;'>admin_panel_settings</span>
+            <span class="text-[10px] font-medium">Admin</span>
+        </button>
+        <button class="flex flex-col items-center gap-1 text-secondary" type="button">
+            <span class="material-symbols-outlined">person</span>
+            <span class="text-[10px] font-medium">Profile</span>
+        </button>
+    </nav>
+</body>
+</html>

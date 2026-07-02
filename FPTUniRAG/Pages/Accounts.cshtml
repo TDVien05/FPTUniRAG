@@ -1,0 +1,196 @@
+@page "/Accounts"
+@inject IConfiguration Configuration
+@{
+    Layout = null;
+    ViewData["Title"] = "Accounts - FPT UniRAG";
+
+    var subjectOptions = new[]
+    {
+        "None",
+        "SWD392 - Software Architecture",
+        "PRN211 - Cross-Platform Development",
+        "DBI202 - Database Systems",
+        "MAD101 - Mobile Application Design"
+    };
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="admin-dashboard-page accounts-page">
+    <main class="admin-shell" aria-label="Account management">
+        <aside class="admin-sidebar" aria-label="Admin navigation">
+            <a class="admin-logo" href="/AdminDashboard" aria-label="FPT UniRAG dashboard">
+                <span class="admin-logo-mark" aria-hidden="true">
+                    <span class="material-symbols-outlined">school</span>
+                </span>
+                <span>
+                    <strong>FPT UniRAG</strong>
+                    <small>Academic RAG</small>
+                </span>
+            </a>
+
+            <nav class="admin-nav">
+                <a class="admin-nav-item" href="/AdminDashboard">
+                    <span class="material-symbols-outlined" aria-hidden="true">dashboard</span>
+                    Dashboard
+                </a>
+                <details class="admin-nav-group">
+                    <summary class="admin-nav-item">
+                        <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+                        Subjects
+                        <span class="material-symbols-outlined admin-nav-chevron" aria-hidden="true">expand_more</span>
+                    </summary>
+                    <div class="admin-subnav">
+                        <a href="/Subjects">New Subject</a>
+                        <a href="/Subjects/Delete">Delete Subject</a>
+                    </div>
+                </details>
+                <a class="admin-nav-item active" href="/Accounts" aria-current="page">
+                    <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+                    Accounts
+                </a>
+                <a class="admin-nav-item" href="/Analysis">
+                    <span class="material-symbols-outlined" aria-hidden="true">analytics</span>
+                    Analytics
+                </a>
+            </nav>
+
+            <section class="admin-sidebar-footer" aria-label="Sidebar actions">
+                <a class="admin-sidebar-footer-link" href="#">
+                    <span class="material-symbols-outlined" aria-hidden="true">help_outline</span>
+                    <span>Help</span>
+                </a>
+                <a class="admin-sidebar-footer-link" href="/Login">
+                    <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+                    <span>Logout</span>
+                </a>
+            </section>
+        </aside>
+
+        <section class="accounts-main">
+            <div class="accounts-canvas">
+                <nav class="subject-breadcrumbs" aria-label="Breadcrumb">
+                    <a href="/AdminDashboard">Dashboard</a>
+                    <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                    <strong>Accounts</strong>
+                </nav>
+
+                <header class="subject-create-header accounts-header">
+                    <div>
+                        <h1>Account Provisioning</h1>
+                        <p>Import student accounts in bulk and create teacher accounts with subject leadership assignment.</p>
+                    </div>
+                </header>
+
+                <div class="accounts-grid">
+                    <section class="accounts-card" aria-labelledby="student-import-title">
+                        <div class="accounts-card-header">
+                            <div>
+                                <p class="accounts-eyebrow">Bulk Student Import</p>
+                                <h2 id="student-import-title">Import student accounts from Sheets</h2>
+                            </div>
+                            <span class="accounts-card-icon" aria-hidden="true">
+                                <span class="material-symbols-outlined">upload_file</span>
+                            </span>
+                        </div>
+
+                        <div class="accounts-template-card" aria-label="Expected import format">
+                            <div class="accounts-template-header">
+                                <strong>Accepted columns</strong>
+                                <span>Google Sheets / XLSX / CSV</span>
+                            </div>
+                            <div class="accounts-template-table-wrap">
+                                <table class="accounts-template-table">
+                                    <thead>
+                                        <tr>
+                                            <th>MSSV</th>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>SE173245</td>
+                                            <td>Nguyen Minh Anh</td>
+                                            <td>anhnmse173245@fpt.edu.vn</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <form class="accounts-form" method="post" enctype="multipart/form-data" onsubmit="return false;">
+                            <label class="subject-field">
+                                <span>Upload sheet file</span>
+                                <div class="accounts-upload-box">
+                                    <span class="material-symbols-outlined" aria-hidden="true">description</span>
+                                    <div>
+                                        <strong>Select spreadsheet file</strong>
+                                        <small>Columns must follow: MSSV, Name, Email</small>
+                                    </div>
+                                    <input type="file" name="StudentSheet" accept=".xlsx,.xls,.csv" />
+                                </div>
+                            </label>
+
+                            <footer class="subject-form-actions accounts-actions">
+                                <button class="subject-submit-button" type="submit">
+                                    Import Students
+                                    <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                                </button>
+                            </footer>
+                        </form>
+                    </section>
+
+                    <section class="accounts-card" aria-labelledby="teacher-create-title">
+                        <div class="accounts-card-header">
+                            <div>
+                                <p class="accounts-eyebrow">Teacher Account Creation</p>
+                                <h2 id="teacher-create-title">Create teacher account</h2>
+                            </div>
+                            <span class="accounts-card-icon" aria-hidden="true">
+                                <span class="material-symbols-outlined">person_add</span>
+                            </span>
+                        </div>
+
+                        <form class="accounts-form" method="post" onsubmit="return false;">
+                            <label class="subject-field">
+                                <span>Teacher email</span>
+                                <input name="TeacherEmail" type="email" placeholder="teacher@fpt.edu.vn" autocomplete="off" />
+                                <small>This email will be used as the login account for the teacher.</small>
+                            </label>
+
+                            <label class="subject-field">
+                                <span>Leader subject assignment</span>
+                                <select class="accounts-select" name="LeaderSubject">
+                                    @foreach (var subject in subjectOptions)
+                                    {
+                                        <option value="@subject">@subject</option>
+                                    }
+                                </select>
+                                <small>Select <strong>None</strong> if this teacher is not a subject leader.</small>
+                            </label>
+
+                            <footer class="subject-form-actions accounts-actions">
+                                <button class="subject-submit-button" type="submit">
+                                    Create Teacher
+                                    <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                                </button>
+                            </footer>
+                        </form>
+                    </section>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

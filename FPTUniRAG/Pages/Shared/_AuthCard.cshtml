@@ -1,0 +1,14 @@
+@model FPTUniRAG.Pages.LoginModel
+
+<section class="auth-card ui-card" data-slot="card" aria-labelledby="login-card-title">
+    <h2 id="login-card-title" class="visually-hidden">Sign in to FPT UniRAG</h2>
+
+    <div class="ui-card-content" data-slot="card-content">
+        @await Html.PartialAsync("_AuthForm", Model)
+    </div>
+
+    <div class="auth-divider" aria-hidden="true">
+        <span></span>
+        <strong>or continue with</strong>
+    </div>
+</section>

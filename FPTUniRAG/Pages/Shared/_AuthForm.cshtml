@@ -1,0 +1,77 @@
+@model FPTUniRAG.Pages.LoginModel
+@{
+    var emailInvalid = ViewData.ModelState["Input.Email"]?.Errors.Count > 0;
+    var passwordInvalid = ViewData.ModelState["Input.Password"]?.Errors.Count > 0;
+}
+
+<form method="post" class="auth-form ui-form" data-slot="form" novalidate>
+    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+    {
+        <div class="auth-alert ui-alert" data-slot="alert" role="status">
+            <span class="material-symbols-outlined" aria-hidden="true">info</span>
+            <span>@Model.StatusMessage</span>
+        </div>
+    }
+
+    <div asp-validation-summary="ModelOnly" class="auth-validation-summary" role="alert"></div>
+
+    <div class="auth-field-group ui-field-group" data-slot="field-group">
+        <div class="auth-field ui-field" data-slot="field" data-invalid="@(emailInvalid ? "true" : null)">
+            <label asp-for="Input.Email" class="ui-label" data-slot="field-label">Email or Username</label>
+            <div class="auth-input-group ui-input-group" data-slot="input-group">
+                <span class="auth-input-leading-icon material-symbols-outlined" aria-hidden="true">person</span>
+                <input asp-for="Input.Email" class="ui-input" data-slot="input" type="email" autocomplete="username" placeholder="name@fpt.edu.vn" aria-invalid="@emailInvalid.ToString().ToLowerInvariant()" />
+            </div>
+            <span asp-validation-for="Input.Email" class="auth-field-message"></span>
+        </div>
+
+        <div class="auth-field ui-field" data-slot="field" data-invalid="@(passwordInvalid ? "true" : null)">
+            <div class="auth-field-row">
+                <label asp-for="Input.Password" class="ui-label" data-slot="field-label">Password</label>
+                <a href="#">Forgot password?</a>
+            </div>
+            <div class="auth-input-group ui-input-group" data-slot="input-group">
+                <span class="auth-input-leading-icon material-symbols-outlined" aria-hidden="true">lock</span>
+                <input asp-for="Input.Password" class="ui-input" data-slot="input" type="password" autocomplete="current-password" placeholder="Enter your password" aria-invalid="@passwordInvalid.ToString().ToLowerInvariant()" />
+                <button class="auth-password-toggle" type="button" data-slot="input-group-addon" aria-label="Show password" aria-pressed="false">
+                    <span class="material-symbols-outlined">visibility</span>
+                </button>
+            </div>
+            <span asp-validation-for="Input.Password" class="auth-field-message"></span>
+        </div>
+    </div>
+
+    <label class="auth-check ui-checkbox" data-slot="checkbox-field">
+        <input asp-for="Input.RememberMe" type="checkbox" />
+        <span>Remember me on this device</span>
+    </label>
+
+    <button type="submit" class="ui-button ui-button-primary" data-slot="button">
+        <span>Sign In</span>
+        <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+    </button>
+</form>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const passwordInput = document.getElementById("Input_Password");
+        const toggle = document.querySelector(".auth-password-toggle");
+
+        if (!passwordInput || !toggle) {
+            return;
+        }
+
+        toggle.addEventListener("click", () => {
+            const icon = toggle.querySelector(".material-symbols-outlined");
+            const isPassword = passwordInput.type === "password";
+
+            passwordInput.type = isPassword ? "text" : "password";
+            toggle.setAttribute("aria-pressed", String(isPassword));
+            toggle.setAttribute("aria-label", isPassword ? "Hide password" : "Show password");
+
+            if (icon) {
+                icon.textContent = isPassword ? "visibility_off" : "visibility";
+            }
+        });
+    });
+</script>
