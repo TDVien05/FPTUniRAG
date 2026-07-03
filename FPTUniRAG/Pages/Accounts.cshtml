@@ -1,17 +1,8 @@
 @page "/Accounts"
-@inject IConfiguration Configuration
+@model FPTUniRAG.Pages.AccountsModel
 @{
     Layout = null;
     ViewData["Title"] = "Accounts - FPT UniRAG";
-
-    var subjectOptions = new[]
-    {
-        "None",
-        "SWD392 - Software Architecture",
-        "PRN211 - Cross-Platform Development",
-        "DBI202 - Database Systems",
-        "MAD101 - Mobile Application Design"
-    };
 }
 
 <!DOCTYPE html>
@@ -51,8 +42,8 @@
                         <span class="material-symbols-outlined admin-nav-chevron" aria-hidden="true">expand_more</span>
                     </summary>
                     <div class="admin-subnav">
-                        <a href="/Subjects">New Subject</a>
-                        <a href="/Subjects/Delete">Delete Subject</a>
+                        <a href="/Subjects">Manage Subjects</a>
+                        <a href="/Subjects/AssignHeader">Assign Header</a>
                     </div>
                 </details>
                 <a class="admin-nav-item active" href="/Accounts" aria-current="page">
@@ -70,7 +61,7 @@
                     <span class="material-symbols-outlined" aria-hidden="true">help_outline</span>
                     <span>Help</span>
                 </a>
-                <a class="admin-sidebar-footer-link" href="/Login">
+                <a class="admin-sidebar-footer-link" href="/Login?logout=true">
                     <span class="material-symbols-outlined" aria-hidden="true">logout</span>
                     <span>Logout</span>
                 </a>
@@ -88,9 +79,23 @@
                 <header class="subject-create-header accounts-header">
                     <div>
                         <h1>Account Provisioning</h1>
-                        <p>Import student accounts in bulk and create teacher accounts with subject leadership assignment.</p>
+                        <p>Import student accounts in bulk, create teacher accounts, and control account status from one admin screen.</p>
                     </div>
                 </header>
+
+                @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-success" role="status">
+                        @Model.SuccessMessage
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-error" role="alert">
+                        @Model.ErrorMessage
+                    </div>
+                }
 
                 <div class="accounts-grid">
                     <section class="accounts-card" aria-labelledby="student-import-title">
@@ -107,7 +112,7 @@
                         <div class="accounts-template-card" aria-label="Expected import format">
                             <div class="accounts-template-header">
                                 <strong>Accepted columns</strong>
-                                <span>Google Sheets / XLSX / CSV</span>
+                                <span>CSV / XLSX</span>
                             </div>
                             <div class="accounts-template-table-wrap">
                                 <table class="accounts-template-table">
@@ -129,7 +134,7 @@
                             </div>
                         </div>
 
-                        <form class="accounts-form" method="post" enctype="multipart/form-data" onsubmit="return false;">
+                        <form class="accounts-form" method="post" enctype="multipart/form-data" asp-page-handler="ImportStudents">
                             <label class="subject-field">
                                 <span>Upload sheet file</span>
                                 <div class="accounts-upload-box">
@@ -138,8 +143,9 @@
                                         <strong>Select spreadsheet file</strong>
                                         <small>Columns must follow: MSSV, Name, Email</small>
                                     </div>
-                                    <input type="file" name="StudentSheet" accept=".xlsx,.xls,.csv" />
+                                    <input asp-for="StudentSheet" accept=".xlsx,.csv" />
                                 </div>
+                                <span asp-validation-for="StudentSheet" class="accounts-field-error"></span>
                             </label>
 
                             <footer class="subject-form-actions accounts-actions">
@@ -149,6 +155,40 @@
                                 </button>
                             </footer>
                         </form>
+
+                        @if (Model.ImportResult is not null)
+                        {
+                            <section class="accounts-import-summary" aria-label="Import summary">
+                                <div class="accounts-summary-badges">
+                                    <span class="admin-badge success">@Model.ImportResult.CreatedCount created</span>
+                                    <span class="admin-badge draft">@Model.ImportResult.SkippedCount skipped</span>
+                                </div>
+
+                                <div class="accounts-template-table-wrap">
+                                    <table class="accounts-template-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Row</th>
+                                                <th>MSSV</th>
+                                                <th>Email</th>
+                                                <th>Result</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var row in Model.ImportResult.Rows)
+                                            {
+                                                <tr>
+                                                    <td>@row.RowNumber</td>
+                                                    <td>@row.StudentCode</td>
+                                                    <td>@row.Email</td>
+                                                    <td>@row.Message</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                        }
                     </section>
 
                     <section class="accounts-card" aria-labelledby="teacher-create-title">
@@ -162,22 +202,12 @@
                             </span>
                         </div>
 
-                        <form class="accounts-form" method="post" onsubmit="return false;">
+                        <form class="accounts-form" method="post" asp-page-handler="CreateTeacher">
                             <label class="subject-field">
                                 <span>Teacher email</span>
-                                <input name="TeacherEmail" type="email" placeholder="teacher@fpt.edu.vn" autocomplete="off" />
+                                <input asp-for="TeacherEmail" type="email" placeholder="teacher@fpt.edu.vn" autocomplete="off" />
                                 <small>This email will be used as the login account for the teacher.</small>
-                            </label>
-
-                            <label class="subject-field">
-                                <span>Leader subject assignment</span>
-                                <select class="accounts-select" name="LeaderSubject">
-                                    @foreach (var subject in subjectOptions)
-                                    {
-                                        <option value="@subject">@subject</option>
-                                    }
-                                </select>
-                                <small>Select <strong>None</strong> if this teacher is not a subject leader.</small>
+                                <span asp-validation-for="TeacherEmail" class="accounts-field-error"></span>
                             </label>
 
                             <footer class="subject-form-actions accounts-actions">
@@ -189,8 +219,80 @@
                         </form>
                     </section>
                 </div>
+
+                <section class="accounts-card accounts-table-card" aria-labelledby="account-table-title">
+                    <div class="accounts-card-header">
+                        <div>
+                            <p class="accounts-eyebrow">Access Control</p>
+                            <h2 id="account-table-title">Managed accounts</h2>
+                        </div>
+                        <span class="accounts-card-icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">shield_person</span>
+                        </span>
+                    </div>
+
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var account in Model.Accounts)
+                                {
+                                    var roleBadgeClass = account.Role switch
+                                    {
+                                        "teacher" => "info",
+                                        "admin" => "pending",
+                                        _ => "cyan"
+                                    };
+                                    var statusBadgeClass = account.IsBlocked ? "draft" : "success";
+                                    var statusText = account.IsBlocked ? "Blocked" : "Active";
+                                    <tr>
+                                        <td>
+                                            <strong>@account.FullName</strong>
+                                            <span>@(string.IsNullOrWhiteSpace(account.StudentCode) ? account.Role : account.StudentCode)</span>
+                                        </td>
+                                        <td>@account.Email</td>
+                                        <td><span class="admin-badge @roleBadgeClass">@account.Role</span></td>
+                                        <td><span class="admin-badge @statusBadgeClass">@statusText</span></td>
+                                        <td class="admin-user-actions">
+                                            @if (account.Role == "admin")
+                                            {
+                                                <span class="accounts-action-disabled">Protected</span>
+                                            }
+                                            else if (account.IsBlocked)
+                                            {
+                                                <form method="post" asp-page-handler="SetAccountStatus">
+                                                    <input type="hidden" name="userId" value="@account.UserId" />
+                                                    <input type="hidden" name="isBlocked" value="false" />
+                                                    <button class="admin-success-button" type="submit">Reactivate</button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <form method="post" asp-page-handler="SetAccountStatus">
+                                                    <input type="hidden" name="userId" value="@account.UserId" />
+                                                    <input type="hidden" name="isBlocked" value="true" />
+                                                    <button class="admin-danger-button" type="submit">Block</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
         </section>
     </main>
+
+    <partial name="_ValidationScriptsPartial" />
 </body>
 </html>

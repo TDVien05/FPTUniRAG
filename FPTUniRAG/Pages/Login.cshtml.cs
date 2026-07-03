@@ -1,4 +1,8 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
+using FPTUniRAG.BusinessLayer.Accounts;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -6,17 +10,11 @@ namespace FPTUniRAG.Pages;
 
 public class LoginModel : PageModel
 {
-    private const string DefaultAdminEmail = "admin@fpt.edu.vn";
-    private const string DefaultAdminPassword = "Admin@123";
-    private const string DefaultTeacherEmail = "teacher@fpt.edu.vn";
-    private const string DefaultTeacherPassword = "Teacher@123";
-    private const string DefaultStudentEmail = "student@fpt.edu.vn";
-    private const string DefaultStudentPassword = "Student@123";
-    private readonly IConfiguration _configuration;
+    private readonly IAccountManagementService _accountManagementService;
 
-    public LoginModel(IConfiguration configuration)
+    public LoginModel(IAccountManagementService accountManagementService)
     {
-        _configuration = configuration;
+        _accountManagementService = accountManagementService;
     }
 
     [BindProperty]
@@ -24,51 +22,78 @@ public class LoginModel : PageModel
 
     public string? StatusMessage { get; private set; }
 
-    public void OnGet()
+    public async Task<IActionResult> OnGetAsync(bool logout = false)
     {
+        if (logout && User.Identity?.IsAuthenticated == true)
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            StatusMessage = "You have been signed out.";
+            return Page();
+        }
+
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return RedirectToPage(GetLandingPage(User.FindFirstValue(ClaimTypes.Role)));
+        }
+
+        return Page();
     }
 
-    public IActionResult OnPost()
+    public async Task<IActionResult> OnPostAsync()
     {
         if (!ModelState.IsValid)
         {
             return Page();
         }
 
-        var adminEmail = _configuration["AdminCredentials:Email"];
-        var adminPassword = _configuration["AdminCredentials:Password"];
-        var teacherEmail = _configuration["TeacherCredentials:Email"];
-        var teacherPassword = _configuration["TeacherCredentials:Password"];
-        var studentEmail = _configuration["StudentCredentials:Email"];
-        var studentPassword = _configuration["StudentCredentials:Password"];
-
-        adminEmail = string.IsNullOrWhiteSpace(adminEmail) ? DefaultAdminEmail : adminEmail.Trim();
-        adminPassword = string.IsNullOrWhiteSpace(adminPassword) ? DefaultAdminPassword : adminPassword;
-        teacherEmail = string.IsNullOrWhiteSpace(teacherEmail) ? DefaultTeacherEmail : teacherEmail.Trim();
-        teacherPassword = string.IsNullOrWhiteSpace(teacherPassword) ? DefaultTeacherPassword : teacherPassword;
-        studentEmail = string.IsNullOrWhiteSpace(studentEmail) ? DefaultStudentEmail : studentEmail.Trim();
-        studentPassword = string.IsNullOrWhiteSpace(studentPassword) ? DefaultStudentPassword : studentPassword;
-
-        if (string.Equals(Input.Email.Trim(), adminEmail, StringComparison.OrdinalIgnoreCase)
-            && Input.Password == adminPassword)
+        var authenticationResult = await _accountManagementService.AuthenticateAsync(Input.Email, Input.Password);
+        if (authenticationResult.Status == AuthenticationStatus.Blocked)
         {
-            return RedirectToPage("/AdminDashboard");
+            ModelState.AddModelError(string.Empty, "This account has been blocked by an administrator.");
+            return Page();
         }
 
-        if (string.Equals(Input.Email.Trim(), teacherEmail, StringComparison.OrdinalIgnoreCase)
-            && Input.Password == teacherPassword)
+        if (authenticationResult.Status != AuthenticationStatus.Success || authenticationResult.User is null)
         {
-            return RedirectToPage("/TeacherHome");
+            ModelState.AddModelError(string.Empty, "Invalid email or password.");
+            return Page();
         }
 
-        if (string.Equals(Input.Email.Trim(), studentEmail, StringComparison.OrdinalIgnoreCase)
-            && Input.Password == studentPassword)
+        var user = authenticationResult.User;
+        var claims = new List<Claim>
         {
-            return RedirectToPage("/StudentDashboard");
-        }
+            new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+            new(ClaimTypes.Name, user.FullName),
+            new(ClaimTypes.Email, user.Email),
+            new(ClaimTypes.Role, user.Role)
+        };
 
-        ModelState.AddModelError(string.Empty, "Invalid admin, teacher, or student email or password.");
-        return Page();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            claims,
+            CookieAuthenticationDefaults.AuthenticationScheme));
+
+        var authenticationProperties = new AuthenticationProperties
+        {
+            IsPersistent = Input.RememberMe,
+            ExpiresUtc = Input.RememberMe ? DateTimeOffset.UtcNow.AddDays(30) : DateTimeOffset.UtcNow.AddDays(1)
+        };
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal,
+            authenticationProperties);
+
+        return RedirectToPage(GetLandingPage(user.Role));
+    }
+
+    private static string GetLandingPage(string? role)
+    {
+        return role?.Trim().ToLowerInvariant() switch
+        {
+            "admin" => "/AdminDashboard",
+            "teacher" => "/TeacherHome",
+            _ => "/StudentDashboard"
+        };
     }
 
     public class LoginInput

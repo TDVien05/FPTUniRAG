@@ -4,11 +4,7 @@
     Layout = null;
     ViewData["Title"] = "Admin Dashboard - FPT UniRAG";
 
-    var adminEmail = Configuration["AdminCredentials:Email"] ?? "admin@fpt.edu.vn";
-    var adminName = Configuration["AdminCredentials:DisplayName"] ?? "Admin User";
-    var adminInitials = Configuration["AdminCredentials:Initials"] ?? "AD";
     var totalSubjects = 124;
-    var totalUsers = 4;
 }
 
 <!DOCTYPE html>
@@ -48,8 +44,8 @@
                         <span class="material-symbols-outlined admin-nav-chevron" aria-hidden="true">expand_more</span>
                     </summary>
                     <div class="admin-subnav">
-                        <a href="/Subjects">New Subject</a>
-                        <a href="/Subjects/Delete">Delete Subject</a>
+                        <a href="/Subjects">Manage Subjects</a>
+                        <a href="/Subjects/AssignHeader">Assign Header</a>
                     </div>
                 </details>
                 <a class="admin-nav-item" href="/Accounts">
@@ -67,7 +63,7 @@
                     <span class="material-symbols-outlined" aria-hidden="true">help_outline</span>
                     <span>Help</span>
                 </a>
-                <a class="admin-sidebar-footer-link" href="/Login">
+                <a class="admin-sidebar-footer-link" href="/Login?logout=true">
                     <span class="material-symbols-outlined" aria-hidden="true">logout</span>
                     <span>Logout</span>
                 </a>
@@ -89,8 +85,8 @@
                         <span class="admin-stat-icon cyan"><span class="material-symbols-outlined" aria-hidden="true">groups</span></span>
                         <div>
                             <p>Total Users</p>
-                            <strong>@totalUsers</strong>
-                            <small>2 students, 1 teacher, 1 admin</small>
+                            <strong id="admin-total-users">0</strong>
+                            <small id="admin-user-breakdown">Loading account summary...</small>
                         </div>
                     </article>
                 </section>
@@ -103,7 +99,7 @@
                                     <h2>Subject Repository</h2>
                                     <p>Manage academic subjects and indexed RAG documents.</p>
                                 </div>
-                                <a class="admin-secondary-button" href="/Accounts">View All</a>
+                                <a class="admin-secondary-button" href="/Subjects">View All</a>
                             </div>
 
                             <div class="admin-table-wrap">
@@ -171,6 +167,8 @@
                                 </div>
                             </div>
 
+                            <div id="admin-account-feedback" class="accounts-feedback" hidden></div>
+
                             <div class="admin-table-wrap">
                                 <table class="admin-table">
                                 <thead>
@@ -182,46 +180,9 @@
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="admin-account-table-body">
                                     <tr>
-                                        <td><strong>Minh Tran</strong><span>SE Lecturer</span></td>
-                                        <td>minh.tran@fpt.edu.vn</td>
-                                        <td><span class="admin-badge info">Teacher</span></td>
-                                        <td><span class="admin-badge success">Active</span></td>
-                                        <td class="admin-user-actions">
-                                            <button class="admin-danger-button" type="button">Block</button>
-                                            <button class="admin-success-button" type="button">Reactive</button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>An Le</strong><span>SE172001</span></td>
-                                        <td>an.le@fpt.edu.vn</td>
-                                        <td><span class="admin-badge cyan">Student</span></td>
-                                        <td><span class="admin-badge success">Active</span></td>
-                                        <td class="admin-user-actions">
-                                            <button class="admin-danger-button" type="button">Block</button>
-                                            <button class="admin-success-button" type="button">Reactive</button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Hoa Dao</strong><span>Academic Office</span></td>
-                                        <td>hoa.dao@fpt.edu.vn</td>
-                                        <td><span class="admin-badge pending">Admin</span></td>
-                                        <td><span class="admin-badge success">Active</span></td>
-                                        <td class="admin-user-actions">
-                                            <button class="admin-danger-button" type="button">Block</button>
-                                            <button class="admin-success-button" type="button">Reactive</button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Quang Nguyen</strong><span>SE172044</span></td>
-                                        <td>quang.nguyen@fpt.edu.vn</td>
-                                        <td><span class="admin-badge cyan">Student</span></td>
-                                        <td><span class="admin-badge draft">Blocked</span></td>
-                                        <td class="admin-user-actions">
-                                            <button class="admin-danger-button" type="button">Block</button>
-                                            <button class="admin-success-button" type="button">Reactive</button>
-                                        </td>
+                                        <td colspan="5">Loading account data...</td>
                                     </tr>
                                 </tbody>
                                 </table>
@@ -233,5 +194,126 @@
             </div>
         </section>
     </main>
+    <script>
+        const accountTableBody = document.getElementById("admin-account-table-body");
+        const totalUsersValue = document.getElementById("admin-total-users");
+        const userBreakdown = document.getElementById("admin-user-breakdown");
+        const feedbackBox = document.getElementById("admin-account-feedback");
+
+        function roleBadgeClass(role) {
+            switch ((role || "").toLowerCase()) {
+                case "teacher":
+                    return "info";
+                case "admin":
+                    return "pending";
+                default:
+                    return "cyan";
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function setFeedback(message, isError) {
+            if (!feedbackBox) {
+                return;
+            }
+
+            feedbackBox.hidden = !message;
+            feedbackBox.textContent = message ?? "";
+            feedbackBox.className = isError
+                ? "accounts-feedback accounts-feedback-error"
+                : "accounts-feedback accounts-feedback-success";
+        }
+
+        async function loadAccountSummary() {
+            const response = await fetch("/api/admin/accounts/summary", { credentials: "same-origin" });
+            if (!response.ok) {
+                throw new Error("Failed to load account summary.");
+            }
+
+            const summary = await response.json();
+            totalUsersValue.textContent = summary.totalUsers;
+            userBreakdown.textContent = `${summary.studentCount} students, ${summary.teacherCount} teachers, ${summary.adminCount} admins, ${summary.blockedCount} blocked`;
+        }
+
+        async function loadAccounts() {
+            const response = await fetch("/api/admin/accounts", { credentials: "same-origin" });
+            if (!response.ok) {
+                throw new Error("Failed to load accounts.");
+            }
+
+            const accounts = await response.json();
+            if (!accounts.length) {
+                accountTableBody.innerHTML = '<tr><td colspan="5">No accounts found.</td></tr>';
+                return;
+            }
+
+            accountTableBody.innerHTML = accounts.map(account => {
+                const role = (account.role || "").toLowerCase();
+                const statusLabel = account.isBlocked ? "Blocked" : "Active";
+                const statusClass = account.isBlocked ? "draft" : "success";
+                const subLabel = account.studentCode || role;
+                const actions = role === "admin"
+                    ? '<span class="accounts-action-disabled">Protected</span>'
+                    : account.isBlocked
+                        ? `<button class="admin-success-button" type="button" data-action="reactivate" data-user-id="${escapeHtml(account.userId)}">Reactivate</button>`
+                        : `<button class="admin-danger-button" type="button" data-action="block" data-user-id="${escapeHtml(account.userId)}">Block</button>`;
+
+                return `
+                    <tr>
+                        <td><strong>${escapeHtml(account.fullName)}</strong><span>${escapeHtml(subLabel)}</span></td>
+                        <td>${escapeHtml(account.email)}</td>
+                        <td><span class="admin-badge ${roleBadgeClass(role)}">${escapeHtml(role)}</span></td>
+                        <td><span class="admin-badge ${statusClass}">${statusLabel}</span></td>
+                        <td class="admin-user-actions">${actions}</td>
+                    </tr>`;
+            }).join("");
+        }
+
+        async function updateAccountStatus(userId, action) {
+            const response = await fetch(`/api/admin/accounts/${userId}/${action}`, {
+                method: "POST",
+                credentials: "same-origin"
+            });
+
+            const payload = await response.json().catch(() => ({ message: "Unexpected server response." }));
+            if (!response.ok) {
+                throw new Error(payload.message || "Failed to update account status.");
+            }
+
+            setFeedback(payload.message || "Account updated.", false);
+            await Promise.all([loadAccountSummary(), loadAccounts()]);
+        }
+
+        accountTableBody?.addEventListener("click", async event => {
+            const button = event.target.closest("button[data-action][data-user-id]");
+            if (!button) {
+                return;
+            }
+
+            button.disabled = true;
+            setFeedback("", false);
+
+            try {
+                await updateAccountStatus(button.dataset.userId, button.dataset.action);
+            } catch (error) {
+                setFeedback(error.message || "Failed to update account status.", true);
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+        Promise.all([loadAccountSummary(), loadAccounts()]).catch(error => {
+            setFeedback(error.message || "Failed to load dashboard account data.", true);
+            accountTableBody.innerHTML = '<tr><td colspan="5">Failed to load accounts.</td></tr>';
+        });
+    </script>
 </body>
 </html>

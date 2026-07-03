@@ -2132,6 +2132,52 @@ body.admin-dashboard-page {
   justify-content: flex-end;
 }
 
+.accounts-feedback {
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.accounts-feedback-success {
+  border: 1px solid rgba(25, 135, 84, 0.24);
+  background: #edfdf4;
+  color: #166534;
+}
+
+.accounts-feedback-error {
+  border: 1px solid rgba(186, 26, 26, 0.24);
+  background: #fff1f0;
+  color: #ba1a1a;
+}
+
+.accounts-field-error {
+  color: #ba1a1a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.accounts-import-summary {
+  margin-top: 24px;
+}
+
+.accounts-summary-badges {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.accounts-table-card {
+  margin-top: 24px;
+}
+
+.accounts-action-disabled {
+  color: var(--admin-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 /* Stitch parity: Delete Subjects - FPT UniRAG */
 .delete-subject-main {
   min-height: 100vh;
@@ -2253,14 +2299,66 @@ body.admin-dashboard-page {
 }
 
 .delete-subject-actions {
-  display: flex;
-  justify-content: flex-end;
-}
+    display: flex;
+    justify-content: flex-end;
+  }
 
 .delete-subject-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+.subject-table-card {
+  overflow: hidden;
+}
+
+.subject-empty-state {
+  text-align: center;
+  color: var(--admin-muted);
+  font-weight: 700;
+}
+
+.subject-description-cell {
+  max-width: 420px;
+  line-height: 1.6;
+}
+
+.subject-table-actions {
+  white-space: nowrap;
+}
+
+.subject-delete-summary {
+  margin-top: 24px;
+}
+
+.subject-delete-summary dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+}
+
+.subject-delete-summary dt {
+  margin: 0 0 6px;
+  color: var(--admin-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.subject-delete-summary dd {
+  margin: 0;
+  color: var(--admin-text);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.subject-delete-warning {
+  margin-top: 24px;
+}
+
+.subject-header-grid {
+  align-items: start;
 }
 
 @media (max-width: 1120px) {
@@ -2397,12 +2495,16 @@ body.admin-dashboard-page {
   }
 
   .delete-subject-meta {
-    grid-template-columns: 1fr;
-  }
+      grid-template-columns: 1fr;
+    }
+
+  .subject-delete-summary dl {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 
   .subject-create-header h1 {
-    font-size: 26px;
-  }
+      font-size: 26px;
+    }
 
   .accounts-upload-box {
     grid-template-columns: 1fr;
