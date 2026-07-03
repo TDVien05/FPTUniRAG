@@ -1,11 +1,8 @@
 @page "/Subjects"
-@inject IConfiguration Configuration
+@model FPTUniRAG.Pages.SubjectsModel
 @{
     Layout = null;
-    ViewData["Title"] = "Create New Subject - FPT UniRAG";
-
-    var adminEmail = Configuration["AdminCredentials:Email"] ?? "admin@fpt.edu.vn";
-    var adminName = Configuration["AdminCredentials:DisplayName"] ?? "Admin User";
+    ViewData["Title"] = "Manage Subjects - FPT UniRAG";
 }
 
 <!DOCTYPE html>
@@ -20,8 +17,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body class="admin-dashboard-page subject-create-page">
-    <main class="admin-shell" aria-label="Create new subject">
+<body class="admin-dashboard-page accounts-page">
+    <main class="admin-shell" aria-label="Subject management">
         <aside class="admin-sidebar" aria-label="Admin navigation">
             <a class="admin-logo" href="/AdminDashboard" aria-label="FPT UniRAG dashboard">
                 <span class="admin-logo-mark" aria-hidden="true">
@@ -45,8 +42,8 @@
                         <span class="material-symbols-outlined admin-nav-chevron" aria-hidden="true">expand_more</span>
                     </summary>
                     <div class="admin-subnav">
-                        <a class="active" href="/Subjects" aria-current="page">New Subject</a>
-                        <a href="/Subjects/Delete">Delete Subject</a>
+                        <a class="active" href="/Subjects" aria-current="page">Manage Subjects</a>
+                        <a href="/Subjects/AssignHeader">Assign Header</a>
                     </div>
                 </details>
                 <a class="admin-nav-item" href="/Accounts">
@@ -64,80 +61,96 @@
                     <span class="material-symbols-outlined" aria-hidden="true">help_outline</span>
                     <span>Help</span>
                 </a>
-                <a class="admin-sidebar-footer-link" href="/Login">
+                <a class="admin-sidebar-footer-link" href="/Login?logout=true">
                     <span class="material-symbols-outlined" aria-hidden="true">logout</span>
                     <span>Logout</span>
                 </a>
             </section>
         </aside>
 
-        <section class="subject-create-main">
-            <div class="subject-create-canvas">
+        <section class="accounts-main">
+            <div class="accounts-canvas">
                 <nav class="subject-breadcrumbs" aria-label="Breadcrumb">
-                    <a href="/Subjects">Subjects</a>
+                    <a href="/AdminDashboard">Dashboard</a>
                     <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
-                    <strong>New Subject</strong>
+                    <strong>Subjects</strong>
                 </nav>
 
-                <header class="subject-create-header">
+                <header class="subject-create-header accounts-header">
                     <div>
-                        <h1>Create New Subject</h1>
-                        <p>Register a new academic unit into the FPT UniRAG knowledge ecosystem.</p>
+                        <h1>Subject Management</h1>
+                        <p>Manage subjects using the current schema fields: code, name, description, and created time.</p>
                     </div>
-                    <a class="subject-close-button" href="/AdminDashboard" aria-label="Close create subject screen">
-                        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                    <a class="subject-submit-button" href="/Subjects/Create">
+                        Create Subject
+                        <span class="material-symbols-outlined" aria-hidden="true">add</span>
                     </a>
                 </header>
 
-                <section class="subject-form-card" aria-labelledby="create-subject-title">
-                    <div class="subject-progress" aria-hidden="true">
-                        <span></span>
+                @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-success" role="status">
+                        @Model.SuccessMessage
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-error" role="alert">
+                        @Model.ErrorMessage
+                    </div>
+                }
+
+                <section class="accounts-card accounts-table-card subject-table-card" aria-labelledby="subject-table-title">
+                    <div class="accounts-card-header">
+                        <div>
+                            <p class="accounts-eyebrow">Current Schema</p>
+                            <h2 id="subject-table-title">Subjects</h2>
+                        </div>
+                        <span class="accounts-card-icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">menu_book</span>
+                        </span>
                     </div>
 
-                    <div class="subject-form-content">
-                        <h2 id="create-subject-title" class="visually-hidden">Create subject form</h2>
-                        <form class="subject-form" method="post" onsubmit="return false;">
-                            <div class="subject-form-grid">
-                                <label class="subject-field">
-                                    <span>Subject Code</span>
-                                    <div class="subject-input-with-icon">
-                                        <span class="material-symbols-outlined" aria-hidden="true">tag</span>
-                                        <input name="SubjectCode" type="text" placeholder="e.g. PRN211" autocomplete="off" />
-                                    </div>
-                                    <small>Must be a unique institutional identifier.</small>
-                                </label>
-
-                                <label class="subject-field">
-                                    <span>Subject Name</span>
-                                    <input name="SubjectName" type="text" placeholder="e.g. Advanced Cross-Platform Programming with .NET" autocomplete="off" />
-                                </label>
-                            </div>
-
-                            <label class="subject-field">
-                                <span>Subject Description</span>
-                                <textarea name="SubjectDescription" placeholder="Provide a brief overview of the subject syllabus and learning objectives..."></textarea>
-                            </label>
-
-                            <footer class="subject-form-actions">
-                                <a class="subject-cancel-button" href="/AdminDashboard">Cancel</a>
-                                <button class="subject-submit-button" type="submit">
-                                    Create Subject
-                                    <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
-                                </button>
-                            </footer>
-                        </form>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Description</th>
+                                    <th>Created At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model.Subjects.Count == 0)
+                                {
+                                    <tr>
+                                        <td colspan="4" class="subject-empty-state">No subjects found.</td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    @foreach (var subject in Model.Subjects)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <strong>@subject.SubjectCode</strong>
+                                                <span>@subject.SubjectName</span>
+                                            </td>
+                                            <td class="subject-description-cell">@(string.IsNullOrWhiteSpace(subject.Description) ? "No description provided." : subject.Description)</td>
+                                            <td>@(subject.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")</td>
+                                            <td class="admin-user-actions subject-table-actions">
+                                                <a class="admin-success-button" asp-page="/Subjects/Edit" asp-route-subjectId="@subject.SubjectId">Edit</a>
+                                                <a class="admin-danger-button" asp-page="/Subjects/Delete" asp-route-subjectId="@subject.SubjectId">Delete</a>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
                     </div>
                 </section>
-
-                <aside class="subject-help-card" aria-label="Subject creation tip">
-                    <span class="subject-help-icon" aria-hidden="true">
-                        <span class="material-symbols-outlined">lightbulb</span>
-                    </span>
-                    <div>
-                        <h3>Pro Tip: Knowledge Partitioning</h3>
-                        <p>After creating this subject, you'll be prompted to upload relevant PDF files. Our AI engine will automatically vectorise these documents, allowing students to query specific syllabus items instantly.</p>
-                    </div>
-                </aside>
             </div>
         </section>
     </main>

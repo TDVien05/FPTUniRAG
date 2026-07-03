@@ -1,0 +1,153 @@
+@page "{subjectId:guid}"
+@model FPTUniRAG.Pages.Subjects.DeleteModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Delete Subject - FPT UniRAG";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="admin-dashboard-page delete-subject-page">
+    <main class="admin-shell" aria-label="Delete subject">
+        <aside class="admin-sidebar" aria-label="Admin navigation">
+            <a class="admin-logo" href="/AdminDashboard" aria-label="FPT UniRAG dashboard">
+                <span class="admin-logo-mark" aria-hidden="true">
+                    <span class="material-symbols-outlined">school</span>
+                </span>
+                <span>
+                    <strong>FPT UniRAG</strong>
+                    <small>Academic RAG</small>
+                </span>
+            </a>
+
+            <nav class="admin-nav">
+                <a class="admin-nav-item" href="/AdminDashboard">
+                    <span class="material-symbols-outlined" aria-hidden="true">dashboard</span>
+                    Dashboard
+                </a>
+                <details class="admin-nav-group" open>
+                    <summary class="admin-nav-item active">
+                        <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+                        Subjects
+                        <span class="material-symbols-outlined admin-nav-chevron" aria-hidden="true">expand_more</span>
+                    </summary>
+                    <div class="admin-subnav">
+                        <a href="/Subjects">Manage Subjects</a>
+                        <a href="/Subjects/AssignHeader">Assign Header</a>
+                    </div>
+                </details>
+                <a class="admin-nav-item" href="/Accounts">
+                    <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+                    Accounts
+                </a>
+                <a class="admin-nav-item" href="/Analysis">
+                    <span class="material-symbols-outlined" aria-hidden="true">analytics</span>
+                    Analytics
+                </a>
+            </nav>
+
+            <section class="admin-sidebar-footer" aria-label="Sidebar actions">
+                <a class="admin-sidebar-footer-link" href="#">
+                    <span class="material-symbols-outlined" aria-hidden="true">help_outline</span>
+                    <span>Help</span>
+                </a>
+                <a class="admin-sidebar-footer-link" href="/Login?logout=true">
+                    <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+                    <span>Logout</span>
+                </a>
+            </section>
+        </aside>
+
+        <section class="delete-subject-main">
+            <div class="delete-subject-canvas">
+                <nav class="subject-breadcrumbs" aria-label="Breadcrumb">
+                    <a href="/AdminDashboard">Dashboard</a>
+                    <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                    <a href="/Subjects">Subjects</a>
+                    <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                    <strong>Delete Subject</strong>
+                </nav>
+
+                <header class="subject-create-header delete-subject-header">
+                    <div>
+                        <h1>Delete Subject</h1>
+                        <p>Review the schema-backed data that will be removed before deleting this subject.</p>
+                    </div>
+                </header>
+
+                @if (Model.Subject is not null)
+                {
+                    <section class="delete-subject-panel" aria-labelledby="delete-subject-title">
+                        <div class="delete-subject-panel-header">
+                            <div>
+                                <h2 id="delete-subject-title">@Model.Subject.SubjectCode - @Model.Subject.SubjectName</h2>
+                                <p>@(string.IsNullOrWhiteSpace(Model.Subject.Description) ? "No description provided." : Model.Subject.Description)</p>
+                            </div>
+                            <span class="delete-subject-count">Created @(Model.Subject.CreatedAt?.ToString("yyyy-MM-dd") ?? "N/A")</span>
+                        </div>
+
+                        <div class="subject-delete-summary">
+                            <dl>
+                                <div>
+                                    <dt>Teacher assignments</dt>
+                                    <dd>@Model.Subject.Counts.TeacherAssignments</dd>
+                                </div>
+                                <div>
+                                    <dt>Sessions</dt>
+                                    <dd>@Model.Subject.Counts.Sessions</dd>
+                                </div>
+                                <div>
+                                    <dt>Messages</dt>
+                                    <dd>@Model.Subject.Counts.Messages</dd>
+                                </div>
+                                <div>
+                                    <dt>Chapters</dt>
+                                    <dd>@Model.Subject.Counts.Chapters</dd>
+                                </div>
+                                <div>
+                                    <dt>Documents</dt>
+                                    <dd>@Model.Subject.Counts.Documents</dd>
+                                </div>
+                                <div>
+                                    <dt>Processing jobs</dt>
+                                    <dd>@Model.Subject.Counts.ProcessingJobs</dd>
+                                </div>
+                                <div>
+                                    <dt>Chunks</dt>
+                                    <dd>@Model.Subject.Counts.Chunks</dd>
+                                </div>
+                                <div>
+                                    <dt>Test questions</dt>
+                                    <dd>@Model.Subject.Counts.TestQuestions</dd>
+                                </div>
+                            </dl>
+                        </div>
+
+                        <div class="accounts-feedback accounts-feedback-error subject-delete-warning" role="alert">
+                            This permanently removes the subject and its related database records. External file storage cleanup is not handled by this screen.
+                        </div>
+
+                        <form method="post" class="delete-subject-actions">
+                            <a class="subject-cancel-button" href="/Subjects">Cancel</a>
+                            <button class="admin-danger-button delete-subject-button" type="submit">
+                                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                                Delete Subject
+                            </button>
+                        </form>
+                    </section>
+                }
+            </div>
+        </section>
+    </main>
+</body>
+</html>

@@ -1,0 +1,196 @@
+@page
+@model FPTUniRAG.Pages.Subjects.AssignHeaderModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Assign Header - FPT UniRAG";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="admin-dashboard-page accounts-page">
+    <main class="admin-shell" aria-label="Assign subject header">
+        <aside class="admin-sidebar" aria-label="Admin navigation">
+            <a class="admin-logo" href="/AdminDashboard" aria-label="FPT UniRAG dashboard">
+                <span class="admin-logo-mark" aria-hidden="true">
+                    <span class="material-symbols-outlined">school</span>
+                </span>
+                <span>
+                    <strong>FPT UniRAG</strong>
+                    <small>Academic RAG</small>
+                </span>
+            </a>
+
+            <nav class="admin-nav">
+                <a class="admin-nav-item" href="/AdminDashboard">
+                    <span class="material-symbols-outlined" aria-hidden="true">dashboard</span>
+                    Dashboard
+                </a>
+                <details class="admin-nav-group" open>
+                    <summary class="admin-nav-item active">
+                        <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+                        Subjects
+                        <span class="material-symbols-outlined admin-nav-chevron" aria-hidden="true">expand_more</span>
+                    </summary>
+                    <div class="admin-subnav">
+                        <a href="/Subjects">Manage Subjects</a>
+                        <a class="active" href="/Subjects/AssignHeader" aria-current="page">Assign Header</a>
+                    </div>
+                </details>
+                <a class="admin-nav-item" href="/Accounts">
+                    <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+                    Accounts
+                </a>
+                <a class="admin-nav-item" href="/Analysis">
+                    <span class="material-symbols-outlined" aria-hidden="true">analytics</span>
+                    Analytics
+                </a>
+            </nav>
+
+            <section class="admin-sidebar-footer" aria-label="Sidebar actions">
+                <a class="admin-sidebar-footer-link" href="#">
+                    <span class="material-symbols-outlined" aria-hidden="true">help_outline</span>
+                    <span>Help</span>
+                </a>
+                <a class="admin-sidebar-footer-link" href="/Login?logout=true">
+                    <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+                    <span>Logout</span>
+                </a>
+            </section>
+        </aside>
+
+        <section class="accounts-main">
+            <div class="accounts-canvas">
+                <nav class="subject-breadcrumbs" aria-label="Breadcrumb">
+                    <a href="/AdminDashboard">Dashboard</a>
+                    <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                    <a href="/Subjects">Subjects</a>
+                    <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                    <strong>Assign Header</strong>
+                </nav>
+
+                <header class="subject-create-header accounts-header">
+                    <div>
+                        <h1>Assign Header Teacher</h1>
+                        <p>Choose a subject and assign the teacher who will be the header for that subject.</p>
+                    </div>
+                </header>
+
+                @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-success" role="status">
+                        @Model.SuccessMessage
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-error" role="alert">
+                        @Model.ErrorMessage
+                    </div>
+                }
+
+                <div class="accounts-grid subject-header-grid">
+                    <section class="accounts-card" aria-labelledby="assign-header-title">
+                        <div class="accounts-card-header">
+                            <div>
+                                <p class="accounts-eyebrow">TeacherSubject Mapping</p>
+                                <h2 id="assign-header-title">Set current header</h2>
+                            </div>
+                            <span class="accounts-card-icon" aria-hidden="true">
+                                <span class="material-symbols-outlined">supervisor_account</span>
+                            </span>
+                        </div>
+
+                        <form class="accounts-form" method="post">
+                            <label class="subject-field">
+                                <span>Subject</span>
+                                <select asp-for="SubjectId">
+                                    <option value="">Select a subject</option>
+                                    @foreach (var subject in Model.Subjects)
+                                    {
+                                        <option value="@subject.SubjectId">@subject.SubjectCode - @subject.SubjectName</option>
+                                    }
+                                </select>
+                            </label>
+
+                            <label class="subject-field">
+                                <span>Teacher</span>
+                                <select asp-for="TeacherId">
+                                    <option value="">Select a teacher</option>
+                                    @foreach (var teacher in Model.Teachers)
+                                    {
+                                        <option value="@teacher.TeacherId">@teacher.FullName (@(string.IsNullOrWhiteSpace(teacher.Email) ? "No email" : teacher.Email))</option>
+                                    }
+                                </select>
+                            </label>
+
+                            <footer class="subject-form-actions accounts-actions">
+                                <button class="subject-submit-button" type="submit">
+                                    Assign Header
+                                    <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                                </button>
+                            </footer>
+                        </form>
+                    </section>
+
+                    <section class="accounts-card accounts-table-card subject-table-card" aria-labelledby="header-table-title">
+                        <div class="accounts-card-header">
+                            <div>
+                                <p class="accounts-eyebrow">Current Assignment</p>
+                                <h2 id="header-table-title">Subject headers</h2>
+                            </div>
+                            <span class="accounts-card-icon" aria-hidden="true">
+                                <span class="material-symbols-outlined">badge</span>
+                            </span>
+                        </div>
+
+                        <div class="admin-table-wrap">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Subject</th>
+                                        <th>Current Header</th>
+                                        <th>Email</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model.Subjects.Count == 0)
+                                    {
+                                        <tr>
+                                            <td colspan="3" class="subject-empty-state">No subjects found.</td>
+                                        </tr>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var subject in Model.Subjects)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <strong>@subject.SubjectCode</strong>
+                                                    <span>@subject.SubjectName</span>
+                                                </td>
+                                                <td>@(string.IsNullOrWhiteSpace(subject.CurrentHeaderTeacherName) ? "Not assigned" : subject.CurrentHeaderTeacherName)</td>
+                                                <td>@(string.IsNullOrWhiteSpace(subject.CurrentHeaderTeacherEmail) ? "N/A" : subject.CurrentHeaderTeacherEmail)</td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
