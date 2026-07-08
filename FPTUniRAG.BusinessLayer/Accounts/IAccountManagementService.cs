@@ -30,4 +30,10 @@ public interface IAccountManagementService
         Guid userId,
         bool isBlocked,
         CancellationToken cancellationToken = default);
+
+    Task<OperationResult> ChangePasswordAsync(
+        string email,
+        string currentPassword,
+        string newPassword,
+        CancellationToken cancellationToken = default);
 }

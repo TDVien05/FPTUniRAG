@@ -1,0 +1,117 @@
+@page "/TeacherDocuments/Details"
+@model FPTUniRAG.Pages.TeacherDocumentDetailsModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Document Details - FPT UniRAG";
+}
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Manrope:wght@600;700&amp;display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900 font-[Inter]">
+    <main class="mx-auto max-w-6xl px-6 py-10">
+        @if (!string.IsNullOrWhiteSpace(Model.NoticeMessage))
+        {
+            <div class="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+                @Model.NoticeMessage
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+        {
+            <div class="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+                @Model.ErrorMessage
+            </div>
+        }
+
+        @if (Model.Document is null)
+        {
+            <div class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
+                The requested document is unavailable or you do not have access to it.
+            </div>
+        }
+        else
+        {
+            <div class="mb-8 flex items-center justify-between gap-4">
+                <div>
+                    <p class="text-sm font-medium text-blue-700">@Model.Document.SubjectCode · @Model.Document.SubjectName</p>
+                    <h1 class="mt-2 font-[Manrope] text-3xl font-bold">@Model.Document.Title</h1>
+                    <p class="mt-2 text-sm text-slate-600">Chapter: @Model.Document.ChapterTitle</p>
+                </div>
+                <div class="flex gap-3">
+                    <a class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700" href="/TeacherUpload?subjectId=@Model.Document.SubjectId">Upload Another</a>
+                    <a class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white" href="/TeacherDocuments">Back to Documents</a>
+                </div>
+            </div>
+
+            <section class="grid gap-6 lg:grid-cols-[0.9fr,1.1fr]">
+                <div class="space-y-6">
+                    <article class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h2 class="font-[Manrope] text-lg font-bold">Document Metadata</h2>
+                        <dl class="mt-4 space-y-3 text-sm">
+                            <div class="flex items-center justify-between gap-4">
+                                <dt class="text-slate-500">Status</dt>
+                                <dd class="font-semibold text-slate-900">@Model.Document.Status</dd>
+                            </div>
+                            <div class="flex items-center justify-between gap-4">
+                                <dt class="text-slate-500">File Type</dt>
+                                <dd class="font-semibold text-slate-900">@Model.Document.FileType</dd>
+                            </div>
+                            <div class="flex items-center justify-between gap-4">
+                                <dt class="text-slate-500">Chunking</dt>
+                                <dd class="font-semibold text-slate-900">@Model.Document.ChunkingStrategy</dd>
+                            </div>
+                            <div class="flex items-center justify-between gap-4">
+                                <dt class="text-slate-500">Chunk Size</dt>
+                                <dd class="font-semibold text-slate-900">@Model.Document.ChunkSize</dd>
+                            </div>
+                            <div class="flex items-center justify-between gap-4">
+                                <dt class="text-slate-500">Chunk Overlap</dt>
+                                <dd class="font-semibold text-slate-900">@Model.Document.ChunkOverlap</dd>
+                            </div>
+                            <div class="flex items-center justify-between gap-4">
+                                <dt class="text-slate-500">Chunks</dt>
+                                <dd class="font-semibold text-slate-900">@Model.Document.ChunkCount</dd>
+                            </div>
+                            <div class="flex items-center justify-between gap-4">
+                                <dt class="text-slate-500">Uploaded At</dt>
+                                <dd class="font-semibold text-slate-900">@Model.Document.CreatedAt?.ToString("yyyy-MM-dd HH:mm")</dd>
+                            </div>
+                        </dl>
+                    </article>
+
+                    <article class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h2 class="font-[Manrope] text-lg font-bold">Stored File</h2>
+                        <p class="mt-3 break-all text-sm text-slate-600">@Model.Document.FileUrl</p>
+                    </article>
+                </div>
+
+                <article class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <div class="mb-5 flex items-center justify-between gap-4">
+                        <h2 class="font-[Manrope] text-lg font-bold">Generated Chunks</h2>
+                        <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">@Model.Document.ChunkCount chunk(s)</span>
+                    </div>
+
+                    <div class="space-y-4">
+                        @foreach (var chunk in Model.Document.Chunks)
+                        {
+                            <section class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                <div class="mb-3 flex items-center justify-between gap-3">
+                                    <h3 class="font-semibold text-slate-900">Chunk @chunk.ChunkIndex</h3>
+                                    <span class="text-xs text-slate-500">@chunk.Content.Length characters</span>
+                                </div>
+                                <pre class="whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">@chunk.Content</pre>
+                            </section>
+                        }
+                    </div>
+                </article>
+            </section>
+        }
+    </main>
+</body>
+</html>

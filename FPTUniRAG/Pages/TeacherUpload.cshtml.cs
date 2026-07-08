@@ -1,0 +1,105 @@
+using System.Security.Claims;
+using FPTUniRAG.BusinessLayer.Subjects;
+using FPTUniRAG.Options;
+using FPTUniRAG.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Options;
+
+namespace FPTUniRAG.Pages;
+
+[Authorize(Policy = "TeacherOrAdmin")]
+public class TeacherUploadModel : PageModel
+{
+    private readonly ITeacherDocumentWorkflowService _teacherDocumentWorkflowService;
+    private readonly RagIngestionOptions _options;
+
+    public TeacherUploadModel(
+        ITeacherDocumentWorkflowService teacherDocumentWorkflowService,
+        IOptions<RagIngestionOptions> options)
+    {
+        _teacherDocumentWorkflowService = teacherDocumentWorkflowService;
+        _options = options.Value;
+    }
+
+    [BindProperty]
+    public TeacherDocumentUploadCommand Input { get; set; } = new();
+
+    [TempData]
+    public string? NoticeMessage { get; set; }
+
+    public TeacherUploadContextDto? UploadContext { get; private set; }
+
+    public string ChunkingStrategyLabel => SubjectChunkingStrategies.ToDisplayLabel(UploadContext?.DefaultChunkingStrategy);
+
+    public int FixedChunkSize => UploadContext?.DefaultFixedChunkSize ?? 0;
+
+    public int FixedChunkOverlap => _options.FixedChunkOverlap;
+
+    public int SemanticMaxChunkSize => _options.Semantic.MaxChunkSize;
+
+    public int SemanticMinChunkSize => _options.Semantic.MinChunkSize;
+
+    public string EmbeddingModel => _options.OpenRouter.EmbeddingModel;
+
+    public async Task<IActionResult> OnGetAsync(Guid subjectId, CancellationToken cancellationToken)
+    {
+        var teacherEmail = User.FindFirstValue(ClaimTypes.Email);
+        if (string.IsNullOrWhiteSpace(teacherEmail))
+        {
+            return Challenge();
+        }
+
+        UploadContext = await _teacherDocumentWorkflowService.GetUploadContextAsync(
+            teacherEmail,
+            subjectId,
+            cancellationToken);
+
+        if (UploadContext is null)
+        {
+            return Forbid();
+        }
+
+        Input.SubjectId = subjectId;
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
+    {
+        var teacherEmail = User.FindFirstValue(ClaimTypes.Email);
+        if (string.IsNullOrWhiteSpace(teacherEmail))
+        {
+            return Challenge();
+        }
+
+        UploadContext = await _teacherDocumentWorkflowService.GetUploadContextAsync(
+            teacherEmail,
+            Input.SubjectId,
+            cancellationToken);
+
+        if (UploadContext is null)
+        {
+            return Forbid();
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return Page();
+        }
+
+        var result = await _teacherDocumentWorkflowService.UploadAsync(
+            teacherEmail,
+            Input,
+            cancellationToken);
+
+        if (!result.Succeeded || !result.DocumentId.HasValue)
+        {
+            ModelState.AddModelError(string.Empty, result.Message);
+            return Page();
+        }
+
+        NoticeMessage = result.Message;
+        return RedirectToPage("/TeacherDocumentDetails", new { documentId = result.DocumentId.Value });
+    }
+}

@@ -43,6 +43,7 @@
                     </summary>
                     <div class="admin-subnav">
                         <a class="active" href="/Subjects" aria-current="page">Manage Subjects</a>
+                        <a href="/Subjects/AssignTeacher">Assign Teacher</a>
                         <a href="/Subjects/AssignHeader">Assign Header</a>
                     </div>
                 </details>
@@ -79,7 +80,7 @@
                 <header class="subject-create-header accounts-header">
                     <div>
                         <h1>Subject Management</h1>
-                        <p>Manage subjects using the current schema fields: code, name, description, and created time.</p>
+                        <p>Manage subject metadata and choose whether each subject uses fixed-size or semantic chunking for future document uploads.</p>
                     </div>
                     <a class="subject-submit-button" href="/Subjects/Create">
                         Create Subject
@@ -118,6 +119,7 @@
                                 <tr>
                                     <th>Subject</th>
                                     <th>Description</th>
+                                    <th>Chunking</th>
                                     <th>Created At</th>
                                     <th>Actions</th>
                                 </tr>
@@ -126,7 +128,7 @@
                                 @if (Model.Subjects.Count == 0)
                                 {
                                     <tr>
-                                        <td colspan="4" class="subject-empty-state">No subjects found.</td>
+                                        <td colspan="5" class="subject-empty-state">No subjects found.</td>
                                     </tr>
                                 }
                                 else
@@ -139,6 +141,11 @@
                                                 <span>@subject.SubjectName</span>
                                             </td>
                                             <td class="subject-description-cell">@(string.IsNullOrWhiteSpace(subject.Description) ? "No description provided." : subject.Description)</td>
+                                            <td>
+                                                @(subject.DefaultChunkingStrategy == "semantic"
+                                                    ? "Semantic chunking"
+                                                    : $"Fixed size ({subject.DefaultFixedChunkSize})")
+                                            </td>
                                             <td>@(subject.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")</td>
                                             <td class="admin-user-actions subject-table-actions">
                                                 <a class="admin-success-button" asp-page="/Subjects/Edit" asp-route-subjectId="@subject.SubjectId">Edit</a>

@@ -5,6 +5,8 @@ public sealed record SubjectListItemDto(
     string SubjectCode,
     string SubjectName,
     string? Description,
+    string DefaultChunkingStrategy,
+    int DefaultFixedChunkSize,
     DateTime? CreatedAt);
 
 public sealed record SubjectEditDto(
@@ -12,6 +14,8 @@ public sealed record SubjectEditDto(
     string SubjectCode,
     string SubjectName,
     string? Description,
+    string DefaultChunkingStrategy,
+    int DefaultFixedChunkSize,
     DateTime? CreatedAt);
 
 public sealed record SubjectDeletePreviewDto(
@@ -35,7 +39,35 @@ public sealed record SubjectDeleteCountsDto(
 public sealed record UpsertSubjectRequest(
     string SubjectCode,
     string SubjectName,
-    string? Description);
+    string? Description,
+    string DefaultChunkingStrategy,
+    int DefaultFixedChunkSize);
+
+public sealed record SubjectTeacherAssignmentListItemDto(
+    Guid SubjectId,
+    string SubjectCode,
+    string SubjectName,
+    IReadOnlyList<TeacherAssignmentDto> AssignedTeachers);
+
+public sealed record TeacherHeaderSubjectDashboardItemDto(
+    Guid SubjectId,
+    string SubjectCode,
+    string SubjectName,
+    string? Description,
+    string DefaultChunkingStrategy,
+    int DefaultFixedChunkSize,
+    int DocumentCount,
+    int ChapterCount);
+
+public sealed record TeacherDocumentManagementItemDto(
+    Guid SubjectId,
+    string SubjectCode,
+    string SubjectName,
+    int DocumentCount,
+    DateTime? LastUpdatedAt,
+    Guid? LatestDocumentId,
+    string? LatestDocumentTitle,
+    string? LatestDocumentStatus);
 
 public sealed record SubjectHeaderAssignmentListItemDto(
     Guid SubjectId,
@@ -44,6 +76,12 @@ public sealed record SubjectHeaderAssignmentListItemDto(
     Guid? CurrentHeaderTeacherId,
     string? CurrentHeaderTeacherName,
     string? CurrentHeaderTeacherEmail);
+
+public sealed record TeacherAssignmentDto(
+    Guid TeacherId,
+    string FullName,
+    string? Email,
+    bool IsHeader);
 
 public sealed record TeacherOptionDto(
     Guid TeacherId,

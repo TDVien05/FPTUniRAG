@@ -1,10 +1,11 @@
 @page "/TeacherDocuments"
+@model FPTUniRAG.Pages.TeacherDocumentsModel
 @{
     Layout = null;
     ViewData["Title"] = "Document Management - Teacher List - FPT UniRAG";
 }
 <!DOCTYPE html>
-<html class="light" lang="en" style="">
+<html class="light" lang="en">
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
@@ -113,9 +114,9 @@
             </div>
             <div class="flex items-center gap-base">
                 <button class="material-symbols-outlined text-secondary hover:bg-surface-container-low p-2 rounded-full transition-all" type="button">notifications</button>
-                <button class="material-symbols-outlined text-secondary hover:bg-surface-container-low p-2 rounded-full transition-all" type="button">settings</button>
-                <div class="h-8 w-8 rounded-full bg-primary-container flex items-center justify-center text-white overflow-hidden">
-                    <img class="w-full h-full object-cover" alt="Teacher User" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBN88jHsojQVWTMS61dr8G0sgFXLR98yeKEvZDH9-LLev21MksFOj0U2yc6Nx2tZ1JXG37OTkpSQo5h2f5Sd4dTgnOQNqb6UkjKzQQsiUP7n_OwsRuQnP7jxQwjsHobcoDbIWq3Bi-3nTanStCWzALQGEXjkbMRK-Dgwhmb08E5N5g-ayvnZycoIDfzkHuMc9UcfTVhmkw7mAZfgXO6KsyEhSSL_3LV95ac047-yaLNyOrEDFL0KISSKh6nuQh__uwIgKROtoNBSi23" />
+                <a class="material-symbols-outlined text-secondary hover:bg-surface-container-low p-2 rounded-full transition-all" href="/ChangePassword">settings</a>
+                <div class="h-8 w-8 rounded-full bg-primary-container flex items-center justify-center text-white font-semibold">
+                    @(string.IsNullOrWhiteSpace(User.Identity?.Name) ? "T" : User.Identity!.Name![0].ToString().ToUpperInvariant())
                 </div>
             </div>
         </div>
@@ -137,6 +138,10 @@
             </a>
         </nav>
         <div class="mt-auto flex flex-col gap-1 border-t border-outline-variant/10 pt-base">
+            <a class="flex items-center gap-base p-3 text-secondary hover:bg-surface-container-high rounded-lg transition-all" href="/ChangePassword">
+                <span class="material-symbols-outlined">lock</span>
+                <span class="font-label-md">Change Password</span>
+            </a>
             <a class="flex items-center gap-base p-3 text-secondary hover:bg-surface-container-high rounded-lg transition-all" href="#">
                 <span class="material-symbols-outlined">help</span>
                 <span class="font-label-md">Help</span>
@@ -157,38 +162,56 @@
                     <span class="text-on-surface font-medium">Document Management</span>
                 </nav>
                 <h1 class="font-headline-lg text-on-surface">Knowledge Library</h1>
-                <p class="font-body-md text-secondary mt-1">Centralized document management for course materials and research papers.</p>
+                <p class="font-body-md text-secondary mt-1">Real document data for the subjects where you are the current header teacher.</p>
             </div>
             <div class="flex gap-4">
                 <div class="bg-surface-container-lowest border border-outline-variant/30 px-6 py-3 rounded-xl flex flex-col shadow-sm min-w-[140px]">
-                    <span class="text-secondary font-label-sm uppercase tracking-tight text-[10px]">Total Indexing</span>
-                    <span class="text-primary font-bold text-xl">12.4 GB</span>
+                    <span class="text-secondary font-label-sm uppercase tracking-tight text-[10px]">Managed Subjects</span>
+                    <span class="text-primary font-bold text-xl">@Model.ManagedSubjectCount</span>
                 </div>
                 <div class="bg-surface-container-lowest border border-outline-variant/30 px-6 py-3 rounded-xl flex flex-col shadow-sm min-w-[140px]">
-                    <span class="text-secondary font-label-sm uppercase tracking-tight text-[10px]">Total Queries</span>
-                    <span class="text-on-surface font-bold text-xl">1,842</span>
+                    <span class="text-secondary font-label-sm uppercase tracking-tight text-[10px]">Total Documents</span>
+                    <span class="text-on-surface font-bold text-xl">@Model.TotalDocumentCount</span>
+                </div>
+                <div class="bg-surface-container-lowest border border-outline-variant/30 px-6 py-3 rounded-xl flex flex-col shadow-sm min-w-[140px]">
+                    <span class="text-secondary font-label-sm uppercase tracking-tight text-[10px]">Subjects With Files</span>
+                    <span class="text-on-surface font-bold text-xl">@Model.SubjectsWithDocumentsCount</span>
                 </div>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             <div class="lg:col-span-12 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-sm flex flex-col">
-                <div class="p-4 border-b border-outline-variant/20 flex items-center justify-between">
+                @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+                {
+                    <div class="mx-4 mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                        @Model.SuccessMessage
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                {
+                    <div class="mx-4 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+                        @Model.ErrorMessage
+                    </div>
+                }
+
+                <div class="p-4 border-b border-outline-variant/20 flex items-center justify-between gap-4 flex-wrap">
                     <div class="flex items-center gap-4">
                         <h2 class="font-label-md text-on-surface">Managed Subjects</h2>
                         <div class="h-4 w-[1px] bg-outline-variant/30"></div>
-                        <span class="text-sm text-secondary">3 subjects</span>
+                        <span class="text-sm text-secondary">@Model.DocumentsBySubject.Count subject(s)</span>
                     </div>
-                    <div class="flex gap-2">
+                    <form class="flex gap-2" method="get">
                         <div class="relative">
                             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-sm">search</span>
-                            <input class="pl-9 pr-4 py-1.5 bg-surface-container-low border border-outline-variant/20 text-sm rounded-lg focus:ring-1 focus:ring-primary/30 w-48 lg:w-72 outline-none" placeholder="Filter documents..." type="text" />
+                            <input asp-for="Query" class="pl-9 pr-4 py-1.5 bg-surface-container-low border border-outline-variant/20 text-sm rounded-lg focus:ring-1 focus:ring-primary/30 w-48 lg:w-72 outline-none" placeholder="Filter subjects or documents..." type="text" />
                         </div>
-                        <button class="flex items-center gap-1 px-3 py-1.5 border border-outline-variant/20 text-sm rounded-lg hover:bg-surface-container-low text-secondary" type="button">
+                        <button class="flex items-center gap-1 px-3 py-1.5 border border-outline-variant/20 text-sm rounded-lg hover:bg-surface-container-low text-secondary" type="submit">
                             <span class="material-symbols-outlined text-sm">filter_list</span>
-                            <span>Sort</span>
+                            <span>Filter</span>
                         </button>
-                    </div>
+                    </form>
                 </div>
 
                 <div class="overflow-x-auto">
@@ -198,57 +221,73 @@
                                 <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px]">Subject Code</th>
                                 <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px]">Subject Name</th>
                                 <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px]">Documents</th>
+                                <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px]">Latest File</th>
                                 <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px]">Last Updated</th>
                                 <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px] text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-outline-variant/10">
-                            <tr class="hover:bg-surface-container-low/50 transition-colors group">
-                                <td class="px-6 py-4 font-medium text-sm">CS101</td>
-                                <td class="px-6 py-4 text-sm text-on-surface">Introduction to Computer Science</td>
-                                <td class="px-6 py-4 text-sm text-secondary">12 files</td>
-                                <td class="px-6 py-4 text-sm text-secondary">Oct 24, 2023</td>
-                                <td class="px-6 py-4 text-right">
-                                    <div class="flex justify-end gap-2">
-                                        <button class="flex items-center gap-1 px-3 py-1 bg-primary text-white text-xs font-medium rounded hover:bg-primary/90 transition-all" type="button"><span class="material-symbols-outlined text-sm">edit</span>Update</button>
-                                        <button class="flex items-center gap-1 px-3 py-1 bg-transparent text-error text-xs font-medium rounded border border-error/20 hover:bg-error/5 transition-all" type="button"><span class="material-symbols-outlined text-sm">delete</span>Delete</button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr class="hover:bg-surface-container-low/50 transition-colors group">
-                                <td class="px-6 py-4 font-medium text-sm">MA201</td>
-                                <td class="px-6 py-4 text-sm text-on-surface">Calculus III</td>
-                                <td class="px-6 py-4 text-sm text-secondary">8 files</td>
-                                <td class="px-6 py-4 text-sm text-secondary">Oct 22, 2023</td>
-                                <td class="px-6 py-4 text-right">
-                                    <div class="flex justify-end gap-2">
-                                        <button class="flex items-center gap-1 px-3 py-1 bg-primary text-white text-xs font-medium rounded hover:bg-primary/90 transition-all" type="button"><span class="material-symbols-outlined text-sm">edit</span>Update</button>
-                                        <button class="flex items-center gap-1 px-3 py-1 bg-transparent text-error text-xs font-medium rounded border border-error/20 hover:bg-error/5 transition-all" type="button"><span class="material-symbols-outlined text-sm">delete</span>Delete</button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr class="hover:bg-surface-container-low/50 transition-colors group">
-                                <td class="px-6 py-4 font-medium text-sm">JV302</td>
-                                <td class="px-6 py-4 text-sm text-on-surface">Advanced Java Programming</td>
-                                <td class="px-6 py-4 text-sm text-secondary">15 files</td>
-                                <td class="px-6 py-4 text-sm text-secondary">Today, 10:24 AM</td>
-                                <td class="px-6 py-4 text-right">
-                                    <div class="flex justify-end gap-2">
-                                        <button class="flex items-center gap-1 px-3 py-1 bg-primary text-white text-xs font-medium rounded hover:bg-primary/90 transition-all" type="button"><span class="material-symbols-outlined text-sm">edit</span>Update</button>
-                                        <button class="flex items-center gap-1 px-3 py-1 bg-transparent text-error text-xs font-medium rounded border border-error/20 hover:bg-error/5 transition-all" type="button"><span class="material-symbols-outlined text-sm">delete</span>Delete</button>
-                                    </div>
-                                </td>
-                            </tr>
+                            @if (Model.DocumentsBySubject.Count == 0)
+                            {
+                                <tr>
+                                    <td class="px-6 py-10 text-center text-secondary" colspan="6">
+                                        No real subject/document data matched your current filter.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                foreach (var item in Model.DocumentsBySubject)
+                                {
+                                    <tr class="hover:bg-surface-container-low/50 transition-colors group">
+                                        <td class="px-6 py-4 font-medium text-sm">@item.SubjectCode</td>
+                                        <td class="px-6 py-4 text-sm text-on-surface">@item.SubjectName</td>
+                                        <td class="px-6 py-4 text-sm text-secondary">@item.DocumentCount file(s)</td>
+                                        <td class="px-6 py-4 text-sm text-secondary">
+                                            @(string.IsNullOrWhiteSpace(item.LatestDocumentTitle)
+                                                ? "No document uploaded yet"
+                                                : item.LatestDocumentTitle)
+                                            @if (!string.IsNullOrWhiteSpace(item.LatestDocumentStatus))
+                                            {
+                                                <span class="block text-[11px] uppercase tracking-wide text-primary mt-1">@item.LatestDocumentStatus</span>
+                                            }
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-secondary">
+                                            @(item.LastUpdatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")
+                                        </td>
+                                        <td class="px-6 py-4 text-right">
+                                            <div class="flex justify-end gap-2">
+                                                @if (item.LatestDocumentId.HasValue)
+                                                {
+                                                    <a class="flex items-center gap-1 px-3 py-1 border border-outline-variant/40 text-xs font-medium rounded hover:bg-surface-container-low transition-all" href="/TeacherDocuments/Details?documentId=@item.LatestDocumentId.Value">
+                                                        <span class="material-symbols-outlined text-sm">visibility</span>View Chunks
+                                                    </a>
+                                                    @if (string.Equals(item.LatestDocumentStatus, "failed", StringComparison.OrdinalIgnoreCase))
+                                                    {
+                                                        <form method="post" asp-page-handler="Retry">
+                                                            <input type="hidden" name="documentId" value="@item.LatestDocumentId.Value" />
+                                                            <input type="hidden" name="Query" value="@Model.Query" />
+                                                            <button class="flex items-center gap-1 px-3 py-1 border border-amber-300 bg-amber-50 text-amber-900 text-xs font-medium rounded hover:bg-amber-100 transition-all" type="submit">
+                                                                <span class="material-symbols-outlined text-sm">refresh</span>Retry Sync
+                                                            </button>
+                                                        </form>
+                                                    }
+                                                }
+                                                <a class="flex items-center gap-1 px-3 py-1 bg-primary text-white text-xs font-medium rounded hover:bg-primary/90 transition-all" href="/TeacherUpload?subjectId=@item.SubjectId">
+                                                    <span class="material-symbols-outlined text-sm">upload_file</span>Upload
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
                         </tbody>
                     </table>
                 </div>
 
                 <div class="p-4 bg-surface-container-low/30 border-t border-outline-variant/10 flex items-center justify-between">
-                    <span class="text-[12px] text-secondary">Showing 1 to 3 of 3 subjects</span>
-                    <div class="flex gap-2">
-                        <button class="px-4 py-1.5 border border-outline-variant/30 text-[12px] rounded-lg hover:bg-surface-container-low transition-all font-medium" type="button">Previous</button>
-                        <button class="px-4 py-1.5 bg-primary text-white text-[12px] rounded-lg hover:bg-primary/90 transition-all shadow-sm font-medium" type="button">Next</button>
-                    </div>
+                    <span class="text-[12px] text-secondary">Showing @Model.DocumentsBySubject.Count subject(s) with real database data</span>
+                    <a class="px-4 py-1.5 bg-primary text-white text-[12px] rounded-lg hover:bg-primary/90 transition-all shadow-sm font-medium" href="/TeacherHome">Back to Home</a>
                 </div>
             </div>
         </div>
@@ -263,7 +302,10 @@
             <span class="material-symbols-outlined">folder_open</span>
             <span class="text-[10px] font-medium">Files</span>
         </a>
-        <a class="flex flex-col items-center gap-1 text-secondary" href="#"></a>
+        <a class="flex flex-col items-center gap-1 text-secondary" href="/ChangePassword">
+            <span class="material-symbols-outlined">lock</span>
+            <span class="text-[10px] font-medium">Password</span>
+        </a>
     </nav>
 </body>
 </html>

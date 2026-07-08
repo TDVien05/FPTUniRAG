@@ -323,6 +323,56 @@ public sealed class AccountManagementService : IAccountManagementService
             : "Account reactivated successfully.");
     }
 
+    public async Task<OperationResult> ChangePasswordAsync(
+        string email,
+        string currentPassword,
+        string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = email.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedEmail))
+        {
+            return OperationResult.Failure("The current account email is missing.");
+        }
+
+        if (string.IsNullOrWhiteSpace(currentPassword))
+        {
+            return OperationResult.Failure("Current password is required.");
+        }
+
+        var passwordValidationError = ValidateNewPassword(newPassword);
+        if (passwordValidationError is not null)
+        {
+            return OperationResult.Failure(passwordValidationError);
+        }
+
+        var user = await _dbContext.Users.FirstOrDefaultAsync(
+            candidate => candidate.Email.ToLower() == normalizedEmail.ToLower(),
+            cancellationToken);
+
+        if (user is null)
+        {
+            return OperationResult.Failure("The current account no longer exists.");
+        }
+
+        if (!_passwordService.VerifyPassword(user.PasswordHash, currentPassword))
+        {
+            return OperationResult.Failure("Current password is incorrect.");
+        }
+
+        if (_passwordService.VerifyPassword(user.PasswordHash, newPassword))
+        {
+            return OperationResult.Failure("New password must be different from the current password.");
+        }
+
+        user.PasswordHash = _passwordService.HashPassword(newPassword);
+        user.PasswordResetTokenHash = null;
+        user.PasswordResetTokenExpiresAt = null;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return OperationResult.Success("Password changed successfully.");
+    }
+
     private static string NormalizeRole(string? role)
     {
         return string.IsNullOrWhiteSpace(role)
@@ -395,6 +445,21 @@ public sealed class AccountManagementService : IAccountManagementService
         return string.Join(
             " ",
             words.Select(word => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(word.ToLowerInvariant())));
+    }
+
+    private static string? ValidateNewPassword(string? newPassword)
+    {
+        if (string.IsNullOrWhiteSpace(newPassword))
+        {
+            return "New password is required.";
+        }
+
+        if (newPassword.Length < 8)
+        {
+            return "New password must be at least 8 characters long.";
+        }
+
+        return null;
     }
 
     private static string GetDetailedErrorMessage(Exception exception)

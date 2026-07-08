@@ -43,6 +43,7 @@
                     </summary>
                     <div class="admin-subnav">
                         <a href="/Subjects">Manage Subjects</a>
+                        <a href="/Subjects/AssignTeacher">Assign Teacher</a>
                         <a href="/Subjects/AssignHeader">Assign Header</a>
                     </div>
                 </details>
@@ -81,7 +82,7 @@
                 <header class="subject-create-header">
                     <div>
                         <h1>Edit Subject</h1>
-                        <p>Update the current schema-backed fields for this subject.</p>
+                        <p>Update the subject metadata and the default chunking strategy used for future uploads.</p>
                     </div>
                     <a class="subject-close-button" href="/Subjects" aria-label="Close edit subject screen">
                         <span class="material-symbols-outlined" aria-hidden="true">close</span>
@@ -128,6 +129,23 @@
                                 <span asp-validation-for="Input.Description" class="accounts-field-error"></span>
                             </label>
 
+                            <label class="subject-field">
+                                <span>Default Chunking Strategy</span>
+                                <select asp-for="Input.DefaultChunkingStrategy">
+                                    <option value="fixed">Fixed size</option>
+                                    <option value="semantic">Semantic chunking</option>
+                                </select>
+                                <small>Applies to new documents uploaded under this subject.</small>
+                                <span asp-validation-for="Input.DefaultChunkingStrategy" class="accounts-field-error"></span>
+                            </label>
+
+                            <label class="subject-field" id="fixed-chunk-size-field">
+                                <span>Fixed Chunk Size</span>
+                                <input asp-for="Input.DefaultFixedChunkSize" type="number" min="1" step="1" />
+                                <small>Only used when this subject is set to fixed-size chunking.</small>
+                                <span asp-validation-for="Input.DefaultFixedChunkSize" class="accounts-field-error"></span>
+                            </label>
+
                             <footer class="subject-form-actions">
                                 <a class="subject-cancel-button" href="/Subjects">Cancel</a>
                                 <button class="subject-submit-button" type="submit">
@@ -143,5 +161,22 @@
     </main>
 
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const strategySelect = document.getElementById("Input_DefaultChunkingStrategy");
+            const fixedChunkSizeField = document.getElementById("fixed-chunk-size-field");
+
+            if (!strategySelect || !fixedChunkSizeField) {
+                return;
+            }
+
+            const syncFixedChunkSizeVisibility = () => {
+                fixedChunkSizeField.hidden = strategySelect.value === "semantic";
+            };
+
+            strategySelect.addEventListener("change", syncFixedChunkSizeVisibility);
+            syncFixedChunkSizeVisibility();
+        })();
+    </script>
 </body>
 </html>

@@ -6,6 +6,17 @@ public interface ISubjectManagementService
 {
     Task<IReadOnlyList<SubjectListItemDto>> GetSubjectsAsync(CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<SubjectTeacherAssignmentListItemDto>> GetSubjectsForTeacherAssignmentAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<TeacherHeaderSubjectDashboardItemDto>> GetHeaderSubjectsForTeacherAsync(
+        string teacherEmail,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<TeacherDocumentManagementItemDto>> GetDocumentManagementItemsForTeacherAsync(
+        string teacherEmail,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<SubjectHeaderAssignmentListItemDto>> GetSubjectsForHeaderAssignmentAsync(
         CancellationToken cancellationToken = default);
 
@@ -25,6 +36,11 @@ public interface ISubjectManagementService
         CancellationToken cancellationToken = default);
 
     Task<OperationResult> AssignHeaderTeacherAsync(
+        Guid subjectId,
+        Guid teacherId,
+        CancellationToken cancellationToken = default);
+
+    Task<OperationResult> AssignTeacherAsync(
         Guid subjectId,
         Guid teacherId,
         CancellationToken cancellationToken = default);

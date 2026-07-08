@@ -43,7 +43,9 @@ public class EditModel : PageModel
         {
             SubjectCode = subject.SubjectCode,
             SubjectName = subject.SubjectName,
-            Description = subject.Description
+            Description = subject.Description,
+            DefaultChunkingStrategy = subject.DefaultChunkingStrategy,
+            DefaultFixedChunkSize = subject.DefaultFixedChunkSize
         };
 
         return Page();
@@ -69,7 +71,12 @@ public class EditModel : PageModel
 
         var result = await _subjectManagementService.UpdateSubjectAsync(
             subjectId,
-            new UpsertSubjectRequest(Input.SubjectCode, Input.SubjectName, Input.Description),
+            new UpsertSubjectRequest(
+                Input.SubjectCode,
+                Input.SubjectName,
+                Input.Description,
+                Input.DefaultChunkingStrategy,
+                Input.DefaultFixedChunkSize),
             cancellationToken);
 
         if (!result.Succeeded)
