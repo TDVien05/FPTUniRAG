@@ -496,6 +496,13 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("created_at");
+            entity.Property(e => e.DefaultChunkingStrategy)
+                .HasMaxLength(50)
+                .HasDefaultValueSql("'fixed'::character varying")
+                .HasColumnName("default_chunking_strategy");
+            entity.Property(e => e.DefaultFixedChunkSize)
+                .HasDefaultValue(800)
+                .HasColumnName("default_fixed_chunk_size");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.SubjectCode)
                 .HasMaxLength(50)

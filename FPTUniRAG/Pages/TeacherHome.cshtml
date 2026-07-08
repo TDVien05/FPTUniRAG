@@ -1,10 +1,11 @@
 @page "/TeacherHome"
+@model FPTUniRAG.Pages.TeacherHomeModel
 @{
     Layout = null;
     ViewData["Title"] = "Teacher Home - Subject Selection - FPT UniRAG";
 }
 <!DOCTYPE html>
-<html class="light" lang="en" style="">
+<html class="light" lang="en">
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
@@ -113,9 +114,9 @@
             </div>
             <div class="flex items-center gap-base">
                 <button class="material-symbols-outlined text-secondary hover:bg-surface-container-low p-2 rounded-full transition-all" type="button">notifications</button>
-                <button class="material-symbols-outlined text-secondary hover:bg-surface-container-low p-2 rounded-full transition-all" type="button">settings</button>
-                <div class="h-8 w-8 rounded-full bg-primary-container flex items-center justify-center text-white overflow-hidden">
-                    <img class="w-full h-full object-cover" alt="Teacher User" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBN88jHsojQVWTMS61dr8G0sgFXLR98yeKEvZDH9-LLev21MksFOj0U2yc6Nx2tZ1JXG37OTkpSQo5h2f5Sd4dTgnOQNqb6UkjKzQQsiUP7n_OwsRuQnP7jxQwjsHobcoDbIWq3Bi-3nTanStCWzALQGEXjkbMRK-Dgwhmb08E5N5g-ayvnZycoIDfzkHuMc9UcfTVhmkw7mAZfgXO6KsyEhSSL_3LV95ac047-yaLNyOrEDFL0KISSKh6nuQh__uwIgKROtoNBSi23" />
+                <a class="material-symbols-outlined text-secondary hover:bg-surface-container-low p-2 rounded-full transition-all" href="/ChangePassword">settings</a>
+                <div class="h-8 w-8 rounded-full bg-primary-container flex items-center justify-center text-white font-semibold">
+                    @(string.IsNullOrWhiteSpace(User.Identity?.Name) ? "T" : User.Identity!.Name![0].ToString().ToUpperInvariant())
                 </div>
             </div>
         </div>
@@ -137,10 +138,14 @@
             </a>
         </nav>
         <div class="mt-auto flex flex-col gap-1 border-t border-outline-variant/10 pt-base">
-            <a class="flex items-center gap-base p-3 text-secondary hover:bg-surface-container-high rounded-lg transition-all" href="#">
-                <span class="material-symbols-outlined">help</span>
-                <span class="font-label-md">Help</span>
-            </a>
+                <a class="flex items-center gap-base p-3 text-secondary hover:bg-surface-container-high rounded-lg transition-all" href="/ChangePassword">
+                    <span class="material-symbols-outlined">lock</span>
+                    <span class="font-label-md">Change Password</span>
+                </a>
+                <a class="flex items-center gap-base p-3 text-secondary hover:bg-surface-container-high rounded-lg transition-all" href="#">
+                    <span class="material-symbols-outlined">help</span>
+                    <span class="font-label-md">Help</span>
+                </a>
             <a class="flex items-center gap-base p-3 text-secondary hover:bg-surface-container-high rounded-lg transition-all" href="/Login?logout=true">
                 <span class="material-symbols-outlined">logout</span>
                 <span class="font-label-md">Logout</span>
@@ -157,16 +162,16 @@
                     <span class="text-on-surface font-medium">Home</span>
                 </nav>
                 <h1 class="font-headline-lg text-on-surface">Teacher Dashboard</h1>
-                <p class="font-body-md text-secondary mt-1">Select a subject to manage materials and track student progress.</p>
+                <p class="font-body-md text-secondary mt-1">Only subjects where you are the header teacher appear here. New assignments arrive in real time.</p>
             </div>
             <div class="flex gap-4">
                 <div class="bg-surface-container-lowest border border-outline-variant/30 px-6 py-3 rounded-xl flex flex-col shadow-sm min-w-[140px]">
                     <span class="text-secondary font-label-sm uppercase tracking-tight text-[10px]">Total Uploaded</span>
-                    <span class="text-primary font-bold text-xl">156</span>
+                    <span class="text-primary font-bold text-xl" id="totalUploaded">@Model.TotalUploadedDocuments</span>
                 </div>
                 <div class="bg-surface-container-lowest border border-outline-variant/30 px-6 py-3 rounded-xl flex flex-col shadow-sm min-w-[140px]">
-                    <span class="text-secondary font-label-sm uppercase tracking-tight text-[10px]">Active Subjects</span>
-                    <span class="text-on-surface font-bold text-xl">4</span>
+                    <span class="text-secondary font-label-sm uppercase tracking-tight text-[10px]">Header Subjects</span>
+                    <span class="text-on-surface font-bold text-xl" id="activeSubjects">@Model.HeaderSubjects.Count</span>
                 </div>
             </div>
         </div>
@@ -174,57 +179,147 @@
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             <div class="lg:col-span-12 flex flex-col gap-6">
                 <div class="flex items-center justify-between">
-                    <h2 class="font-headline-lg text-[20px] text-on-surface">Select Subject to Upload</h2>
-                    <button class="text-primary font-label-md text-sm hover:underline" type="button">View All Subjects</button>
+                    <h2 class="font-headline-lg text-[20px] text-on-surface">Subjects You Lead</h2>
+                    <span class="text-primary font-label-md text-sm">Real-time sync enabled</span>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm hover:border-primary/50 transition-all cursor-pointer group">
-                        <div class="w-12 h-12 rounded-lg bg-primary/5 flex items-center justify-center mb-4 group-hover:bg-primary/10">
-                            <span class="material-symbols-outlined text-primary">code</span>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="teacherHeaderSubjects"
+                     data-initial-subjects='@System.Text.Json.JsonSerializer.Serialize(Model.HeaderSubjects, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase })'>
+                    @if (Model.HeaderSubjects.Count == 0)
+                    {
+                        <div class="md:col-span-2 lg:col-span-4 bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-8 shadow-sm text-center text-secondary" id="teacherHeaderSubjectsEmptyState">
+                            No subjects are assigned to you as header yet.
                         </div>
-                        <h3 class="font-bold text-on-surface mb-1">Intro to Java</h3>
-                        <p class="text-xs text-secondary mb-4">42 Documents • 82% Indexed</p>
-                        <a class="w-full py-2 bg-primary text-white rounded-lg text-sm font-medium inline-flex items-center justify-center" href="/TeacherUpload">Upload Files</a>
-                    </div>
-                    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm hover:border-primary/50 transition-all cursor-pointer group">
-                        <div class="w-12 h-12 rounded-lg bg-primary/5 flex items-center justify-center mb-4 group-hover:bg-primary/10">
-                            <span class="material-symbols-outlined text-primary">calculate</span>
-                        </div>
-                        <h3 class="font-bold text-on-surface mb-1">Calculus III</h3>
-                        <p class="text-xs text-secondary mb-4">28 Documents • 45% Indexed</p>
-                        <a class="w-full py-2 bg-primary text-white rounded-lg text-sm font-medium inline-flex items-center justify-center" href="/TeacherUpload">Upload Files</a>
-                    </div>
-                    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm hover:border-primary/50 transition-all cursor-pointer group">
-                        <div class="w-12 h-12 rounded-lg bg-primary/5 flex items-center justify-center mb-4 group-hover:bg-primary/10">
-                            <span class="material-symbols-outlined text-primary">psychology</span>
-                        </div>
-                        <h3 class="font-bold text-on-surface mb-1">Neural Networks</h3>
-                        <p class="text-xs text-secondary mb-4">15 Documents • 100% Indexed</p>
-                        <a class="w-full py-2 bg-primary text-white rounded-lg text-sm font-medium inline-flex items-center justify-center" href="/TeacherUpload">Upload Files</a>
-                    </div>
-                    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm hover:border-primary/50 transition-all cursor-pointer group">
-                        <div class="w-12 h-12 rounded-lg bg-primary/5 flex items-center justify-center mb-4 group-hover:bg-primary/10">
-                            <span class="material-symbols-outlined text-primary">database</span>
-                        </div>
-                        <h3 class="font-bold text-on-surface mb-1">Database Systems</h3>
-                        <p class="text-xs text-secondary mb-4">31 Documents • 92% Indexed</p>
-                        <a class="w-full py-2 bg-primary text-white rounded-lg text-sm font-medium inline-flex items-center justify-center" href="/TeacherUpload">Upload Files</a>
-                    </div>
+                    }
+                    else
+                    {
+                        foreach (var subject in Model.HeaderSubjects)
+                        {
+                            <article class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm hover:border-primary/50 transition-all group">
+                                <div class="w-12 h-12 rounded-lg bg-primary/5 flex items-center justify-center mb-4 group-hover:bg-primary/10">
+                                    <span class="material-symbols-outlined text-primary">school</span>
+                                </div>
+                                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary mb-2">@subject.SubjectCode</p>
+                                <h3 class="font-bold text-on-surface mb-1">@subject.SubjectName</h3>
+                                <p class="text-xs text-secondary mb-4">@(string.IsNullOrWhiteSpace(subject.Description) ? "Header teacher access enabled." : subject.Description)</p>
+                                <p class="text-xs text-secondary mb-4">@subject.DocumentCount Documents • @subject.ChapterCount Chapters</p>
+                                <a class="w-full py-2 bg-primary text-white rounded-lg text-sm font-medium inline-flex items-center justify-center" href="/TeacherUpload?subjectId=@subject.SubjectId">Upload Files</a>
+                            </article>
+                        }
+                    }
                 </div>
             </div>
         </div>
     </main>
 
     <nav class="md:hidden fixed bottom-0 left-0 w-full bg-surface/95 backdrop-blur-md border-t border-outline-variant/20 flex justify-around p-2 z-50">
-        <a class="flex flex-col items-center gap-1 text-secondary" href="/TeacherHome">
+        <a class="flex flex-col items-center gap-1 text-primary" href="/TeacherHome">
             <span class="material-symbols-outlined">home</span>
             <span class="text-[10px] font-medium">Home</span>
         </a>
-        <a class="flex flex-col items-center gap-1 text-primary" href="/TeacherDocuments">
+        <a class="flex flex-col items-center gap-1 text-secondary" href="/TeacherDocuments">
             <span class="material-symbols-outlined">folder_open</span>
             <span class="text-[10px] font-medium">Files</span>
         </a>
-        <a class="flex flex-col items-center gap-1 text-secondary" href="#"></a>
+        <a class="flex flex-col items-center gap-1 text-secondary" href="/Login?logout=true">
+            <span class="material-symbols-outlined">logout</span>
+            <span class="text-[10px] font-medium">Logout</span>
+        </a>
     </nav>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+    <script>
+        (() => {
+            const container = document.getElementById("teacherHeaderSubjects");
+            const totalUploaded = document.getElementById("totalUploaded");
+            const activeSubjects = document.getElementById("activeSubjects");
+            if (!container || !totalUploaded || !activeSubjects) {
+                return;
+            }
+
+            const iconByCode = (subjectCode) => {
+                const normalized = (subjectCode || "").toLowerCase();
+                if (normalized.includes("java") || normalized.includes("prn")) return "code";
+                if (normalized.includes("ai") || normalized.includes("ml")) return "psychology";
+                if (normalized.includes("db") || normalized.includes("sql")) return "database";
+                if (normalized.includes("math") || normalized.includes("cal")) return "calculate";
+                return "school";
+            };
+
+            const escapeHtml = (value) => (value || "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll("\"", "&quot;")
+                .replaceAll("'", "&#39;");
+
+            const renderSubjects = (subjects) => {
+                activeSubjects.textContent = String(subjects.length);
+                totalUploaded.textContent = String(subjects.reduce((sum, subject) => sum + (subject.documentCount || 0), 0));
+
+                if (!subjects.length) {
+                    container.innerHTML = `
+                        <div class="md:col-span-2 lg:col-span-4 bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-8 shadow-sm text-center text-secondary" id="teacherHeaderSubjectsEmptyState">
+                            No subjects are assigned to you as header yet.
+                        </div>`;
+                    return;
+                }
+
+                container.innerHTML = subjects.map(subject => `
+                    <article class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm hover:border-primary/50 transition-all group">
+                        <div class="w-12 h-12 rounded-lg bg-primary/5 flex items-center justify-center mb-4 group-hover:bg-primary/10">
+                            <span class="material-symbols-outlined text-primary">${iconByCode(subject.subjectCode)}</span>
+                        </div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary mb-2">${escapeHtml(subject.subjectCode)}</p>
+                        <h3 class="font-bold text-on-surface mb-1">${escapeHtml(subject.subjectName)}</h3>
+                        <p class="text-xs text-secondary mb-4">${escapeHtml(subject.description || "Header teacher access enabled.")}</p>
+                        <p class="text-xs text-secondary mb-4">${subject.documentCount || 0} Documents • ${subject.chapterCount || 0} Chapters</p>
+                        <a class="w-full py-2 bg-primary text-white rounded-lg text-sm font-medium inline-flex items-center justify-center" href="/TeacherUpload?subjectId=${encodeURIComponent(subject.subjectId)}">Upload Files</a>
+                    </article>
+                `).join("");
+            };
+
+            const fetchSubjects = async () => {
+                const response = await fetch("/api/teacher/subjects/header", {
+                    credentials: "same-origin",
+                    headers: {
+                        "Accept": "application/json"
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to refresh subjects: ${response.status}`);
+                }
+
+                const subjects = await response.json();
+                renderSubjects(subjects);
+            };
+
+            try {
+                const initial = JSON.parse(container.dataset.initialSubjects || "[]");
+                renderSubjects(initial);
+            } catch (_error) {
+                renderSubjects([]);
+            }
+
+            if (!window.signalR) {
+                return;
+            }
+
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/hubs/teacher-header-subjects")
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on("headerSubjectsChanged", async () => {
+                try {
+                    await fetchSubjects();
+                } catch (_error) {
+                }
+            });
+
+            connection.start().catch(() => {
+            });
+        })();
+    </script>
 </body>
 </html>

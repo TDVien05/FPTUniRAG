@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using FPTUniRAG.BusinessLayer.Subjects;
 
 namespace FPTUniRAG.Pages.Subjects;
 
@@ -13,4 +14,11 @@ public sealed class SubjectInputModel
     public string SubjectName { get; set; } = string.Empty;
 
     public string? Description { get; set; }
+
+    [Required(ErrorMessage = "Chunking strategy is required.")]
+    [RegularExpression("^(fixed|semantic)$", ErrorMessage = "Chunking strategy must be fixed or semantic.")]
+    public string DefaultChunkingStrategy { get; set; } = SubjectChunkingStrategies.Fixed;
+
+    [Range(1, int.MaxValue, ErrorMessage = "Fixed chunk size must be greater than zero.")]
+    public int DefaultFixedChunkSize { get; set; } = 800;
 }

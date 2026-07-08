@@ -36,7 +36,12 @@ public class CreateModel : PageModel
         }
 
         var result = await _subjectManagementService.CreateSubjectAsync(
-            new UpsertSubjectRequest(Input.SubjectCode, Input.SubjectName, Input.Description),
+            new UpsertSubjectRequest(
+                Input.SubjectCode,
+                Input.SubjectName,
+                Input.Description,
+                Input.DefaultChunkingStrategy,
+                Input.DefaultFixedChunkSize),
             cancellationToken);
 
         if (!result.Succeeded)

@@ -136,6 +136,8 @@ CREATE TABLE IF NOT EXISTS subjects (
     subject_code character varying(50) NOT NULL,
     subject_name character varying(255) NOT NULL,
     description text,
+    default_chunking_strategy character varying(50) NOT NULL DEFAULT 'fixed',
+    default_fixed_chunk_size integer NOT NULL DEFAULT 800,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -408,6 +410,18 @@ ALTER TABLE teacher_subjects
     FOREIGN KEY (subject_id)
     REFERENCES subjects(subject_id)
     ON DELETE CASCADE;
+
+ALTER TABLE subjects
+    DROP CONSTRAINT IF EXISTS ck_subjects_default_chunking_strategy;
+ALTER TABLE subjects
+    ADD CONSTRAINT ck_subjects_default_chunking_strategy
+    CHECK (lower(default_chunking_strategy) IN ('fixed', 'semantic'));
+
+ALTER TABLE subjects
+    DROP CONSTRAINT IF EXISTS ck_subjects_default_fixed_chunk_size;
+ALTER TABLE subjects
+    ADD CONSTRAINT ck_subjects_default_fixed_chunk_size
+    CHECK (default_fixed_chunk_size > 0);
 
 ALTER TABLE sessions
     DROP CONSTRAINT IF EXISTS fk_session_user;
