@@ -3,6 +3,7 @@
 [Oo]bj/
 [Dd]ebug/
 [Rr]elease/
+.tmpbuild/
 x64/
 x86/
 [Aa][Rr][Mm]/
@@ -40,6 +41,7 @@ artifacts/
 
 ## ASP.NET / local runtime files
 wwwroot/lib/
+FPTUniRAG/appsettings.json
 appsettings.Local.json
 appsettings.*.Local.json
 appsettings.*.local.json
