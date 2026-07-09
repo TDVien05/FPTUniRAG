@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using FPTUniRAG.BusinessLayer.Accounts;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -24,6 +26,35 @@ public class ChangePasswordModel : PageModel
     public string? SuccessMessage { get; set; }
 
     public string? Role => User.FindFirstValue(ClaimTypes.Role)?.Trim().ToLowerInvariant();
+
+    public string DisplayName => User.FindFirstValue(ClaimTypes.Name)?.Trim() ?? "User";
+
+    public string Email => User.FindFirstValue(ClaimTypes.Email)?.Trim() ?? string.Empty;
+
+    public string BackLink => Role switch
+    {
+        "admin" => "/AdminDashboard",
+        "teacher" => "/TeacherHome",
+        _ => "/StudentDashboard"
+    };
+
+    public string BackLabel => Role switch
+    {
+        "admin" => "Admin dashboard",
+        "teacher" => "Teacher dashboard",
+        _ => "Student dashboard"
+    };
+
+    public string RoleLabel => Role switch
+    {
+        "admin" => "Administrator",
+        "teacher" => "Teacher",
+        _ => "Student"
+    };
+
+    public void OnGet()
+    {
+    }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {
@@ -51,8 +82,23 @@ public class ChangePasswordModel : PageModel
             return Page();
         }
 
+        await RefreshAuthenticationCookieAsync(cancellationToken);
         SuccessMessage = result.Message;
         return RedirectToPage();
+    }
+
+    private async Task RefreshAuthenticationCookieAsync(CancellationToken cancellationToken)
+    {
+        var authenticationResult = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        if (!authenticationResult.Succeeded || authenticationResult.Principal is null)
+        {
+            return;
+        }
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            authenticationResult.Principal,
+            authenticationResult.Properties);
     }
 
     public sealed class InputModel

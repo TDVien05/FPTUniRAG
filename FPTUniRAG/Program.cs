@@ -43,7 +43,15 @@ builder.Services.AddHttpClient<IOpenRouterEmbeddingService, OpenRouterEmbeddingS
     client.BaseAddress = new Uri(options.OpenRouter.BaseUrl.TrimEnd('/') + "/");
     client.Timeout = TimeSpan.FromMinutes(2);
 });
+builder.Services.AddHttpClient<IOpenRouterChatCompletionService, OpenRouterChatCompletionService>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RagIngestionOptions>>().Value;
+    client.BaseAddress = new Uri(options.OpenRouter.BaseUrl.TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromMinutes(2);
+});
 builder.Services.AddScoped<IChunkEmbeddingStore, PostgresChunkEmbeddingStore>();
+builder.Services.AddScoped<IStudentChunkRetrievalService, StudentChunkRetrievalService>();
+builder.Services.AddScoped<IStudentChatService, StudentChatService>();
 builder.Services.AddScoped<AccountCookieAuthenticationEvents>();
 builder.Services.AddHostedService<AdminAccountInitializationHostedService>();
 builder.Services.AddSignalR();
@@ -103,6 +111,8 @@ app.MapRazorPages()
    .WithStaticAssets();
 app.MapAdminAccountApiEndpoints();
 app.MapTeacherSubjectApiEndpoints();
+app.MapStudentChatApiEndpoints();
 app.MapHub<TeacherHeaderSubjectHub>("/hubs/teacher-header-subjects");
+app.MapHub<StudentChatHub>("/hubs/student-chat");
 
 app.Run();

@@ -25,7 +25,13 @@ public sealed class OpenRouterIngestionOptions
 
     public string EmbeddingModel { get; set; } = string.Empty;
 
+    public string ChatModel { get; set; } = string.Empty;
+
     public int EmbeddingDimensions { get; set; } = 1536;
+
+    public int MaxCompletionTokens { get; set; } = 800;
+
+    public float Temperature { get; set; } = 0.2f;
 }
 
 public sealed class PostgresVectorStorageOptions
