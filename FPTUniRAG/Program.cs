@@ -43,14 +43,7 @@ builder.Services.AddHttpClient<IOpenRouterEmbeddingService, OpenRouterEmbeddingS
     client.BaseAddress = new Uri(options.OpenRouter.BaseUrl.TrimEnd('/') + "/");
     client.Timeout = TimeSpan.FromMinutes(2);
 });
-builder.Services.AddHttpClient<IChunkEmbeddingStore, QdrantChunkEmbeddingStore>((serviceProvider, client) =>
-{
-    var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RagIngestionOptions>>().Value;
-    client.BaseAddress = new Uri(options.Qdrant.BaseUrl.TrimEnd('/') + "/");
-    client.Timeout = TimeSpan.FromMinutes(2);
-    client.DefaultRequestVersion = HttpVersion.Version11;
-    client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact;
-});
+builder.Services.AddScoped<IChunkEmbeddingStore, PostgresChunkEmbeddingStore>();
 builder.Services.AddScoped<AccountCookieAuthenticationEvents>();
 builder.Services.AddHostedService<AdminAccountInitializationHostedService>();
 builder.Services.AddSignalR();

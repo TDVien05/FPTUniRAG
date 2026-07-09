@@ -10,7 +10,7 @@ public sealed class RagIngestionOptions
 
     public OpenRouterIngestionOptions OpenRouter { get; set; } = new();
 
-    public QdrantIngestionOptions Qdrant { get; set; } = new();
+    public PostgresVectorStorageOptions PostgresVector { get; set; } = new();
 
     public SemanticChunkingOptions Semantic { get; set; } = new();
 
@@ -28,15 +28,9 @@ public sealed class OpenRouterIngestionOptions
     public int EmbeddingDimensions { get; set; } = 1536;
 }
 
-public sealed class QdrantIngestionOptions
+public sealed class PostgresVectorStorageOptions
 {
-    public string BaseUrl { get; set; } = "http://127.0.0.1:6333";
-
-    public string ApiKey { get; set; } = string.Empty;
-
-    public string CollectionName { get; set; } = "teacher_document_chunks";
-
-    public string Distance { get; set; } = "Cosine";
+    public string TableName { get; set; } = "chunk_embeddings";
 
     public int BatchSize { get; set; } = 8;
 }
