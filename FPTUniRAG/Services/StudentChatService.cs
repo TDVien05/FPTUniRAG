@@ -4,6 +4,7 @@ using FPTUniRAG.DataAccessLayer.Context;
 using FPTUniRAG.DataAccessLayer.Entities;
 using FPTUniRAG.Options;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -13,22 +14,29 @@ public sealed class StudentChatService : IStudentChatService
 {
     private const int RetrievalLimit = 4;
     private const int ConversationHistoryLimit = 12;
+    private const int StreamFlushIntervalMilliseconds = 40;
+    private const int StreamFlushCharacterThreshold = 48;
+    private const int MaxContextCharacters = 6000;
+    private const int MaxChunkContextCharacters = 1600;
     private static readonly JsonSerializerOptions CitationSerializerOptions = new(JsonSerializerDefaults.Web);
 
     private readonly AppDbContext _dbContext;
     private readonly IStudentChunkRetrievalService _retrievalService;
     private readonly IOpenRouterChatCompletionService _chatCompletionService;
+    private readonly ILogger<StudentChatService> _logger;
     private readonly string _embeddingTableName;
 
     public StudentChatService(
         AppDbContext dbContext,
         IStudentChunkRetrievalService retrievalService,
         IOpenRouterChatCompletionService chatCompletionService,
-        IOptions<RagIngestionOptions> options)
+        IOptions<RagIngestionOptions> options,
+        ILogger<StudentChatService> logger)
     {
         _dbContext = dbContext;
         _retrievalService = retrievalService;
         _chatCompletionService = chatCompletionService;
+        _logger = logger;
         _embeddingTableName = ResolveTableName(options.Value.PostgresVector.TableName);
     }
 
@@ -38,7 +46,166 @@ public sealed class StudentChatService : IStudentChatService
         CancellationToken cancellationToken = default)
     {
         var subjects = await SearchSubjectsAsync(null, cancellationToken);
-        return new StudentChatPageDto(studentName, subjects);
+        return new StudentChatPageDto(studentName, subjects, []);
+    }
+
+    public async Task<IReadOnlyList<StudentChatSessionSummaryDto>> GetSessionsAsync(
+        Guid userId,
+        Guid? subjectId,
+        CancellationToken cancellationToken = default)
+    {
+        if (subjectId is null || subjectId == Guid.Empty)
+        {
+            return [];
+        }
+
+        var sessions = await _dbContext.Sessions
+            .AsNoTracking()
+            .Where(session => session.UserId == userId && session.SubjectId == subjectId.Value)
+            .Select(session => new
+            {
+                session.SessionId,
+                SubjectId = session.SubjectId!.Value,
+                SubjectCode = session.Subject != null ? session.Subject.SubjectCode : string.Empty,
+                SubjectName = session.Subject != null ? session.Subject.SubjectName : string.Empty,
+                session.StartedAt,
+                LastMessageAt = session.Messages.Max(message => message.CreatedAt),
+                PreviewText = session.Messages
+                    .OrderByDescending(message => message.CreatedAt)
+                    .Select(message => message.MessageContent)
+                    .FirstOrDefault()
+            })
+            .OrderByDescending(session => session.LastMessageAt ?? session.StartedAt)
+            .ToListAsync(cancellationToken);
+
+        return sessions
+            .Select(session => new StudentChatSessionSummaryDto(
+                session.SessionId,
+                session.SubjectId,
+                session.SubjectCode,
+                session.SubjectName,
+                session.StartedAt,
+                session.LastMessageAt,
+                BuildPreviewText(session.PreviewText)))
+            .ToList();
+    }
+
+    public async Task<StudentChatSessionDetailDto?> GetSessionDetailAsync(
+        Guid userId,
+        Guid sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        var session = await _dbContext.Sessions
+            .AsNoTracking()
+            .Where(item => item.SessionId == sessionId && item.UserId == userId && item.SubjectId != null)
+            .Select(item => new
+            {
+                item.SessionId,
+                SubjectId = item.SubjectId!.Value,
+                SubjectCode = item.Subject != null ? item.Subject.SubjectCode : string.Empty,
+                SubjectName = item.Subject != null ? item.Subject.SubjectName : string.Empty,
+                item.StartedAt
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (session is null)
+        {
+            return null;
+        }
+
+        var messages = await _dbContext.Messages
+            .AsNoTracking()
+            .Where(message => message.SessionId == sessionId)
+            .OrderBy(message => message.CreatedAt)
+            .ThenBy(message => message.MessageId)
+            .Select(message => new
+            {
+                message.MessageId,
+                message.SenderRole,
+                message.MessageContent,
+                message.CreatedAt,
+                message.CitationsJson
+            })
+            .ToListAsync(cancellationToken);
+
+        return new StudentChatSessionDetailDto(
+            session.SessionId,
+            session.SubjectId,
+            session.SubjectCode,
+            session.SubjectName,
+            session.StartedAt,
+            messages.Select(message => new StudentChatMessageDto(
+                message.MessageId,
+                message.SenderRole,
+                message.MessageContent,
+                message.CreatedAt,
+                DeserializeCitations(message.CitationsJson)))
+            .ToList());
+    }
+
+    public async Task<StudentChatCitationDetailDto?> GetCitationDetailAsync(
+        Guid userId,
+        Guid sessionId,
+        Guid documentId,
+        int chunkIndex,
+        CancellationToken cancellationToken = default)
+    {
+        var ownedSession = await _dbContext.Sessions
+            .AsNoTracking()
+            .Where(session => session.SessionId == sessionId && session.UserId == userId && session.SubjectId != null)
+            .Select(session => new
+            {
+                session.SessionId,
+                SubjectId = session.SubjectId!.Value
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (ownedSession is null)
+        {
+            return null;
+        }
+
+        var chunk = await _dbContext.Chunks
+            .AsNoTracking()
+            .Where(item =>
+                item.DocumentId == documentId
+                && item.ChunkIndex == chunkIndex
+                && item.Document.SubjectId == ownedSession.SubjectId
+                && (item.Document.Status ?? string.Empty).ToLower() == "completed")
+            .Select(item => new
+            {
+                item.ChunkId,
+                item.DocumentId,
+                item.Document.Title,
+                item.Document.Subject.SubjectCode,
+                item.Document.Subject.SubjectName,
+                item.Document.Chapter.ChapterTitle,
+                item.ChunkIndex,
+                item.Content
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (chunk is null)
+        {
+            return null;
+        }
+
+        var similarityScore = await TryResolveCitationSimilarityAsync(
+            sessionId,
+            documentId,
+            chunkIndex,
+            cancellationToken);
+
+        return new StudentChatCitationDetailDto(
+            chunk.DocumentId,
+            chunk.Title,
+            chunk.SubjectCode,
+            chunk.SubjectName,
+            chunk.ChapterTitle,
+            chunk.ChunkIndex,
+            chunk.Content,
+            similarityScore,
+            chunk.ChunkId);
     }
 
     public async Task<IReadOnlyList<StudentSubjectOptionDto>> SearchSubjectsAsync(
@@ -95,16 +262,24 @@ public sealed class StudentChatService : IStudentChatService
             return;
         }
 
-        var subject = await _dbContext.Subjects
-            .AsNoTracking()
-            .Where(candidate => candidate.SubjectId == request.SubjectId.Value)
-            .Select(candidate => new
-            {
-                candidate.SubjectId,
-                candidate.SubjectCode,
-                candidate.SubjectName
-            })
-            .FirstOrDefaultAsync(cancellationToken);
+        StudentChatSubjectContext? subject;
+        try
+        {
+            subject = await _dbContext.Subjects
+                .AsNoTracking()
+                .Where(candidate => candidate.SubjectId == request.SubjectId.Value)
+                .Select(candidate => new StudentChatSubjectContext(
+                    candidate.SubjectId,
+                    candidate.SubjectCode,
+                    candidate.SubjectName))
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to load subject {SubjectId} for student chat user {UserId}", request.SubjectId, userId);
+            await writeEvent("error", new StudentChatErrorDto("Unable to load the selected subject right now. Please try again."), cancellationToken);
+            return;
+        }
 
         if (subject is null)
         {
@@ -114,45 +289,66 @@ public sealed class StudentChatService : IStudentChatService
 
         Session? existingSession = null;
         List<Message> previousMessages = [];
-        if (request.SessionId is not null && request.SessionId != Guid.Empty)
+        try
         {
-            existingSession = await _dbContext.Sessions
-                .FirstOrDefaultAsync(
-                    session => session.SessionId == request.SessionId.Value && session.UserId == userId,
-                    cancellationToken);
-
-            if (existingSession is null)
+            if (request.SessionId is not null && request.SessionId != Guid.Empty)
             {
-                await writeEvent("error", new StudentChatErrorDto("The selected chat session is no longer available."), cancellationToken);
-                return;
-            }
+                existingSession = await _dbContext.Sessions
+                    .FirstOrDefaultAsync(
+                        session => session.SessionId == request.SessionId.Value && session.UserId == userId,
+                        cancellationToken);
 
-            if (existingSession.SubjectId != subject.SubjectId)
-            {
-                await writeEvent("error", new StudentChatErrorDto("This chat session belongs to a different subject."), cancellationToken);
-                return;
-            }
+                if (existingSession is null)
+                {
+                    await writeEvent("error", new StudentChatErrorDto("The selected chat session is no longer available."), cancellationToken);
+                    return;
+                }
 
-            previousMessages = await _dbContext.Messages
-                .AsNoTracking()
-                .Where(message => message.SessionId == existingSession.SessionId)
-                .OrderByDescending(message => message.CreatedAt)
-                .Take(ConversationHistoryLimit)
-                .OrderBy(message => message.CreatedAt)
-                .ToListAsync(cancellationToken);
+                if (existingSession.SubjectId != subject.SubjectId)
+                {
+                    await writeEvent("error", new StudentChatErrorDto("This chat session belongs to a different subject."), cancellationToken);
+                    return;
+                }
+
+                previousMessages = await _dbContext.Messages
+                    .AsNoTracking()
+                    .Where(message => message.SessionId == existingSession.SessionId)
+                    .OrderByDescending(message => message.CreatedAt)
+                    .Take(ConversationHistoryLimit)
+                    .OrderBy(message => message.CreatedAt)
+                    .ToListAsync(cancellationToken);
+            }
         }
-
-        if (!await _retrievalService.SubjectHasUsableContentAsync(subject.SubjectId, cancellationToken))
+        catch (Exception exception)
         {
-            await writeEvent("error", new StudentChatErrorDto("This subject does not have usable materials yet. Please choose another subject."), cancellationToken);
+            _logger.LogError(exception, "Failed to load existing session {SessionId} for student chat user {UserId}", request.SessionId, userId);
+            await writeEvent("error", new StudentChatErrorDto("Unable to load this chat session right now. Please try again."), cancellationToken);
             return;
         }
 
-        var retrievedChunks = await _retrievalService.RetrieveRelevantChunksAsync(
-            subject.SubjectId,
-            normalizedMessage,
-            RetrievalLimit,
-            cancellationToken);
+        bool hasUsableContent;
+        IReadOnlyList<StudentRetrievedChunk> retrievedChunks;
+        try
+        {
+            hasUsableContent = await _retrievalService.SubjectHasUsableContentAsync(subject.SubjectId, cancellationToken);
+            if (!hasUsableContent)
+            {
+                await writeEvent("error", new StudentChatErrorDto("This subject does not have usable materials yet. Please choose another subject."), cancellationToken);
+                return;
+            }
+
+            retrievedChunks = await _retrievalService.RetrieveRelevantChunksAsync(
+                subject.SubjectId,
+                normalizedMessage,
+                RetrievalLimit,
+                cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to retrieve supporting chunks for subject {SubjectId} and student chat user {UserId}", subject.SubjectId, userId);
+            await writeEvent("error", new StudentChatErrorDto("Unable to search the subject materials right now. Please try again in a moment."), cancellationToken);
+            return;
+        }
 
         if (retrievedChunks.Count == 0)
         {
@@ -217,21 +413,47 @@ public sealed class StudentChatService : IStudentChatService
             normalizedMessage);
 
         OpenRouterChatResult completion;
+        var pendingDeltaBuffer = new StringBuilder();
+        var lastDeltaFlushAt = Environment.TickCount64;
         try
         {
             completion = await _chatCompletionService.StreamCompletionAsync(
                 completionMessages,
                 async (delta, token) =>
                 {
-                    if (!string.IsNullOrEmpty(delta))
+                    if (string.IsNullOrEmpty(delta))
                     {
-                        await writeEvent("assistant-delta", new StudentChatAssistantDeltaDto(delta), token);
+                        return;
                     }
+
+                    pendingDeltaBuffer.Append(delta);
+
+                    var now = Environment.TickCount64;
+                    var shouldFlush =
+                        pendingDeltaBuffer.Length >= StreamFlushCharacterThreshold
+                        || now - lastDeltaFlushAt >= StreamFlushIntervalMilliseconds;
+
+                    if (!shouldFlush)
+                    {
+                        return;
+                    }
+
+                    var bufferedDelta = pendingDeltaBuffer.ToString();
+                    pendingDeltaBuffer.Clear();
+                    lastDeltaFlushAt = now;
+                    await writeEvent("assistant-delta", new StudentChatAssistantDeltaDto(bufferedDelta), token);
                 },
                 cancellationToken);
+
+            if (pendingDeltaBuffer.Length > 0)
+            {
+                await writeEvent("assistant-delta", new StudentChatAssistantDeltaDto(pendingDeltaBuffer.ToString()), cancellationToken);
+                pendingDeltaBuffer.Clear();
+            }
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            _logger.LogError(exception, "Failed to generate chat completion for subject {SubjectId} and student chat user {UserId}", subject.SubjectId, userId);
             await writeEvent("error", new StudentChatErrorDto("Unable to generate an answer right now. Please try again in a moment."), cancellationToken);
             return;
         }
@@ -280,8 +502,9 @@ public sealed class StudentChatService : IStudentChatService
 
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            _logger.LogError(exception, "Failed to persist assistant response for session {SessionId} and student chat user {UserId}", session.SessionId, userId);
             await writeEvent("error", new StudentChatErrorDto("The answer was generated but could not be saved. Please try again."), cancellationToken);
             return;
         }
@@ -367,11 +590,24 @@ public sealed class StudentChatService : IStudentChatService
         contextBuilder.AppendLine($"Subject: {subjectCode} - {subjectName}");
         contextBuilder.AppendLine("Reference materials:");
 
+        var remainingContextCharacters = MaxContextCharacters;
         foreach (var chunk in retrievedChunks)
         {
+            if (remainingContextCharacters <= 0)
+            {
+                break;
+            }
+
+            var excerpt = BuildChunkExcerpt(chunk.Content, Math.Min(MaxChunkContextCharacters, remainingContextCharacters));
+            if (string.IsNullOrWhiteSpace(excerpt))
+            {
+                continue;
+            }
+
             contextBuilder.AppendLine($"[Document: {chunk.DocumentTitle} | Chapter: {chunk.ChapterTitle} | Chunk: {chunk.ChunkIndex}]");
-            contextBuilder.AppendLine(chunk.Content);
+            contextBuilder.AppendLine(excerpt);
             contextBuilder.AppendLine();
+            remainingContextCharacters -= excerpt.Length;
         }
 
         var messages = new List<OpenRouterChatMessage>
@@ -418,12 +654,91 @@ public sealed class StudentChatService : IStudentChatService
                 group.Key.SubjectName,
                 group.Key.ChapterTitle,
                 group.Min(item => item.ChunkIndex),
-                Math.Round(group.Max(item => item.SimilarityScore), 4)))
+                Math.Round(group.Max(item => item.SimilarityScore), 4),
+                group.OrderByDescending(item => item.SimilarityScore).First().ChunkId))
             .OrderByDescending(item => item.SimilarityScore)
             .ThenBy(item => item.DocumentTitle)
             .Take(4)
             .ToList();
     }
+
+    private static IReadOnlyList<StudentChatCitationDto> DeserializeCitations(string? citationsJson)
+    {
+        if (string.IsNullOrWhiteSpace(citationsJson))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<StudentChatCitationDto>>(citationsJson, CitationSerializerOptions) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static string BuildPreviewText(string? content)
+    {
+        var normalized = string.IsNullOrWhiteSpace(content)
+            ? "Untitled chat"
+            : content.Trim().Replace("\r", " ").Replace("\n", " ");
+
+        return normalized.Length <= 120
+            ? normalized
+            : normalized[..117] + "...";
+    }
+
+    private static string BuildChunkExcerpt(string? content, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(content) || maxLength <= 0)
+        {
+            return string.Empty;
+        }
+
+        var normalized = content.Trim();
+        return normalized.Length <= maxLength
+            ? normalized
+            : normalized[..Math.Max(0, maxLength - 3)].TrimEnd() + "...";
+    }
+
+    private async Task<double> TryResolveCitationSimilarityAsync(
+        Guid sessionId,
+        Guid documentId,
+        int chunkIndex,
+        CancellationToken cancellationToken)
+    {
+        var citationJsonCandidates = await _dbContext.Messages
+            .AsNoTracking()
+            .Where(message =>
+                message.SessionId == sessionId
+                && message.SenderRole == "assistant"
+                && message.CitationsJson != null)
+            .OrderByDescending(message => message.CreatedAt)
+            .Select(message => message.CitationsJson)
+            .ToListAsync(cancellationToken);
+
+        foreach (var citationJson in citationJsonCandidates)
+        {
+            var citations = DeserializeCitations(citationJson);
+            var match = citations.FirstOrDefault(citation =>
+                citation.DocumentId == documentId
+                && citation.ChunkIndex == chunkIndex);
+
+            if (match is not null)
+            {
+                return match.SimilarityScore;
+            }
+        }
+
+        return 0;
+    }
+
+    private sealed record StudentChatSubjectContext(
+        Guid SubjectId,
+        string SubjectCode,
+        string SubjectName);
 
     private static DateTime CreateDatabaseTimestamp()
     {

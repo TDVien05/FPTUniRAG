@@ -13,7 +13,7 @@ public class StudentDashboardModel : PageModel
         _studentChatService = studentChatService;
     }
 
-    public StudentChatPageDto Dashboard { get; private set; } = new(string.Empty, []);
+    public StudentChatPageDto Dashboard { get; private set; } = new(string.Empty, [], []);
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {

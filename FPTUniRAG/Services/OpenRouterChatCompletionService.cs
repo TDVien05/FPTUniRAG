@@ -11,6 +11,9 @@ namespace FPTUniRAG.Services;
 public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionService
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
+    private const int MaxContinuationRounds = 3;
+    private const string ContinuationPrompt =
+        "Continue exactly from where you stopped. Do not repeat, restart, or summarize the previous text. Return only the remaining continuation in the same language and format.";
 
     private readonly HttpClient _httpClient;
     private readonly RagIngestionOptions _options;
@@ -41,6 +44,10 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
         var streamedTextBuilder = new StringBuilder();
         OpenRouterChatCompletionResponse? finalStreamPayload = null;
         string? streamedFinishReason = null;
+        var streamEventCount = 0;
+        var deserializeFailureCount = 0;
+        var sawDoneMarker = false;
+        var sawTerminalChoice = false;
 
         using var request = CreateChatRequest(messages, stream: true);
         using var response = await _httpClient.SendAsync(
@@ -58,66 +65,90 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
         await using (var stream = await response.Content.ReadAsStreamAsync(cancellationToken))
         using (var reader = new StreamReader(stream))
         {
+            var eventDataLines = new List<string>();
+
             while (true)
             {
                 var line = await reader.ReadLineAsync(cancellationToken);
                 if (line is null)
                 {
-                    break;
-                }
-
-                if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                var payloadText = line["data:".Length..].Trim();
-                if (string.Equals(payloadText, "[DONE]", StringComparison.Ordinal))
-                {
-                    break;
-                }
-
-                OpenRouterChatCompletionResponse? payload;
-                try
-                {
-                    payload = JsonSerializer.Deserialize<OpenRouterChatCompletionResponse>(payloadText, SerializerOptions);
-                }
-                catch (JsonException exception)
-                {
-                    _logger.LogWarning(exception, "Failed to deserialize OpenRouter streaming payload.");
-                    continue;
-                }
-
-                if (payload is null)
-                {
-                    continue;
-                }
-
-                finalStreamPayload = payload;
-                var choice = payload.Choices?.FirstOrDefault();
-                if (!string.IsNullOrWhiteSpace(choice?.FinishReason))
-                {
-                    streamedFinishReason = choice.FinishReason;
-                }
-
-                var deltaText = ExtractText(choice?.Delta?.Content);
-                if (!string.IsNullOrEmpty(deltaText))
-                {
-                    streamedTextBuilder.Append(deltaText);
-                    await onDelta(deltaText, cancellationToken);
-                }
-
-                var fullMessageText = ExtractText(choice?.Message?.Content);
-                if (!string.IsNullOrEmpty(fullMessageText) && fullMessageText.Length > streamedTextBuilder.Length)
-                {
-                    var missingSuffix = fullMessageText[streamedTextBuilder.Length..];
-                    streamedTextBuilder.Clear();
-                    streamedTextBuilder.Append(fullMessageText);
-
-                    if (!string.IsNullOrEmpty(missingSuffix))
+                    if (eventDataLines.Count > 0)
                     {
-                        await onDelta(missingSuffix, cancellationToken);
+                        var eventPayload = string.Join("\n", eventDataLines);
+                        if (string.Equals(eventPayload, "[DONE]", StringComparison.Ordinal))
+                        {
+                            sawDoneMarker = true;
+                        }
+                        else
+                        {
+                            await ProcessStreamEventAsync(
+                                eventPayload,
+                                onDelta,
+                                streamedTextBuilder,
+                                updateState: payload =>
+                                {
+                                    finalStreamPayload = payload;
+                                    var choice = payload.Choices?.FirstOrDefault();
+                                    if (!string.IsNullOrWhiteSpace(choice?.FinishReason))
+                                    {
+                                        streamedFinishReason = choice.FinishReason;
+                                        sawTerminalChoice = true;
+                                    }
+                                },
+                                onDeserializationFailure: () => deserializeFailureCount++,
+                                onEventProcessed: () => streamEventCount++,
+                                cancellationToken);
+                        }
                     }
+
+                    break;
+                }
+
+                if (line.Length == 0)
+                {
+                    if (eventDataLines.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    var eventPayload = string.Join("\n", eventDataLines);
+                    eventDataLines.Clear();
+
+                    if (string.Equals(eventPayload, "[DONE]", StringComparison.Ordinal))
+                    {
+                        sawDoneMarker = true;
+                        break;
+                    }
+
+                    await ProcessStreamEventAsync(
+                        eventPayload,
+                        onDelta,
+                        streamedTextBuilder,
+                        updateState: payload =>
+                        {
+                            finalStreamPayload = payload;
+                            var choice = payload.Choices?.FirstOrDefault();
+                            if (!string.IsNullOrWhiteSpace(choice?.FinishReason))
+                            {
+                                streamedFinishReason = choice.FinishReason;
+                                sawTerminalChoice = true;
+                            }
+                        },
+                        onDeserializationFailure: () => deserializeFailureCount++,
+                        onEventProcessed: () => streamEventCount++,
+                        cancellationToken);
+
+                    continue;
+                }
+
+                if (line.StartsWith(':'))
+                {
+                    continue;
+                }
+
+                if (line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                {
+                    eventDataLines.Add(line["data:".Length..].TrimStart());
                 }
             }
         }
@@ -130,14 +161,23 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
         var usage = finalStreamPayload?.Usage;
         string modelName = finalStreamPayload?.Model?.Trim() ?? _options.OpenRouter.ChatModel;
 
-        if (ShouldFallback(canonicalText, streamedFinishReason))
+        if (ShouldFallback(
+            canonicalText,
+            streamedFinishReason,
+            sawDoneMarker,
+            sawTerminalChoice,
+            deserializeFailureCount))
         {
             _logger.LogWarning(
-                "OpenRouter stream looked incomplete. Model={Model} FinishReason={FinishReason} StreamedChars={StreamedChars} CanonicalChars={CanonicalChars}. Triggering non-stream fallback.",
+                "OpenRouter stream looked incomplete. Model={Model} FinishReason={FinishReason} StreamedChars={StreamedChars} CanonicalChars={CanonicalChars} EventCount={EventCount} SawDone={SawDone} SawTerminal={SawTerminal} DeserializeFailures={DeserializeFailures}. Triggering non-stream fallback.",
                 modelName,
                 streamedFinishReason ?? "(null)",
                 streamedText.Length,
-                canonicalText.Length);
+                canonicalText.Length,
+                streamEventCount,
+                sawDoneMarker,
+                sawTerminalChoice,
+                deserializeFailureCount);
 
             var fallbackResult = await CompleteNonStreamingAsync(messages, cancellationToken);
             canonicalText = fallbackResult.Content.Trim();
@@ -147,18 +187,37 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
             fallbackUsed = true;
         }
 
+        if (NeedsContinuation(canonicalFinishReason))
+        {
+            var continuationResult = await ContinueUntilCompleteAsync(
+                messages,
+                canonicalText,
+                modelName,
+                canonicalFinishReason,
+                usage,
+                cancellationToken);
+            canonicalText = continuationResult.Content.Trim();
+            canonicalFinishReason = continuationResult.FinishReason;
+            usage = continuationResult.Usage;
+            modelName = continuationResult.ModelName;
+        }
+
         if (string.IsNullOrWhiteSpace(canonicalText))
         {
             throw new InvalidOperationException("OpenRouter returned an empty chat completion payload.");
         }
 
         _logger.LogInformation(
-            "OpenRouter completion finalized. Model={Model} FinishReason={FinishReason} StreamedChars={StreamedChars} FinalChars={FinalChars} FallbackUsed={FallbackUsed}",
+            "OpenRouter completion finalized. Model={Model} FinishReason={FinishReason} StreamedChars={StreamedChars} FinalChars={FinalChars} FallbackUsed={FallbackUsed} EventCount={EventCount} SawDone={SawDone} SawTerminal={SawTerminal} DeserializeFailures={DeserializeFailures}",
             modelName,
             canonicalFinishReason ?? "(null)",
             streamedText.Length,
             canonicalText.Length,
-            fallbackUsed);
+            fallbackUsed,
+            streamEventCount,
+            sawDoneMarker,
+            sawTerminalChoice,
+            deserializeFailureCount);
 
         return new OpenRouterChatResult(
             modelName,
@@ -169,6 +228,109 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
             canonicalFinishReason,
             streamedText.Length,
             fallbackUsed);
+    }
+
+    private async Task<OpenRouterNonStreamingResult> ContinueUntilCompleteAsync(
+        IReadOnlyList<OpenRouterChatMessage> messages,
+        string initialContent,
+        string initialModelName,
+        string? initialFinishReason,
+        OpenRouterChatCompletionUsage? initialUsage,
+        CancellationToken cancellationToken)
+    {
+        var combinedContent = initialContent.Trim();
+        var modelName = initialModelName;
+        var finishReason = initialFinishReason;
+        long promptTokens = initialUsage?.PromptTokens ?? 0;
+        long completionTokens = initialUsage?.CompletionTokens ?? 0;
+        long totalTokens = initialUsage?.TotalTokens ?? 0;
+
+        for (var round = 1; round <= MaxContinuationRounds && NeedsContinuation(finishReason); round++)
+        {
+            _logger.LogInformation(
+                "OpenRouter completion hit finish_reason={FinishReason}. Requesting continuation round {Round}/{MaxRounds}. CurrentChars={CurrentChars}",
+                finishReason ?? "(null)",
+                round,
+                MaxContinuationRounds,
+                combinedContent.Length);
+
+            var continuationMessages = messages
+                .Concat([
+                    new OpenRouterChatMessage("assistant", combinedContent),
+                    new OpenRouterChatMessage("user", ContinuationPrompt)
+                ])
+                .ToList();
+
+            var continuation = await CompleteNonStreamingAsync(continuationMessages, cancellationToken);
+            modelName = continuation.ModelName;
+            finishReason = continuation.FinishReason;
+            promptTokens += continuation.Usage?.PromptTokens ?? 0;
+            completionTokens += continuation.Usage?.CompletionTokens ?? 0;
+            totalTokens += continuation.Usage?.TotalTokens ?? 0;
+            combinedContent = AppendContinuation(combinedContent, continuation.Content);
+        }
+
+        return new OpenRouterNonStreamingResult(
+            modelName,
+            combinedContent,
+            finishReason,
+            new OpenRouterChatCompletionUsage(promptTokens, completionTokens, totalTokens));
+    }
+
+    private async Task ProcessStreamEventAsync(
+        string payloadText,
+        Func<string, CancellationToken, Task> onDelta,
+        StringBuilder streamedTextBuilder,
+        Action<OpenRouterChatCompletionResponse> updateState,
+        Action onDeserializationFailure,
+        Action onEventProcessed,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(payloadText))
+        {
+            return;
+        }
+
+        OpenRouterChatCompletionResponse? payload;
+        try
+        {
+            payload = JsonSerializer.Deserialize<OpenRouterChatCompletionResponse>(payloadText, SerializerOptions);
+        }
+        catch (JsonException exception)
+        {
+            onDeserializationFailure();
+            _logger.LogWarning(exception, "Failed to deserialize OpenRouter streaming payload.");
+            return;
+        }
+
+        if (payload is null)
+        {
+            return;
+        }
+
+        onEventProcessed();
+        updateState(payload);
+
+        var choice = payload.Choices?.FirstOrDefault();
+        var deltaText = ExtractText(choice?.Delta?.Content);
+        if (!string.IsNullOrEmpty(deltaText))
+        {
+            streamedTextBuilder.Append(deltaText);
+            await onDelta(deltaText, cancellationToken);
+        }
+
+        var fullMessageText = ExtractText(choice?.Message?.Content);
+        if (!string.IsNullOrEmpty(fullMessageText) && fullMessageText.Length > streamedTextBuilder.Length)
+        {
+            var missingSuffix = fullMessageText[streamedTextBuilder.Length..];
+            streamedTextBuilder.Clear();
+            streamedTextBuilder.Append(fullMessageText);
+
+            if (!string.IsNullOrEmpty(missingSuffix))
+            {
+                await onDelta(missingSuffix, cancellationToken);
+            }
+        }
     }
 
     private async Task<OpenRouterNonStreamingResult> CompleteNonStreamingAsync(
@@ -246,15 +408,29 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
         return streamedText;
     }
 
-    private static bool ShouldFallback(string content, string? finishReason)
+    private static bool ShouldFallback(
+        string content,
+        string? finishReason,
+        bool sawDoneMarker,
+        bool sawTerminalChoice,
+        int deserializeFailureCount)
     {
         if (string.IsNullOrWhiteSpace(content))
         {
             return true;
         }
 
-        if (!string.IsNullOrWhiteSpace(finishReason)
-            && !string.Equals(finishReason, "stop", StringComparison.OrdinalIgnoreCase))
+        if (deserializeFailureCount > 0)
+        {
+            return true;
+        }
+
+        if (!sawDoneMarker)
+        {
+            return true;
+        }
+
+        if (!sawTerminalChoice || !string.Equals(finishReason, "stop", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
@@ -265,6 +441,38 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
         }
 
         return false;
+    }
+
+    private static bool NeedsContinuation(string? finishReason)
+    {
+        return string.Equals(finishReason, "length", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(finishReason, "max_tokens", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string AppendContinuation(string existingContent, string continuation)
+    {
+        var existing = existingContent.TrimEnd();
+        var appended = continuation.Trim();
+        if (string.IsNullOrEmpty(appended))
+        {
+            return existing;
+        }
+
+        var maxOverlap = Math.Min(existing.Length, appended.Length);
+        for (var overlap = maxOverlap; overlap >= 24; overlap--)
+        {
+            if (existing.EndsWith(appended[..overlap], StringComparison.Ordinal))
+            {
+                return existing + appended[overlap..];
+            }
+        }
+
+        if (existing.EndsWith(appended, StringComparison.Ordinal))
+        {
+            return existing;
+        }
+
+        return existing + appended;
     }
 
     private static bool LooksAbruptlyCut(string content)

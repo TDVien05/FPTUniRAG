@@ -4,7 +4,8 @@ namespace FPTUniRAG.Services;
 
 public sealed record StudentChatPageDto(
     string StudentName,
-    IReadOnlyList<StudentSubjectOptionDto> Subjects);
+    IReadOnlyList<StudentSubjectOptionDto> Subjects,
+    IReadOnlyList<StudentChatSessionSummaryDto> RecentSessions);
 
 public sealed record StudentSubjectOptionDto(
     Guid SubjectId,
@@ -20,7 +21,19 @@ public sealed record StudentChatCitationDto(
     string SubjectName,
     string ChapterTitle,
     int ChunkIndex,
-    double SimilarityScore);
+    double SimilarityScore,
+    Guid? ChunkId = null);
+
+public sealed record StudentChatCitationDetailDto(
+    Guid DocumentId,
+    string DocumentTitle,
+    string SubjectCode,
+    string SubjectName,
+    string ChapterTitle,
+    int ChunkIndex,
+    string ChunkContent,
+    double SimilarityScore,
+    Guid? ChunkId = null);
 
 public sealed record StudentChatMessageDto(
     Guid? MessageId,
@@ -29,8 +42,34 @@ public sealed record StudentChatMessageDto(
     DateTime? CreatedAt,
     IReadOnlyList<StudentChatCitationDto> Citations);
 
+public sealed record StudentChatSessionSummaryDto(
+    Guid SessionId,
+    Guid SubjectId,
+    string SubjectCode,
+    string SubjectName,
+    DateTime? StartedAt,
+    DateTime? LastMessageAt,
+    string PreviewText);
+
+public sealed record StudentChatSessionDetailDto(
+    Guid SessionId,
+    Guid SubjectId,
+    string SubjectCode,
+    string SubjectName,
+    DateTime? StartedAt,
+    IReadOnlyList<StudentChatMessageDto> Messages);
+
 public sealed record StudentChatSubjectSearchResponseDto(
     IReadOnlyList<StudentSubjectOptionDto> Subjects);
+
+public sealed record StudentChatSessionListResponseDto(
+    IReadOnlyList<StudentChatSessionSummaryDto> Sessions);
+
+public sealed record StudentChatSessionDetailResponseDto(
+    StudentChatSessionDetailDto Session);
+
+public sealed record StudentChatCitationDetailResponseDto(
+    StudentChatCitationDetailDto Citation);
 
 public sealed record StudentChatSessionStartedDto(
     Guid SessionId,

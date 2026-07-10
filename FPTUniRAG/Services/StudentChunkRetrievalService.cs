@@ -1,5 +1,6 @@
 using FPTUniRAG.DataAccessLayer.Context;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -9,15 +10,18 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
 {
     private readonly AppDbContext _dbContext;
     private readonly IOpenRouterEmbeddingService _embeddingService;
+    private readonly ILogger<StudentChunkRetrievalService> _logger;
     private readonly string _tableName;
 
     public StudentChunkRetrievalService(
         AppDbContext dbContext,
         IOpenRouterEmbeddingService embeddingService,
-        IOptions<Options.RagIngestionOptions> options)
+        IOptions<Options.RagIngestionOptions> options,
+        ILogger<StudentChunkRetrievalService> logger)
     {
         _dbContext = dbContext;
         _embeddingService = embeddingService;
+        _logger = logger;
         _tableName = ResolveTableName(options.Value.PostgresVector.TableName);
     }
 
@@ -68,8 +72,19 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
             return [];
         }
 
-        var queryEmbedding = (await _embeddingService.CreateEmbeddingsAsync([normalizedQuery], cancellationToken)).SingleOrDefault();
-        if (queryEmbedding is null || queryEmbedding.Length == 0)
+        float[]? queryEmbedding = null;
+        try
+        {
+            queryEmbedding = (await _embeddingService.CreateEmbeddingsAsync([normalizedQuery], cancellationToken)).SingleOrDefault();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Student chat query embedding failed. Falling back to lexical retrieval.");
+        }
+
+        var useVectorSearch = queryEmbedding is { Length: > 0 };
+        var queryTerms = Tokenize(normalizedQuery);
+        if (!useVectorSearch && queryTerms.Count == 0)
         {
             return [];
         }
@@ -137,7 +152,9 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
                 row.SubjectCode,
                 row.SubjectName,
                 row.ChapterTitle,
-                ComputeCosineSimilarity(queryEmbedding, row.Embedding)))
+                useVectorSearch
+                    ? ComputeCosineSimilarity(queryEmbedding!, row.Embedding)
+                    : ComputeKeywordScore(queryTerms, row)))
             .Where(item => item.SimilarityScore > 0)
             .OrderByDescending(item => item.SimilarityScore)
             .ThenBy(item => item.DocumentTitle)
@@ -184,6 +201,56 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
         }
 
         return dot / (Math.Sqrt(leftMagnitudeSquared) * Math.Sqrt(rightMagnitudeSquared));
+    }
+
+    private static IReadOnlyList<string> Tokenize(string value)
+    {
+        return value
+            .Split([
+                ' ', '\t', '\r', '\n',
+                '.', ',', ';', ':', '!', '?',
+                '(', ')', '[', ']', '{', '}',
+                '/', '\\', '-', '_', '"', '\''
+            ], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(term => term.Trim().ToLowerInvariant())
+            .Where(term => term.Length >= 2)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static double ComputeKeywordScore(
+        IReadOnlyList<string> queryTerms,
+        StudentRetrievedChunkWithEmbedding row)
+    {
+        if (queryTerms.Count == 0)
+        {
+            return 0;
+        }
+
+        var content = row.Content.ToLowerInvariant();
+        var documentTitle = row.DocumentTitle.ToLowerInvariant();
+        var chapterTitle = row.ChapterTitle.ToLowerInvariant();
+
+        double score = 0;
+        foreach (var term in queryTerms)
+        {
+            if (documentTitle.Contains(term, StringComparison.Ordinal))
+            {
+                score += 3;
+            }
+
+            if (chapterTitle.Contains(term, StringComparison.Ordinal))
+            {
+                score += 2;
+            }
+
+            if (content.Contains(term, StringComparison.Ordinal))
+            {
+                score += 1;
+            }
+        }
+
+        return score / queryTerms.Count;
     }
 
     private sealed record StudentRetrievedChunkWithEmbedding(
