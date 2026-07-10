@@ -1,0 +1,558 @@
+@page "/SubscriptionPlans"
+@model FPTUniRAG.Pages.SubscriptionPlansModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Subscription Plans - FPT UniRAG";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <style>
+        .plan-admin-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .plan-admin-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .plan-admin-form {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .plan-admin-form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .plan-admin-toggle-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .plan-admin-toggle {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 14px;
+            border: 1px solid #d7e3ff;
+            border-radius: 12px;
+            background: #f7faff;
+        }
+
+        .plan-admin-toggle input {
+            margin-top: 3px;
+        }
+
+        .plan-admin-toggle strong {
+            display: block;
+            color: var(--admin-text);
+            font-size: 14px;
+        }
+
+        .plan-admin-toggle small {
+            display: block;
+            margin-top: 4px;
+            color: var(--admin-muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .plan-admin-card-list {
+            display: grid;
+            gap: 20px;
+        }
+
+        .plan-admin-card {
+            border: 1px solid rgba(193, 198, 214, 0.3);
+            border-radius: 12px;
+            background: var(--admin-surface);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+            padding: 24px;
+        }
+
+        .plan-admin-card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .plan-admin-card-header h3 {
+            margin: 0;
+            color: var(--admin-text);
+            font-family: Manrope, Inter, sans-serif;
+            font-size: 22px;
+            line-height: 1.25;
+        }
+
+        .plan-admin-card-header p {
+            margin: 6px 0 0;
+            color: var(--admin-muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .plan-admin-badge-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .plan-admin-meta {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .plan-admin-meta-item {
+            padding: 14px 16px;
+            border: 1px solid #d7e3ff;
+            border-radius: 12px;
+            background: #f7faff;
+        }
+
+        .plan-admin-meta-item span {
+            display: block;
+            color: var(--admin-muted);
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .plan-admin-meta-item strong {
+            display: block;
+            margin-top: 8px;
+            color: var(--admin-text);
+            font-size: 18px;
+            line-height: 1.3;
+        }
+
+        .plan-admin-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(193, 198, 214, 0.35);
+        }
+
+        .plan-admin-actions-start,
+        .plan-admin-actions-end {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .plan-admin-delete-form {
+            margin: 0;
+        }
+
+        .plan-admin-delete-note {
+            color: var(--admin-muted);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        @@media (max-width: 1080px) {
+            .plan-admin-form-grid,
+            .plan-admin-toggle-grid,
+            .plan-admin-meta {
+                grid-template-columns: 1fr;
+            }
+
+            .plan-admin-actions,
+            .plan-admin-actions-start,
+            .plan-admin-actions-end {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body class="admin-dashboard-page accounts-page">
+    <main class="admin-shell" aria-label="Subscription plan management">
+        <aside class="admin-sidebar" aria-label="Admin navigation">
+            <a class="admin-logo" href="/AdminDashboard" aria-label="FPT UniRAG dashboard">
+                <span class="admin-logo-mark" aria-hidden="true">
+                    <span class="material-symbols-outlined">school</span>
+                </span>
+                <span>
+                    <strong>FPT UniRAG</strong>
+                    <small>Academic RAG</small>
+                </span>
+            </a>
+
+            <nav class="admin-nav">
+                <a class="admin-nav-item" href="/AdminDashboard">
+                    <span class="material-symbols-outlined" aria-hidden="true">dashboard</span>
+                    Dashboard
+                </a>
+                <details class="admin-nav-group">
+                    <summary class="admin-nav-item">
+                        <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+                        Subjects
+                        <span class="material-symbols-outlined admin-nav-chevron" aria-hidden="true">expand_more</span>
+                    </summary>
+                    <div class="admin-subnav">
+                        <a href="/Subjects">Manage Subjects</a>
+                        <a href="/Subjects/AssignTeacher">Assign Teacher</a>
+                        <a href="/Subjects/AssignHeader">Assign Header</a>
+                    </div>
+                </details>
+                <a class="admin-nav-item" href="/Accounts">
+                    <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+                    Accounts
+                </a>
+                <a class="admin-nav-item active" href="/SubscriptionPlans" aria-current="page">
+                    <span class="material-symbols-outlined" aria-hidden="true">payments</span>
+                    Subscription Plans
+                </a>
+                <a class="admin-nav-item" href="/Analysis">
+                    <span class="material-symbols-outlined" aria-hidden="true">analytics</span>
+                    Analytics
+                </a>
+            </nav>
+
+            <section class="admin-sidebar-footer" aria-label="Sidebar actions">
+                <a class="admin-sidebar-footer-link" href="#">
+                    <span class="material-symbols-outlined" aria-hidden="true">help_outline</span>
+                    <span>Help</span>
+                </a>
+                <a class="admin-sidebar-footer-link" href="/ChangePassword">
+                    <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+                    <span>Change Password</span>
+                </a>
+                <a class="admin-sidebar-footer-link" href="/Login?logout=true">
+                    <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+                    <span>Logout</span>
+                </a>
+            </section>
+        </aside>
+
+        <section class="accounts-main">
+            <div class="accounts-canvas">
+                <nav class="subject-breadcrumbs" aria-label="Breadcrumb">
+                    <a href="/AdminDashboard">Dashboard</a>
+                    <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                    <strong>Subscription Plans</strong>
+                </nav>
+
+                <header class="subject-create-header accounts-header">
+                    <div>
+                        <h1>Subscription Plan Configuration</h1>
+                        <p>Configure the plans students can buy: code, display name, token limit, price, and feature flags. The student pricing page now reads directly from this configuration.</p>
+                    </div>
+                </header>
+
+                @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-success" role="status">
+                        @Model.SuccessMessage
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-error" role="alert">
+                        @Model.ErrorMessage
+                    </div>
+                }
+
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div asp-validation-summary="ModelOnly" class="accounts-feedback accounts-feedback-error" role="alert"></div>
+                }
+
+                <div class="plan-admin-layout">
+                    <section class="accounts-card" aria-labelledby="create-plan-title">
+                        <div class="accounts-card-header">
+                            <div>
+                                <p class="accounts-eyebrow">Create Plan</p>
+                                <h2 id="create-plan-title">Add a new plan</h2>
+                            </div>
+                            <span class="accounts-card-icon" aria-hidden="true">
+                                <span class="material-symbols-outlined">add_card</span>
+                            </span>
+                        </div>
+
+                        <form class="plan-admin-form" method="post" asp-page-handler="Create">
+                            <div class="plan-admin-form-grid">
+                                <label class="subject-field">
+                                    <span>Plan code</span>
+                                    <input asp-for="CreateInput.PlanCode" placeholder="go" />
+                                    <small>Stored lowercase, used by the student purchase flow.</small>
+                                    <span asp-validation-for="CreateInput.PlanCode" class="accounts-field-error"></span>
+                                </label>
+
+                                <label class="subject-field">
+                                    <span>Plan name</span>
+                                    <input asp-for="CreateInput.PlanName" placeholder="Go" />
+                                    <span asp-validation-for="CreateInput.PlanName" class="accounts-field-error"></span>
+                                </label>
+                            </div>
+
+                            <label class="subject-field">
+                                <span>Description</span>
+                                <textarea asp-for="CreateInput.Description" placeholder="Short explanation shown on the student pricing page."></textarea>
+                            </label>
+
+                            <div class="plan-admin-form-grid">
+                                <label class="subject-field">
+                                    <span>Monthly price (VND)</span>
+                                    <input asp-for="CreateInput.MonthlyPrice" type="number" min="0" step="1000" />
+                                    <span asp-validation-for="CreateInput.MonthlyPrice" class="accounts-field-error"></span>
+                                </label>
+
+                                <label class="subject-field">
+                                    <span>Monthly token limit</span>
+                                    <input asp-for="CreateInput.MonthlyTokenLimit" type="number" min="1" step="1" />
+                                    <span asp-validation-for="CreateInput.MonthlyTokenLimit" class="accounts-field-error"></span>
+                                </label>
+                            </div>
+
+                            <div class="plan-admin-toggle-grid">
+                                <label class="plan-admin-toggle">
+                                    <input asp-for="CreateInput.IsActive" type="checkbox" />
+                                    <span>
+                                        <strong>Active</strong>
+                                        <small>Visible to students on the pricing page.</small>
+                                    </span>
+                                </label>
+
+                                <label class="plan-admin-toggle">
+                                    <input asp-for="CreateInput.HasAdvancedModels" type="checkbox" />
+                                    <span>
+                                        <strong>Advanced models</strong>
+                                        <small>Expose stronger reasoning capability.</small>
+                                    </span>
+                                </label>
+
+                                <label class="plan-admin-toggle">
+                                    <input asp-for="CreateInput.HasPrioritySupport" type="checkbox" />
+                                    <span>
+                                        <strong>Priority support</strong>
+                                        <small>Mark the plan as higher support priority.</small>
+                                    </span>
+                                </label>
+
+                                <label class="plan-admin-toggle">
+                                    <input asp-for="CreateInput.HasFileUpload" type="checkbox" />
+                                    <span>
+                                        <strong>File upload</strong>
+                                        <small>Allow study flows that include file-based context.</small>
+                                    </span>
+                                </label>
+
+                                <label class="plan-admin-toggle">
+                                    <input asp-for="CreateInput.HasHistoryExport" type="checkbox" />
+                                    <span>
+                                        <strong>History export</strong>
+                                        <small>Enable exporting or richer history usage.</small>
+                                    </span>
+                                </label>
+                            </div>
+
+                            <footer class="subject-form-actions accounts-actions">
+                                <button class="subject-submit-button" type="submit">
+                                    Create Plan
+                                    <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                                </button>
+                            </footer>
+                        </form>
+                    </section>
+
+                    <section class="plan-admin-section" aria-labelledby="existing-plans-title">
+                        <div class="accounts-card">
+                            <div class="accounts-card-header">
+                                <div>
+                                    <p class="accounts-eyebrow">Catalog</p>
+                                    <h2 id="existing-plans-title">Existing plans</h2>
+                                </div>
+                                <span class="accounts-card-icon" aria-hidden="true">
+                                    <span class="material-symbols-outlined">view_kanban</span>
+                                </span>
+                            </div>
+                            <p class="accounts-template-header" style="margin:0; border:0; padding:0;">
+                                <strong>@Model.Plans.Count configured</strong>
+                                <span>Student page reflects active plans only</span>
+                            </p>
+                        </div>
+
+                        @if (Model.Plans.Count == 0)
+                        {
+                            <section class="accounts-card" role="status">
+                                No subscription plans exist yet. Create one from the left panel first.
+                            </section>
+                        }
+                        else
+                        {
+                            <div class="plan-admin-card-list">
+                                @foreach (var plan in Model.Plans)
+                                {
+                                    <section class="plan-admin-card" aria-labelledby="plan-@plan.PlanId">
+                                        <div class="plan-admin-card-header">
+                                            <div>
+                                                <h3 id="plan-@plan.PlanId">@plan.PlanName</h3>
+                                                <p>@(string.IsNullOrWhiteSpace(plan.Description) ? "No description set yet." : plan.Description)</p>
+                                                <div class="plan-admin-badge-row">
+                                                    <span class="admin-badge @(plan.IsActive ? "success" : "draft")">@(plan.IsActive ? "Active" : "Hidden")</span>
+                                                    <span class="admin-badge info">@plan.PlanCode</span>
+                                                    <span class="admin-badge cyan">@plan.MonthlyTokenLimit.ToString("N0") tokens</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="plan-admin-meta">
+                                            <div class="plan-admin-meta-item">
+                                                <span>Price</span>
+                                                <strong>@plan.MonthlyPrice.ToString("N0") VND</strong>
+                                            </div>
+                                            <div class="plan-admin-meta-item">
+                                                <span>Monthly tokens</span>
+                                                <strong>@plan.MonthlyTokenLimit.ToString("N0")</strong>
+                                            </div>
+                                            <div class="plan-admin-meta-item">
+                                                <span>Subscriptions</span>
+                                                <strong>@(plan.HasStudentSubscriptions ? "In use" : "Unused")</strong>
+                                            </div>
+                                            <div class="plan-admin-meta-item">
+                                                <span>Token logs</span>
+                                                <strong>@(plan.HasTokenUsageLogs ? "Recorded" : "None")</strong>
+                                            </div>
+                                        </div>
+
+                                        <form class="plan-admin-form" method="post" asp-page-handler="Update" id="update-plan-@plan.PlanId">
+                                            <input type="hidden" name="planId" value="@plan.PlanId" />
+
+                                            <div class="plan-admin-form-grid">
+                                                <label class="subject-field">
+                                                    <span>Plan code</span>
+                                                    <input name="planCode" value="@plan.PlanCode" />
+                                                </label>
+
+                                                <label class="subject-field">
+                                                    <span>Plan name</span>
+                                                    <input name="planName" value="@plan.PlanName" />
+                                                </label>
+                                            </div>
+
+                                            <label class="subject-field">
+                                                <span>Description</span>
+                                                <textarea name="description">@plan.Description</textarea>
+                                            </label>
+
+                                            <div class="plan-admin-form-grid">
+                                                <label class="subject-field">
+                                                    <span>Monthly price (VND)</span>
+                                                    <input name="monthlyPrice" type="number" min="0" step="1000" value="@plan.MonthlyPrice.ToString("0")" />
+                                                </label>
+
+                                                <label class="subject-field">
+                                                    <span>Monthly token limit</span>
+                                                    <input name="monthlyTokenLimit" type="number" min="1" step="1" value="@plan.MonthlyTokenLimit" />
+                                                </label>
+                                            </div>
+
+                                            <div class="plan-admin-toggle-grid">
+                                                <label class="plan-admin-toggle">
+                                                    <input name="isActive" type="checkbox" value="true" checked="@plan.IsActive" />
+                                                    <span>
+                                                        <strong>Active</strong>
+                                                        <small>Controls whether students can buy this plan.</small>
+                                                    </span>
+                                                </label>
+
+                                                <label class="plan-admin-toggle">
+                                                    <input name="hasAdvancedModels" type="checkbox" value="true" checked="@plan.HasAdvancedModels" />
+                                                    <span>
+                                                        <strong>Advanced models</strong>
+                                                        <small>Advertise stronger model access.</small>
+                                                    </span>
+                                                </label>
+
+                                                <label class="plan-admin-toggle">
+                                                    <input name="hasPrioritySupport" type="checkbox" value="true" checked="@plan.HasPrioritySupport" />
+                                                    <span>
+                                                        <strong>Priority support</strong>
+                                                        <small>Marks the plan as higher support priority.</small>
+                                                    </span>
+                                                </label>
+
+                                                <label class="plan-admin-toggle">
+                                                    <input name="hasFileUpload" type="checkbox" value="true" checked="@plan.HasFileUpload" />
+                                                    <span>
+                                                        <strong>File upload</strong>
+                                                        <small>Keep file-based study flows available.</small>
+                                                    </span>
+                                                </label>
+
+                                                <label class="plan-admin-toggle">
+                                                    <input name="hasHistoryExport" type="checkbox" value="true" checked="@plan.HasHistoryExport" />
+                                                    <span>
+                                                        <strong>History export</strong>
+                                                        <small>Expose history export capability to students.</small>
+                                                    </span>
+                                                </label>
+                                            </div>
+
+                                        </form>
+
+                                        <div class="plan-admin-actions">
+                                            <div class="plan-admin-actions-start">
+                                                @if (plan.CanDelete)
+                                                {
+                                                    <form class="plan-admin-delete-form" method="post" asp-page-handler="Delete" onsubmit="return confirm('Delete @plan.PlanName? This cannot be undone.');">
+                                                        <input type="hidden" name="planId" value="@plan.PlanId" />
+                                                        <button class="admin-danger-button" type="submit">
+                                                            Delete Plan
+                                                        </button>
+                                                    </form>
+                                                }
+                                                else
+                                                {
+                                                    <span class="plan-admin-delete-note">Delete is disabled because this plan already has related subscription or usage data.</span>
+                                                }
+                                            </div>
+
+                                            <div class="plan-admin-actions-end">
+                                                <button class="subject-submit-button" type="submit" form="update-plan-@plan.PlanId">
+                                                    Save Changes
+                                                    <span class="material-symbols-outlined" aria-hidden="true">save</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </section>
+                                }
+                            </div>
+                        }
+                    </section>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <partial name="_ValidationScriptsPartial" />
+</body>
+</html>

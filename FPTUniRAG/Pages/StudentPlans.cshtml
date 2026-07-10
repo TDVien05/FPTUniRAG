@@ -1,0 +1,514 @@
+@page "/StudentPlans"
+@model FPTUniRAG.Pages.StudentPlansModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Student Plans - FPT UniRAG";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            color-scheme: light;
+            --page-bg: #eef4ff;
+            --page-bg-2: #fbfdff;
+            --card-bg: rgba(255, 255, 255, 0.92);
+            --card-border: rgba(193, 198, 214, 0.58);
+            --text: #111c2d;
+            --muted: #58677d;
+            --brand: #005bbf;
+            --brand-strong: #0b3b91;
+            --brand-soft: #e8f0ff;
+            --success-bg: #ecfdf3;
+            --success-text: #047857;
+            --danger-bg: #fef2f2;
+            --danger-text: #b91c1c;
+            --shadow: 0 24px 50px rgba(15, 23, 42, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background:
+                radial-gradient(circle at top left, rgba(147, 197, 253, 0.42), transparent 28%),
+                radial-gradient(circle at top right, rgba(96, 165, 250, 0.22), transparent 24%),
+                linear-gradient(180deg, var(--page-bg-2) 0%, var(--page-bg) 100%);
+            color: var(--text);
+            font-family: Inter, system-ui, sans-serif;
+        }
+
+        .plans-shell {
+            width: min(1240px, 100%);
+            margin: 0 auto;
+            padding: 36px 20px 64px;
+        }
+
+        .plans-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .plans-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 44px;
+            padding: 0 16px;
+            border: 1px solid var(--card-border);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.75);
+            color: var(--text);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .plans-hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+            gap: 24px;
+            margin-bottom: 28px;
+        }
+
+        .plans-hero-card,
+        .plans-summary-card,
+        .plans-card,
+        .plans-compare {
+            border: 1px solid var(--card-border);
+            border-radius: 26px;
+            background: var(--card-bg);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(18px);
+        }
+
+        .plans-hero-card {
+            padding: 34px;
+        }
+
+        .plans-hero h1 {
+            margin: 0;
+            font-family: Manrope, Inter, sans-serif;
+            font-size: clamp(34px, 5vw, 56px);
+            line-height: 1.02;
+        }
+
+        .plans-hero p {
+            margin: 18px 0 0;
+            max-width: 760px;
+            color: var(--muted);
+            font-size: 16px;
+            line-height: 1.75;
+        }
+
+        .plans-summary-card {
+            padding: 26px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .plans-summary-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .plans-summary-title {
+            margin: 0;
+            font-family: Manrope, Inter, sans-serif;
+            font-size: 24px;
+        }
+
+        .plans-summary-copy {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.65;
+        }
+
+        .plans-stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .plans-stat {
+            padding: 18px;
+            border-radius: 20px;
+            background: #f7faff;
+        }
+
+        .plans-stat-label {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .plans-stat-value {
+            margin-top: 10px;
+            font-size: 28px;
+            font-weight: 800;
+            line-height: 1.05;
+        }
+
+        .plans-feedback {
+            margin-bottom: 24px;
+            padding: 14px 18px;
+            border-radius: 18px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .plans-feedback-success {
+            background: var(--success-bg);
+            color: var(--success-text);
+        }
+
+        .plans-feedback-error {
+            background: var(--danger-bg);
+            color: var(--danger-text);
+        }
+
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 20px;
+            align-items: stretch;
+        }
+
+        .plans-card {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            min-height: 100%;
+            padding: 28px;
+            overflow: hidden;
+        }
+
+        .plans-card.recommended {
+            border-color: rgba(0, 91, 191, 0.38);
+            box-shadow: 0 28px 70px rgba(0, 91, 191, 0.16);
+        }
+
+        .plans-card.current {
+            outline: 2px solid rgba(16, 185, 129, 0.18);
+        }
+
+        .plans-badge-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .plans-badge,
+        .plans-badge-current {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 32px;
+            padding: 0 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .plans-badge {
+            background: #edf5ff;
+            color: var(--brand);
+        }
+
+        .plans-empty-state {
+            margin-top: 20px;
+            padding: 26px;
+            border: 1px dashed var(--card-border);
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.7);
+            color: var(--muted);
+            font-size: 15px;
+            line-height: 1.7;
+            text-align: center;
+        }
+
+        .plans-badge-current {
+            background: #ecfdf3;
+            color: #047857;
+        }
+
+        .plans-card h2 {
+            margin: 22px 0 0;
+            font-family: Manrope, Inter, sans-serif;
+            font-size: 30px;
+        }
+
+        .plans-card-copy {
+            margin: 12px 0 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .plans-price {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-top: 28px;
+        }
+
+        .plans-price-amount {
+            font-size: 44px;
+            font-weight: 800;
+            line-height: 0.95;
+        }
+
+        .plans-price-note {
+            color: var(--muted);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .plans-token-line {
+            margin-top: 12px;
+            color: var(--brand-strong);
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .plans-highlights {
+            margin: 24px 0 0;
+            padding: 0;
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .plans-highlights li {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            color: var(--text);
+            font-size: 14px;
+            line-height: 1.65;
+        }
+
+        .plans-highlights .material-symbols-outlined {
+            color: var(--brand);
+            font-size: 18px;
+        }
+
+        .plans-actions {
+            margin-top: auto;
+            padding-top: 26px;
+        }
+
+        .plans-action-button,
+        .plans-action-muted {
+            width: 100%;
+            min-height: 50px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border-radius: 16px;
+            font: inherit;
+            font-size: 14px;
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .plans-action-button {
+            border: 1px solid var(--brand);
+            background: var(--brand);
+            color: #ffffff;
+            cursor: pointer;
+        }
+
+        .plans-action-button:hover {
+            background: #004da1;
+            border-color: #004da1;
+        }
+
+        .plans-action-muted {
+            border: 1px solid #cfe0fb;
+            background: #eff6ff;
+            color: var(--brand);
+        }
+
+        @@media (max-width: 1100px) {
+            .plans-hero,
+            .plans-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @@media (max-width: 720px) {
+            .plans-shell {
+                padding-inline: 14px;
+            }
+
+            .plans-topbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .plans-summary-header,
+            .plans-stat-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .plans-stat-grid {
+                display: grid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="plans-shell" aria-label="Student plan selection">
+        <div class="plans-topbar">
+            <a class="plans-back" href="/StudentDashboard">
+                <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+                Back to student chat
+            </a>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+        {
+            <div class="plans-feedback plans-feedback-success" role="status">@Model.SuccessMessage</div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+        {
+            <div class="plans-feedback plans-feedback-error" role="alert">@Model.ErrorMessage</div>
+        }
+
+        <section class="plans-hero" aria-labelledby="student-plans-title">
+            <div class="plans-hero-card">
+                <h1 id="student-plans-title">Choose the plan that fits your study load.</h1>
+                <p>Pick a package, activate it instantly, and keep asking from your course materials without leaving the student workspace. Available plans and quotas are managed by the admin team, so this page always reflects the latest configuration.</p>
+            </div>
+
+            <aside class="plans-summary-card" aria-label="Current subscription summary">
+                <div class="plans-summary-header">
+                    <div>
+                        <h2 class="plans-summary-title">@Model.StudentName</h2>
+                        <p class="plans-summary-copy">@Model.StudentEmail</p>
+                    </div>
+                    <span class="plans-badge-current">
+                        <span class="material-symbols-outlined" aria-hidden="true">school</span>
+                        Student
+                    </span>
+                </div>
+
+                <div class="plans-stat-grid">
+                    <div class="plans-stat">
+                        <div class="plans-stat-label">Current plan</div>
+                        <div class="plans-stat-value">@(Model.CurrentPlan?.PlanName ?? "No plan")</div>
+                    </div>
+                    <div class="plans-stat">
+                        <div class="plans-stat-label">Used this month</div>
+                        <div class="plans-stat-value">@Model.TokensUsedThisMonth.ToString("N0")</div>
+                    </div>
+                    <div class="plans-stat">
+                        <div class="plans-stat-label">Monthly limit</div>
+                        <div class="plans-stat-value">@(Model.CurrentPlan?.MonthlyTokenLimit is long monthlyLimit ? monthlyLimit.ToString("N0") : "N/A")</div>
+                    </div>
+                    <div class="plans-stat">
+                        <div class="plans-stat-label">Remaining</div>
+                        <div class="plans-stat-value">@(Model.TokensRemainingThisMonth is decimal remainingTokens ? remainingTokens.ToString("N0") : "N/A")</div>
+                    </div>
+                </div>
+
+                @if (Model.CurrentPlan?.ExpiresAt is not null)
+                {
+                    <p class="plans-summary-copy">Current access expires on @Model.CurrentPlan.ExpiresAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm").</p>
+                }
+            </aside>
+        </section>
+
+        @if (Model.Plans.Count == 0)
+        {
+            <div class="plans-empty-state" role="status">
+                There are no active plans available right now. Please contact the administrator to publish a package first.
+            </div>
+        }
+        else
+        {
+            <section class="plans-grid" aria-label="Available plans">
+                @foreach (var plan in Model.Plans)
+                {
+                    <article class="plans-card @(plan.IsRecommended ? "recommended" : "") @(plan.IsCurrent ? "current" : "")">
+                        <div class="plans-badge-row">
+                            <span class="plans-badge">@(plan.IsRecommended ? "Popular choice" : "Available now")</span>
+                            @if (plan.IsCurrent)
+                            {
+                                <span class="plans-badge-current">
+                                    <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+                                    Current
+                                </span>
+                            }
+                        </div>
+
+                        <h2>@plan.PlanName</h2>
+                        <p class="plans-card-copy">@plan.Description</p>
+
+                        <div class="plans-price">
+                            <span class="plans-price-amount">@plan.MonthlyPrice.ToString("N0")</span>
+                            <span class="plans-price-note">VND / month</span>
+                        </div>
+
+                        <div class="plans-token-line">@plan.MonthlyTokenLimit.ToString("N0") tokens included each month</div>
+
+                        <ul class="plans-highlights">
+                            @foreach (var highlight in plan.Highlights)
+                            {
+                                <li>
+                                    <span class="material-symbols-outlined" aria-hidden="true">done</span>
+                                    <span>@highlight</span>
+                                </li>
+                            }
+                        </ul>
+
+                        <div class="plans-actions">
+                            @if (plan.IsCurrent)
+                            {
+                                <div class="plans-action-muted">
+                                    <span class="material-symbols-outlined" aria-hidden="true">verified</span>
+                                    Active right now
+                                </div>
+                            }
+                            else
+                            {
+                                <form method="post" asp-page-handler="Purchase">
+                                    <input type="hidden" name="planCode" value="@plan.PlanCode" />
+                                    <button class="plans-action-button" type="submit">
+                                        <span class="material-symbols-outlined" aria-hidden="true">shopping_cart</span>
+                                        Choose @plan.PlanName
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    </article>
+                }
+            </section>
+        }
+    </main>
+</body>
+</html>
