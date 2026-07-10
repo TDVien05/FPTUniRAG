@@ -87,6 +87,8 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AuthorizePage("/TeacherDocuments", "TeacherOrAdmin");
     options.Conventions.AuthorizePage("/TeacherDocumentDetails", "TeacherOrAdmin");
     options.Conventions.AuthorizePage("/StudentDashboard", "StudentOrAdmin");
+    options.Conventions.AuthorizePage("/StudentPlans", "StudentOrAdmin");
+    options.Conventions.AuthorizePage("/SubscriptionPlans", "AdminOnly");
 });
 
 var app = builder.Build();
