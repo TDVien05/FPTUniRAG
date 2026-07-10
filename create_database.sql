@@ -571,19 +571,19 @@ SELECT
     u.full_name,
     u.email,
     sp.plan_id,
-    sp.plan_code,
-    sp.plan_name,
+    COALESCE(sp.plan_code, 'free') AS plan_code,
+    COALESCE(sp.plan_name, 'Free') AS plan_name,
     sp.daily_token_limit,
     sp.weekly_token_limit,
-    sp.monthly_token_limit,
-    sp.has_unlimited_chat,
-    sp.has_advanced_models,
-    sp.has_priority_support,
-    sp.has_file_upload,
-    sp.has_history_export,
+    COALESCE(sp.monthly_token_limit, 2000) AS monthly_token_limit,
+    COALESCE(sp.has_unlimited_chat, false) AS has_unlimited_chat,
+    COALESCE(sp.has_advanced_models, false) AS has_advanced_models,
+    COALESCE(sp.has_priority_support, false) AS has_priority_support,
+    COALESCE(sp.has_file_upload, false) AS has_file_upload,
+    COALESCE(sp.has_history_export, false) AS has_history_export,
     ss.started_at,
     ss.expires_at,
-    ss.subscription_status
+    COALESCE(ss.subscription_status, 'free') AS subscription_status
 FROM users u
 LEFT JOIN student_subscriptions ss
     ON ss.user_id = u.user_id

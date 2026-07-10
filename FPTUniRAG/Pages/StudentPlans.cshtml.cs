@@ -8,6 +8,7 @@ namespace FPTUniRAG.Pages;
 
 public class StudentPlansModel : PageModel
 {
+    private const long DefaultFreeStudentMonthlyTokenLimit = 2000;
     private readonly AppDbContext _dbContext;
     private readonly ILogger<StudentPlansModel> _logger;
 
@@ -165,7 +166,17 @@ public class StudentPlansModel : PageModel
                 entitlement.HasPrioritySupport ?? false,
                 entitlement.HasHistoryExport ?? false,
                 entitlement.ExpiresAt);
+            return;
         }
+
+        CurrentPlan = new StudentCurrentPlanViewModel(
+            "free",
+            "Free",
+            DefaultFreeStudentMonthlyTokenLimit,
+            false,
+            false,
+            false,
+            null);
     }
 
     private static string[] BuildHighlights(DataAccessLayer.Entities.SubscriptionPlan plan)
