@@ -12,6 +12,7 @@ namespace FPTUniRAG.Services;
 
 public sealed class StudentChatService : IStudentChatService
 {
+    private const long DefaultFreeStudentMonthlyTokenLimit = 2000;
     private const int RetrievalLimit = 4;
     private const int ConversationHistoryLimit = 12;
     private const int StreamFlushIntervalMilliseconds = 40;
@@ -287,6 +288,28 @@ public sealed class StudentChatService : IStudentChatService
             return;
         }
 
+        StudentChatQuotaContext quotaContext;
+        try
+        {
+            quotaContext = await GetQuotaContextAsync(userId, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to resolve token quota for student chat user {UserId}", userId);
+            await writeEvent("error", new StudentChatErrorDto("Unable to verify your token allowance right now. Please try again."), cancellationToken);
+            return;
+        }
+
+        if (quotaContext.TokensRemainingThisMonth <= 0)
+        {
+            var quotaExceededMessage = quotaContext.HasPaidPlan
+                ? $"You have used all {quotaContext.MonthlyTokenLimit:N0} tokens in your current plan this month. Please upgrade your subscription plan to continue."
+                : $"You have used all {DefaultFreeStudentMonthlyTokenLimit:N0} free tokens. Please purchase a subscription plan to continue chatting.";
+
+            await writeEvent("error", new StudentChatErrorDto(quotaExceededMessage), cancellationToken);
+            return;
+        }
+
         Session? existingSession = null;
         List<Message> previousMessages = [];
         try
@@ -473,17 +496,13 @@ public sealed class StudentChatService : IStudentChatService
         {
             _dbContext.Messages.Add(assistantMessage);
 
-            var entitlement = await _dbContext.StudentActiveChatEntitlements
-                .AsNoTracking()
-                .FirstOrDefaultAsync(item => item.UserId == userId, cancellationToken);
-
             _dbContext.TokenUsageLogs.Add(new TokenUsageLog
             {
                 TokenUsageId = Guid.NewGuid(),
                 UserId = userId,
                 SessionId = session.SessionId,
                 MessageId = assistantMessage.MessageId,
-                PlanId = entitlement?.PlanId,
+                PlanId = quotaContext.PlanId,
                 FeatureName = "student_chat",
                 ProviderName = "openrouter",
                 ModelName = completion.ModelName,
@@ -739,6 +758,38 @@ public sealed class StudentChatService : IStudentChatService
         Guid SubjectId,
         string SubjectCode,
         string SubjectName);
+
+    private async Task<StudentChatQuotaContext> GetQuotaContextAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var entitlement = await _dbContext.StudentActiveChatEntitlements
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.UserId == userId, cancellationToken);
+
+        var usage = await _dbContext.StudentTokenUsageCurrentMonths
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.UserId == userId, cancellationToken);
+
+        var monthlyTokenLimit = entitlement?.MonthlyTokenLimit is > 0
+            ? entitlement.MonthlyTokenLimit.Value
+            : DefaultFreeStudentMonthlyTokenLimit;
+
+        var tokensUsedThisMonth = usage?.TotalTokensUsedThisMonth ?? 0;
+        return new StudentChatQuotaContext(
+            entitlement?.PlanId,
+            entitlement?.PlanCode,
+            monthlyTokenLimit,
+            tokensUsedThisMonth,
+            Math.Max(0m, monthlyTokenLimit - tokensUsedThisMonth),
+            entitlement?.PlanId is not null);
+    }
+
+    private sealed record StudentChatQuotaContext(
+        Guid? PlanId,
+        string? PlanCode,
+        long MonthlyTokenLimit,
+        decimal TokensUsedThisMonth,
+        decimal TokensRemainingThisMonth,
+        bool HasPaidPlan);
 
     private static DateTime CreateDatabaseTimestamp()
     {
