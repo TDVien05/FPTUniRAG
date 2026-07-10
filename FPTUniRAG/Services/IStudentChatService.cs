@@ -7,6 +7,23 @@ public interface IStudentChatService
         string studentName,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<StudentChatSessionSummaryDto>> GetSessionsAsync(
+        Guid userId,
+        Guid? subjectId,
+        CancellationToken cancellationToken = default);
+
+    Task<StudentChatSessionDetailDto?> GetSessionDetailAsync(
+        Guid userId,
+        Guid sessionId,
+        CancellationToken cancellationToken = default);
+
+    Task<StudentChatCitationDetailDto?> GetCitationDetailAsync(
+        Guid userId,
+        Guid sessionId,
+        Guid documentId,
+        int chunkIndex,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<StudentSubjectOptionDto>> SearchSubjectsAsync(
         string? query,
         CancellationToken cancellationToken = default);

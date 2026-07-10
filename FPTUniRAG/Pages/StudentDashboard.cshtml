@@ -5,6 +5,7 @@
     Layout = null;
     ViewData["Title"] = "Student UniRAG Dashboard - FPT UniRAG";
     var initialSubjectsJson = JsonSerializer.Serialize(Model.Dashboard.Subjects, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    var initialSessionsJson = JsonSerializer.Serialize(Model.Dashboard.RecentSessions, new JsonSerializerOptions(JsonSerializerDefaults.Web));
     var studentInitial = string.IsNullOrWhiteSpace(Model.Dashboard.StudentName)
         ? "S"
         : Model.Dashboard.StudentName.Trim()[0].ToString().ToUpperInvariant();
@@ -100,10 +101,16 @@
             <div id="subjectList" class="flex max-h-64 flex-col gap-2 overflow-y-auto pr-1 md:min-h-0 md:max-h-none md:flex-1"></div>
 
             <div class="mt-4 border-t border-outline-variant pt-4">
-                <div class="rounded-2xl bg-surface-container-lowest p-4">
-                    <p class="text-sm font-semibold text-on-surface">@Model.Dashboard.StudentName</p>
-                    <p class="mt-1 text-xs leading-5 text-secondary">Pick any subject. If that subject has no processed materials yet, chat will be blocked until documents are ready.</p>
+                <div class="mb-3 flex items-center justify-between px-2">
+                    <div>
+                        <h3 class="font-display text-lg font-semibold text-primary">Recent chats</h3>
+                        <p class="text-xs text-secondary">Chat history for the selected subject</p>
+                    </div>
                 </div>
+                <div id="sessionList" class="flex max-h-56 flex-col gap-2 overflow-y-auto pr-1"></div>
+            </div>
+
+            <div class="mt-4 border-t border-outline-variant pt-4">
                 <div class="mt-3 flex flex-col gap-1">
                     <a class="rounded-xl px-4 py-3 text-sm text-secondary transition hover:bg-surface-container-high" href="/ChangePassword">Change Password</a>
                     <a class="rounded-xl px-4 py-3 text-sm text-secondary transition hover:bg-surface-container-high" href="/Login?logout=true">Logout</a>
@@ -113,7 +120,7 @@
 
         <main class="relative flex min-h-0 min-w-0 flex-1 flex-col bg-background">
             <div class="flex-1 overflow-y-auto px-4 py-gutter lg:px-6">
-                <div class="flex w-full flex-col gap-gutter pb-36">
+                <div class="flex w-full flex-col gap-gutter pb-[240px]">
                     <section id="chatHero" class="rounded-3xl border border-outline-variant bg-surface-container-lowest p-8 shadow-sm">
                         <div class="flex flex-col items-center gap-4 text-center">
                             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -127,6 +134,7 @@
                     </section>
 
                     <section id="chatMessages" class="flex flex-col gap-6"></section>
+                    <div id="chatBottomSpacer" class="h-8 shrink-0"></div>
                 </div>
             </div>
 
@@ -162,10 +170,30 @@
         </aside>
     </div>
 
+    <div id="citationModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-950/45 p-4">
+        <div class="w-full max-w-3xl rounded-[28px] border border-outline-variant bg-surface-container-lowest shadow-2xl">
+            <div class="flex items-start justify-between gap-4 border-b border-outline-variant px-6 py-5">
+                <div class="min-w-0">
+                    <p id="citationModalEyebrow" class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Citation</p>
+                    <h3 id="citationModalTitle" class="mt-2 truncate font-display text-xl font-semibold text-on-surface">Chunk detail</h3>
+                    <p id="citationModalMeta" class="mt-1 text-sm text-secondary"></p>
+                </div>
+                <button id="citationModalClose" type="button" class="rounded-full p-2 text-on-surface-variant transition hover:bg-surface-container-high" aria-label="Close citation popup">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="max-h-[70vh] overflow-y-auto px-6 py-5">
+                <div id="citationModalBody" class="whitespace-pre-wrap text-sm leading-7 text-on-surface-variant"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const initialSubjects = @Html.Raw(initialSubjectsJson);
+        const initialSessions = @Html.Raw(initialSessionsJson);
         const state = {
             subjects: initialSubjects,
+            sessions: initialSessions,
             selectedSubjectId: null,
             selectedSubjectName: "",
             selectedSubjectCode: "",
@@ -173,16 +201,30 @@
             messages: [],
             latestSources: [],
             sending: false,
+            loadingSessions: false,
+            loadingSessionDetail: false,
+            loadingCitation: false,
             activeAssistantMessage: null,
             activeUserMessage: null,
-            connectionReady: false
+            connectionReady: false,
+            pendingAssistantDelta: "",
+            deltaRenderScheduled: false,
+            citationModalOpen: false
         };
 
         const elements = {
             subjectList: document.getElementById("subjectList"),
+            sessionList: document.getElementById("sessionList"),
             subjectSearchInput: document.getElementById("subjectSearchInput"),
             chatMessages: document.getElementById("chatMessages"),
+            chatBottomSpacer: document.getElementById("chatBottomSpacer"),
             sourcesPanel: document.getElementById("sourcesPanel"),
+            citationModal: document.getElementById("citationModal"),
+            citationModalClose: document.getElementById("citationModalClose"),
+            citationModalEyebrow: document.getElementById("citationModalEyebrow"),
+            citationModalTitle: document.getElementById("citationModalTitle"),
+            citationModalMeta: document.getElementById("citationModalMeta"),
+            citationModalBody: document.getElementById("citationModalBody"),
             heroTitle: document.getElementById("heroTitle"),
             heroDescription: document.getElementById("heroDescription"),
             messageInput: document.getElementById("messageInput"),
@@ -208,6 +250,10 @@
                 .replaceAll("\n", "<br />");
         }
 
+        function escapeAttribute(value) {
+            return escapeHtml(value).replaceAll("`", "&#96;");
+        }
+
         function setComposerError(message) {
             if (!message) {
                 elements.composerError.textContent = "";
@@ -221,8 +267,117 @@
 
         function scrollChatToBottom() {
             requestAnimationFrame(() => {
-                elements.chatMessages.lastElementChild?.scrollIntoView({ behavior: "smooth", block: "end" });
+                elements.chatBottomSpacer?.scrollIntoView({ behavior: "smooth", block: "end" });
             });
+        }
+
+        function openCitationModalShell() {
+            state.citationModalOpen = true;
+            elements.citationModal.classList.remove("hidden");
+            elements.citationModal.classList.add("flex");
+        }
+
+        function closeCitationModal() {
+            state.citationModalOpen = false;
+            state.loadingCitation = false;
+            elements.citationModal.classList.add("hidden");
+            elements.citationModal.classList.remove("flex");
+        }
+
+        function renderCitationModalLoading(citation) {
+            elements.citationModalEyebrow.textContent = citation.subjectCode || "Citation";
+            elements.citationModalTitle.textContent = citation.documentTitle || "Chunk detail";
+            elements.citationModalMeta.textContent = `${citation.chapterTitle || ""} · Chunk ${citation.chunkIndex}`;
+            elements.citationModalBody.textContent = "Loading cited chunk...";
+            openCitationModalShell();
+        }
+
+        function renderCitationModal(citationDetail) {
+            elements.citationModalEyebrow.textContent = citationDetail.subjectCode || "Citation";
+            elements.citationModalTitle.textContent = citationDetail.documentTitle || "Chunk detail";
+            elements.citationModalMeta.textContent = `${citationDetail.chapterTitle || ""} · Chunk ${citationDetail.chunkIndex}`;
+            elements.citationModalBody.textContent = citationDetail.chunkContent || "";
+            openCitationModalShell();
+        }
+
+        function flushPendingAssistantDelta() {
+            const assistantPlaceholder = state.activeAssistantMessage;
+            if (!assistantPlaceholder || !state.pendingAssistantDelta) {
+                state.pendingAssistantDelta = "";
+                state.deltaRenderScheduled = false;
+                return;
+            }
+
+            assistantPlaceholder.messageContent += state.pendingAssistantDelta;
+            assistantPlaceholder.isStreaming = true;
+            state.pendingAssistantDelta = "";
+            state.deltaRenderScheduled = false;
+            renderChat();
+            scrollChatToBottom();
+        }
+
+        function scheduleAssistantDeltaRender() {
+            if (state.deltaRenderScheduled) {
+                return;
+            }
+
+            state.deltaRenderScheduled = true;
+            requestAnimationFrame(() => {
+                flushPendingAssistantDelta();
+            });
+        }
+
+        function formatSessionTime(value) {
+            if (!value) {
+                return "";
+            }
+
+            const parsed = new Date(value);
+            if (Number.isNaN(parsed.getTime())) {
+                return "";
+            }
+
+            return parsed.toLocaleString([], {
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+        }
+
+        function updateLatestSourcesFromMessages(messages) {
+            const assistantMessages = messages.filter(message =>
+                message.senderRole === "assistant"
+                && Array.isArray(message.citations)
+                && message.citations.length);
+            const latestAssistantMessage = assistantMessages.at(-1);
+            state.latestSources = latestAssistantMessage?.citations || [];
+        }
+
+        function upsertSessionSummary(sessionId, previewText, activityAt) {
+            if (!sessionId || !state.selectedSubjectId) {
+                return;
+            }
+
+            const nextSummary = {
+                sessionId,
+                subjectId: state.selectedSubjectId,
+                subjectCode: state.selectedSubjectCode,
+                subjectName: state.selectedSubjectName,
+                startedAt: activityAt || new Date().toISOString(),
+                lastMessageAt: activityAt || new Date().toISOString(),
+                previewText: (previewText || "Untitled chat").trim()
+            };
+
+            const existingIndex = state.sessions.findIndex(session => session.sessionId === sessionId);
+            if (existingIndex >= 0) {
+                const existing = state.sessions[existingIndex];
+                nextSummary.startedAt = existing.startedAt || nextSummary.startedAt;
+                state.sessions.splice(existingIndex, 1);
+            }
+
+            state.sessions.unshift(nextSummary);
+            renderSessions();
         }
 
         function renderSubjects() {
@@ -261,15 +416,17 @@
             }).join("");
 
             document.querySelectorAll(".subject-option").forEach(button => {
-                button.addEventListener("click", () => {
+                button.addEventListener("click", async () => {
                     const subjectId = button.getAttribute("data-subject-id");
                     const subjectCode = button.getAttribute("data-subject-code") || "";
                     const subjectName = button.getAttribute("data-subject-name") || "";
+                    const subjectChanged = state.selectedSubjectId !== subjectId;
 
-                    if (state.selectedSubjectId !== subjectId) {
+                    if (subjectChanged) {
                         state.messages = [];
                         state.latestSources = [];
                         state.sessionId = null;
+                        state.sessions = [];
                     }
 
                     state.selectedSubjectId = subjectId;
@@ -277,8 +434,64 @@
                     state.selectedSubjectName = subjectName;
                     setComposerError("");
                     renderSubjects();
+                    renderSessions();
                     renderChat();
                     renderSources();
+
+                    if (subjectChanged) {
+                        await refreshSessions(subjectId);
+                    }
+                });
+            });
+        }
+
+        function renderSessions() {
+            if (!state.selectedSubjectId) {
+                elements.sessionList.innerHTML = `
+                    <div class="rounded-2xl border border-dashed border-outline-variant bg-surface-container-lowest p-4 text-sm text-secondary">
+                        Choose a subject to view its saved chats.
+                    </div>`;
+                return;
+            }
+
+            if (state.loadingSessions) {
+                elements.sessionList.innerHTML = `
+                    <div class="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 text-sm text-secondary">
+                        Loading chat history...
+                    </div>`;
+                return;
+            }
+
+            if (!state.sessions.length) {
+                elements.sessionList.innerHTML = `
+                    <div class="rounded-2xl border border-dashed border-outline-variant bg-surface-container-lowest p-4 text-sm text-secondary">
+                        No saved chats for this subject yet.
+                    </div>`;
+                return;
+            }
+
+            elements.sessionList.innerHTML = state.sessions.map(session => {
+                const selected = state.sessionId === session.sessionId;
+                return `
+                    <button
+                        type="button"
+                        data-session-id="${session.sessionId}"
+                        class="session-option w-full rounded-2xl border p-3 text-left transition ${selected ? "border-primary bg-surface-container-high shadow-sm" : "border-outline-variant bg-surface-container-lowest hover:border-primary/40 hover:bg-surface-container-high"}">
+                        <div class="flex items-start justify-between gap-3">
+                            <p class="line-clamp-2 text-sm font-semibold text-on-surface">${escapeHtml(session.previewText || "Untitled chat")}</p>
+                            <span class="shrink-0 text-[11px] text-secondary">${escapeHtml(formatSessionTime(session.lastMessageAt || session.startedAt))}</span>
+                        </div>
+                    </button>`;
+            }).join("");
+
+            document.querySelectorAll(".session-option").forEach(button => {
+                button.addEventListener("click", async () => {
+                    const sessionId = button.getAttribute("data-session-id");
+                    if (!sessionId) {
+                        return;
+                    }
+
+                    await openSession(sessionId);
                 });
             });
         }
@@ -304,6 +517,14 @@
                 ? `Ask about ${selectedLabel}...`
                 : "Choose a subject, then ask a question...";
 
+            if (state.loadingSessionDetail) {
+                elements.chatMessages.innerHTML = `
+                    <div class="rounded-3xl border border-outline-variant bg-surface-container-lowest p-6 text-sm text-secondary shadow-sm">
+                        Loading saved messages...
+                    </div>`;
+                return;
+            }
+
             if (!state.messages.length) {
                 elements.chatMessages.innerHTML = "";
                 return;
@@ -320,9 +541,17 @@
                 }
 
                 const citationTags = (message.citations || []).map(citation => `
-                    <span class="rounded-full bg-surface-container-high px-2 py-1 text-xs font-medium text-secondary">
+                    <button
+                        type="button"
+                        class="citation-trigger rounded-full bg-surface-container-high px-2 py-1 text-xs font-medium text-secondary transition hover:bg-surface-container-highest"
+                        data-document-id="${citation.documentId}"
+                        data-chunk-index="${citation.chunkIndex}"
+                        data-session-id="${state.sessionId || ""}"
+                        data-document-title="${escapeAttribute(citation.documentTitle)}"
+                        data-chapter-title="${escapeAttribute(citation.chapterTitle)}"
+                        data-subject-code="${escapeAttribute(citation.subjectCode)}">
                         ${escapeHtml(citation.documentTitle)}
-                    </span>`).join("");
+                    </button>`).join("");
 
                 const cardClasses = message.isError
                     ? "bg-red-50 border border-red-100"
@@ -339,6 +568,8 @@
                         </div>
                     </div>`;
             }).join("");
+
+            bindCitationTriggers(elements.chatMessages);
         }
 
         function renderSources() {
@@ -351,7 +582,15 @@
             }
 
             elements.sourcesPanel.innerHTML = state.latestSources.map(source => `
-                <div class="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm">
+                <button
+                    type="button"
+                    class="citation-trigger rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 text-left shadow-sm transition hover:border-primary/40 hover:bg-surface-container-high"
+                    data-document-id="${source.documentId}"
+                    data-chunk-index="${source.chunkIndex}"
+                    data-session-id="${state.sessionId || ""}"
+                    data-document-title="${escapeAttribute(source.documentTitle)}"
+                    data-chapter-title="${escapeAttribute(source.chapterTitle)}"
+                    data-subject-code="${escapeAttribute(source.subjectCode)}">
                     <div class="flex items-start justify-between gap-3">
                         <div class="rounded-xl bg-blue-50 p-2 text-primary">
                             <span class="material-symbols-outlined">${source.documentTitle.toLowerCase().endsWith(".pdf") ? "picture_as_pdf" : "description"}</span>
@@ -364,7 +603,69 @@
                         <h4 class="truncate text-sm font-semibold text-on-surface">${escapeHtml(source.documentTitle)}</h4>
                         <p class="mt-1 text-xs text-secondary">${escapeHtml(source.subjectCode)} · ${escapeHtml(source.chapterTitle)}</p>
                     </div>
-                </div>`).join("");
+                </button>`).join("");
+
+            bindCitationTriggers(elements.sourcesPanel);
+        }
+
+        function bindCitationTriggers(container) {
+            container.querySelectorAll(".citation-trigger").forEach(button => {
+                button.addEventListener("click", async () => {
+                    const sessionId = button.getAttribute("data-session-id");
+                    const documentId = button.getAttribute("data-document-id");
+                    const chunkIndexRaw = button.getAttribute("data-chunk-index");
+                    const chunkIndex = Number.parseInt(chunkIndexRaw || "", 10);
+
+                    if (!sessionId || !documentId || Number.isNaN(chunkIndex)) {
+                        return;
+                    }
+
+                    await openCitationDetail({
+                        sessionId,
+                        documentId,
+                        chunkIndex,
+                        documentTitle: button.getAttribute("data-document-title") || "Chunk detail",
+                        chapterTitle: button.getAttribute("data-chapter-title") || "",
+                        subjectCode: button.getAttribute("data-subject-code") || "Citation"
+                    });
+                });
+            });
+        }
+
+        async function openCitationDetail(citation) {
+            state.loadingCitation = true;
+            renderCitationModalLoading(citation);
+
+            try {
+                const url = new URL(`/api/student/chat/sessions/${encodeURIComponent(citation.sessionId)}/citations`, window.location.origin);
+                url.searchParams.set("documentId", citation.documentId);
+                url.searchParams.set("chunkIndex", String(citation.chunkIndex));
+
+                const response = await fetch(url, {
+                    headers: {
+                        "Accept": "application/json"
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error("Unable to load the cited chunk right now.");
+                }
+
+                const payload = await response.json();
+                if (!payload.citation) {
+                    throw new Error("The cited chunk is no longer available.");
+                }
+
+                renderCitationModal(payload.citation);
+            } catch (error) {
+                elements.citationModalEyebrow.textContent = citation.subjectCode || "Citation";
+                elements.citationModalTitle.textContent = citation.documentTitle || "Chunk detail";
+                elements.citationModalMeta.textContent = `${citation.chapterTitle || ""} · Chunk ${citation.chunkIndex}`;
+                elements.citationModalBody.textContent = error instanceof Error ? error.message : "Unable to load the cited chunk right now.";
+                openCitationModalShell();
+            } finally {
+                state.loadingCitation = false;
+            }
         }
 
         async function refreshSubjects(query) {
@@ -388,6 +689,84 @@
             renderSubjects();
         }
 
+        async function refreshSessions(subjectId = state.selectedSubjectId) {
+            if (!subjectId) {
+                state.sessions = [];
+                renderSessions();
+                return;
+            }
+
+            state.loadingSessions = true;
+            renderSessions();
+
+            try {
+                const url = new URL("/api/student/chat/sessions", window.location.origin);
+                url.searchParams.set("subjectId", subjectId);
+
+                const response = await fetch(url, {
+                    headers: {
+                        "Accept": "application/json"
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error("Unable to load chat history right now.");
+                }
+
+                const payload = await response.json();
+                state.sessions = Array.isArray(payload.sessions) ? payload.sessions : [];
+            } catch (error) {
+                state.sessions = [];
+                setComposerError(error instanceof Error ? error.message : "Unable to load chat history right now.");
+            } finally {
+                state.loadingSessions = false;
+                renderSessions();
+            }
+        }
+
+        async function openSession(sessionId) {
+            state.loadingSessionDetail = true;
+            setComposerError("");
+            renderSessions();
+            renderChat();
+
+            try {
+                const response = await fetch(`/api/student/chat/sessions/${encodeURIComponent(sessionId)}`, {
+                    headers: {
+                        "Accept": "application/json"
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error("Unable to load that chat session right now.");
+                }
+
+                const payload = await response.json();
+                const session = payload.session;
+                if (!session) {
+                    throw new Error("The selected chat session is no longer available.");
+                }
+
+                state.sessionId = session.sessionId;
+                state.selectedSubjectId = session.subjectId;
+                state.selectedSubjectCode = session.subjectCode || state.selectedSubjectCode;
+                state.selectedSubjectName = session.subjectName || state.selectedSubjectName;
+                state.messages = Array.isArray(session.messages) ? session.messages : [];
+                updateLatestSourcesFromMessages(state.messages);
+                renderSubjects();
+                renderSessions();
+                renderSources();
+            } catch (error) {
+                state.messages = [];
+                state.latestSources = [];
+                setComposerError(error instanceof Error ? error.message : "Unable to load that chat session right now.");
+                renderSources();
+            } finally {
+                state.loadingSessionDetail = false;
+                renderChat();
+            }
+        }
+
         function autoResizeTextarea() {
             elements.messageInput.style.height = "auto";
             elements.messageInput.style.height = `${Math.min(elements.messageInput.scrollHeight, 224)}px`;
@@ -403,30 +782,33 @@
 
             if (eventName === "session-started") {
                 state.sessionId = payload.sessionId;
+                upsertSessionSummary(payload.sessionId, state.activeUserMessage?.messageContent || "New chat", new Date().toISOString());
+                renderSessions();
                 return;
             }
 
             if (eventName === "user-message-ack" && optimisticUserMessage) {
                 optimisticUserMessage.messageId = payload.messageId;
                 optimisticUserMessage.createdAt = payload.createdAt;
+                upsertSessionSummary(state.sessionId, optimisticUserMessage.messageContent, payload.createdAt);
                 return;
             }
 
             if (eventName === "assistant-delta" && assistantPlaceholder) {
-                assistantPlaceholder.messageContent += payload.delta || "";
-                assistantPlaceholder.isStreaming = true;
-                renderChat();
-                scrollChatToBottom();
+                state.pendingAssistantDelta += payload.delta || "";
+                scheduleAssistantDeltaRender();
                 return;
             }
 
             if (eventName === "assistant-complete" && assistantPlaceholder) {
+                flushPendingAssistantDelta();
                 assistantPlaceholder.messageId = payload.messageId;
                 assistantPlaceholder.messageContent = payload.messageContent || assistantPlaceholder.messageContent;
                 assistantPlaceholder.createdAt = payload.createdAt;
                 assistantPlaceholder.citations = Array.isArray(payload.citations) ? payload.citations : [];
                 assistantPlaceholder.isStreaming = false;
                 state.latestSources = assistantPlaceholder.citations;
+                upsertSessionSummary(state.sessionId, assistantPlaceholder.messageContent, payload.createdAt);
                 state.activeAssistantMessage = null;
                 state.activeUserMessage = null;
                 renderChat();
@@ -435,6 +817,7 @@
             }
 
             if (eventName === "error") {
+                flushPendingAssistantDelta();
                 if (assistantPlaceholder) {
                     assistantPlaceholder.isStreaming = false;
                     assistantPlaceholder.isError = true;
@@ -450,6 +833,8 @@
 
                 state.activeAssistantMessage = null;
                 state.activeUserMessage = null;
+                state.pendingAssistantDelta = "";
+                state.deltaRenderScheduled = false;
             }
         }
 
@@ -491,6 +876,7 @@
                 message
             });
 
+            flushPendingAssistantDelta();
             if (assistantPlaceholder.isStreaming) {
                 assistantPlaceholder.isStreaming = false;
                 renderChat();
@@ -506,6 +892,17 @@
         });
 
         elements.messageInput.addEventListener("input", autoResizeTextarea);
+        elements.citationModalClose.addEventListener("click", closeCitationModal);
+        elements.citationModal.addEventListener("click", event => {
+            if (event.target === elements.citationModal) {
+                closeCitationModal();
+            }
+        });
+        document.addEventListener("keydown", event => {
+            if (event.key === "Escape" && state.citationModalOpen) {
+                closeCitationModal();
+            }
+        });
 
         elements.chatForm.addEventListener("submit", async event => {
             event.preventDefault();
@@ -557,6 +954,7 @@
             try {
                 await streamMessage(message, optimisticUserMessage, assistantPlaceholder);
             } catch (error) {
+                flushPendingAssistantDelta();
                 state.activeAssistantMessage = null;
                 state.activeUserMessage = null;
                 if (!assistantPlaceholder.messageContent.trim()) {
@@ -575,6 +973,7 @@
         });
 
         renderSubjects();
+        renderSessions();
         renderChat();
         renderSources();
         autoResizeTextarea();
