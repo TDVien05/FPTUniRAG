@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using FPTUniRAG.DataAccessLayer.Context;
 using FPTUniRAG.DataAccessLayer.Entities;
+using FPTUniRAG.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -13,11 +14,16 @@ public class SubscriptionPlansModel : PageModel
 {
     private readonly AppDbContext _dbContext;
     private readonly ILogger<SubscriptionPlansModel> _logger;
+    private readonly IStripePaymentService _stripePaymentService;
 
-    public SubscriptionPlansModel(AppDbContext dbContext, ILogger<SubscriptionPlansModel> logger)
+    public SubscriptionPlansModel(
+        AppDbContext dbContext,
+        ILogger<SubscriptionPlansModel> logger,
+        IStripePaymentService stripePaymentService)
     {
         _dbContext = dbContext;
         _logger = logger;
+        _stripePaymentService = stripePaymentService;
     }
 
     [BindProperty]
@@ -68,11 +74,15 @@ public class SubscriptionPlansModel : PageModel
             return Page();
         }
 
-        _dbContext.SubscriptionPlans.Add(new SubscriptionPlan
+        var planId = Guid.NewGuid();
+
+        var plan = new SubscriptionPlan
         {
+            PlanId = planId,
             PlanCode = normalizedCode,
             PlanName = CreateInput.PlanName.Trim(),
             Description = NormalizeOptionalText(CreateInput.Description),
+            StripePriceId = null,
             MonthlyPrice = CreateInput.MonthlyPrice,
             MonthlyTokenLimit = CreateInput.MonthlyTokenLimit,
             DailyTokenLimit = null,
@@ -83,8 +93,26 @@ public class SubscriptionPlansModel : PageModel
             HasFileUpload = CreateInput.HasFileUpload,
             HasHistoryExport = CreateInput.HasHistoryExport,
             IsActive = CreateInput.IsActive
-        });
+        };
 
+        var priceResult = await _stripePaymentService.EnsurePlanPriceAsync(
+            plan.PlanId,
+            plan.PlanCode,
+            plan.PlanName,
+            plan.Description,
+            plan.MonthlyPrice,
+            null,
+            cancellationToken);
+        if (!priceResult.Succeeded || string.IsNullOrWhiteSpace(priceResult.StripePriceId))
+        {
+            ModelState.AddModelError(string.Empty, priceResult.Message);
+            await LoadPlansAsync(cancellationToken);
+            return Page();
+        }
+
+        plan.StripePriceId = priceResult.StripePriceId;
+
+        _dbContext.SubscriptionPlans.Add(plan);
         await _dbContext.SaveChangesAsync(cancellationToken);
         SuccessMessage = $"Created plan {CreateInput.PlanName.Trim()}.";
         return RedirectToPage("/SubscriptionPlans");
@@ -157,6 +185,22 @@ public class SubscriptionPlansModel : PageModel
         plan.HasFileUpload = hasFileUpload;
         plan.HasHistoryExport = hasHistoryExport;
         plan.IsActive = isActive;
+
+        var priceResult = await _stripePaymentService.EnsurePlanPriceAsync(
+            plan.PlanId,
+            plan.PlanCode,
+            plan.PlanName,
+            plan.Description,
+            plan.MonthlyPrice,
+            plan.StripePriceId,
+            cancellationToken);
+        if (!priceResult.Succeeded || string.IsNullOrWhiteSpace(priceResult.StripePriceId))
+        {
+            ErrorMessage = priceResult.Message;
+            return RedirectToPage("/SubscriptionPlans");
+        }
+
+        plan.StripePriceId = priceResult.StripePriceId;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         SuccessMessage = $"Updated plan {plan.PlanName}.";

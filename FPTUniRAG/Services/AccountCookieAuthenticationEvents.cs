@@ -9,6 +9,8 @@ namespace FPTUniRAG.Services;
 
 public sealed class AccountCookieAuthenticationEvents : CookieAuthenticationEvents
 {
+    private static readonly PathString ApiPathPrefix = new("/api");
+    private static readonly PathString HubPathPrefix = new("/hubs");
     private readonly AppDbContext _dbContext;
     private readonly ILogger<AccountCookieAuthenticationEvents> _logger;
 
@@ -40,6 +42,36 @@ public sealed class AccountCookieAuthenticationEvents : CookieAuthenticationEven
             _logger.LogWarning(exception, "Failed to validate auth cookie for a protected request.");
             await RejectAsync(context);
         }
+    }
+
+    public override Task RedirectToLogin(RedirectContext<CookieAuthenticationOptions> context)
+    {
+        if (IsApiRequest(context.Request.Path))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        }
+
+        if (context.HttpContext.User.Identity?.IsAuthenticated == true)
+        {
+            context.Response.Redirect(AccountNavigation.GetLandingPagePath(context.HttpContext.User));
+            return Task.CompletedTask;
+        }
+
+        context.Response.Redirect(AccountNavigation.LoginPath);
+        return Task.CompletedTask;
+    }
+
+    public override Task RedirectToAccessDenied(RedirectContext<CookieAuthenticationOptions> context)
+    {
+        if (IsApiRequest(context.Request.Path))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Task.CompletedTask;
+        }
+
+        context.Response.Redirect(AccountNavigation.GetLandingPagePath(context.HttpContext.User));
+        return Task.CompletedTask;
     }
 
     private async Task<CookieAccountState?> FindByEmailAsync(string? email, CancellationToken cancellationToken)
@@ -86,6 +118,12 @@ public sealed class AccountCookieAuthenticationEvents : CookieAuthenticationEven
     {
         context.RejectPrincipal();
         await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    }
+
+    private static bool IsApiRequest(PathString path)
+    {
+        return path.StartsWithSegments(ApiPathPrefix, StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments(HubPathPrefix, StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed record CookieAccountState(
