@@ -455,6 +455,10 @@
                 {
                     <p class="plans-summary-copy">Current access expires on @Model.CurrentPlan.ExpiresAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm").</p>
                 }
+                @if (Model.HasActiveSubscription && Model.CurrentPlan is not null)
+                {
+                    <p class="plans-summary-copy">Paid plan: @Model.CurrentPlan.MonthlyPrice.ToString("N0") VND/month. Started on @Model.CurrentPlan.StartedAt?.ToLocalTime().ToString("dd/MM/yyyy").</p>
+                }
             </aside>
         </section>
 
@@ -511,7 +515,15 @@
                             }
                             else
                             {
-                                @if (plan.IsPurchasable)
+                                @if (Model.HasActiveSubscription)
+                                {
+                                    <button class="plans-action-button" type="button" disabled>
+                                        <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+                                        Active plan already registered
+                                    </button>
+                                    <div class="plans-action-note">You cannot purchase another plan while your current subscription is active.</div>
+                                }
+                                else if (plan.IsPurchasable)
                                 {
                                     <form method="post" asp-page-handler="Purchase">
                                         <input type="hidden" name="planCode" value="@plan.PlanCode" />

@@ -8,7 +8,7 @@ public sealed class StripeOptions
 
     public string Currency { get; set; } = "vnd";
 
-    public string PublicBaseUrl { get; set; } = "https://localhost:5001";
+    public string PublicBaseUrl { get; set; } = "https://localhost:7268";
 
     public string SuccessPath { get; set; } = "/payments/stripe/return";
 

@@ -25,6 +25,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddDataProtection()
     .SetApplicationName("FPTUniRAG")
     .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyDirectory));
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
 builder.Services.Configure<RagIngestionOptions>(builder.Configuration.GetSection("RagIngestion"));

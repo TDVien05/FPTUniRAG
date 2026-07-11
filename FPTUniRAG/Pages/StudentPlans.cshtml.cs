@@ -38,6 +38,8 @@ public class StudentPlansModel : PageModel
 
     public StudentCurrentPlanViewModel? CurrentPlan { get; private set; }
 
+    public bool HasActiveSubscription { get; private set; }
+
     public decimal TokensUsedThisMonth { get; private set; }
 
     public decimal? TokensRemainingThisMonth =>
@@ -61,6 +63,20 @@ public class StudentPlansModel : PageModel
         }
 
         var normalizedPlanCode = planCode.Trim().ToLowerInvariant();
+        var currentTime = CreateDatabaseTimestamp();
+
+        var hasActiveSubscription = await _dbContext.StudentSubscriptions
+            .AsNoTracking()
+            .AnyAsync(
+                subscription => subscription.UserId == userId
+                    && subscription.SubscriptionStatus == "active"
+                    && (subscription.ExpiresAt == null || subscription.ExpiresAt > currentTime),
+                cancellationToken);
+        if (hasActiveSubscription)
+        {
+            ErrorMessage = "You already have an active subscription. You cannot purchase another plan right now.";
+            return RedirectToPage();
+        }
 
         try
         {
@@ -84,6 +100,7 @@ public class StudentPlansModel : PageModel
 
     private async Task LoadPageStateAsync(Guid userId, CancellationToken cancellationToken)
     {
+        var currentTime = CreateDatabaseTimestamp();
         var activePlans = await _dbContext.SubscriptionPlans
             .AsNoTracking()
             .Where(plan => plan.IsActive)
@@ -102,9 +119,16 @@ public class StudentPlansModel : PageModel
                 plan.HasHistoryExport))
             .ToListAsync(cancellationToken);
 
-        var entitlement = await _dbContext.StudentActiveChatEntitlements
+        var activeSubscription = await _dbContext.StudentSubscriptions
             .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.UserId == userId, cancellationToken);
+            .Include(subscription => subscription.Plan)
+            .FirstOrDefaultAsync(
+                subscription => subscription.UserId == userId
+                    && subscription.SubscriptionStatus == "active"
+                    && (subscription.ExpiresAt == null || subscription.ExpiresAt > currentTime),
+                cancellationToken);
+
+        HasActiveSubscription = activeSubscription is not null;
 
         var usage = await _dbContext.StudentTokenUsageCurrentMonths
             .AsNoTracking()
@@ -127,32 +151,30 @@ public class StudentPlansModel : PageModel
                 plan.HasPrioritySupport,
                 plan.HasFileUpload,
                 plan.HasHistoryExport,
-                true,
+                !HasActiveSubscription,
                 recommendedPlanId == plan.PlanId,
-                string.Equals(entitlement?.PlanCode, plan.PlanCode, StringComparison.OrdinalIgnoreCase),
+                activeSubscription?.PlanId == plan.PlanId,
                 BuildHighlights(plan)))
             .ToArray();
 
-        if (!string.IsNullOrWhiteSpace(entitlement?.PlanCode))
+        if (activeSubscription is not null)
         {
             CurrentPlan = new StudentCurrentPlanViewModel(
-                entitlement.PlanCode!,
-                entitlement.PlanName ?? "Active plan",
-                entitlement.MonthlyTokenLimit,
-                entitlement.HasAdvancedModels ?? false,
-                entitlement.HasPrioritySupport ?? false,
-                entitlement.HasHistoryExport ?? false,
-                entitlement.ExpiresAt);
+                activeSubscription.Plan.PlanCode,
+                activeSubscription.Plan.PlanName,
+                activeSubscription.Plan.MonthlyPrice,
+                activeSubscription.Plan.MonthlyTokenLimit,
+                activeSubscription.StartedAt,
+                activeSubscription.ExpiresAt);
             return;
         }
 
         CurrentPlan = new StudentCurrentPlanViewModel(
             "free",
             "Free",
+            0,
             DefaultFreeStudentMonthlyTokenLimit,
-            false,
-            false,
-            false,
+            null,
             null);
     }
 
@@ -171,6 +193,11 @@ public class StudentPlansModel : PageModel
         highlights.Add(plan.HasFileUpload ? "File-based study context" : "Chat-only usage");
 
         return highlights.ToArray();
+    }
+
+    private static DateTime CreateDatabaseTimestamp()
+    {
+        return DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
     }
 
     private Guid GetRequiredUserId()
@@ -199,10 +226,9 @@ public class StudentPlansModel : PageModel
     public sealed record StudentCurrentPlanViewModel(
         string PlanCode,
         string PlanName,
+        decimal MonthlyPrice,
         long? MonthlyTokenLimit,
-        bool HasAdvancedModels,
-        bool HasPrioritySupport,
-        bool HasHistoryExport,
+        DateTime? StartedAt,
         DateTime? ExpiresAt);
 
     private sealed record StudentPlanSnapshot(
