@@ -1,4 +1,5 @@
 @page "/Analysis"
+@model FPTUniRAG.Pages.AnalysisModel
 @{
     Layout = null;
     ViewData["Title"] = "Admin Analytics & User Usage - FPT UniRAG";
@@ -203,31 +204,27 @@
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     <div class="lg:col-span-4 flex flex-col gap-6">
                         <div class="bg-white rounded-xl border border-outline-variant/30 p-6 shadow-sm">
-                            <p class="text-secondary font-label-md text-label-md uppercase tracking-wider mb-1">Active Users</p>
+                            <p class="text-secondary font-label-md text-label-md uppercase tracking-wider mb-1">Active Subscribers</p>
                             <div class="flex items-end gap-2 mb-2">
-                                <h3 class="text-headline-lg font-headline-lg text-on-surface">842</h3>
-                                <span class="text-green-600 font-label-sm text-label-sm flex items-center mb-1">
-                                    <span class="material-symbols-outlined text-[16px]">arrow_upward</span>
-                                    +5.2%
-                                </span>
+                                <h3 class="text-headline-lg font-headline-lg text-on-surface">@Model.ActiveSubscriberCount.ToString("N0")</h3>
                             </div>
-                            <p class="text-secondary font-body-sm text-body-sm">Unique users in selected period</p>
+                            <p class="text-secondary font-body-sm text-body-sm">Students with an active plan</p>
                         </div>
 
                         <div class="bg-white rounded-xl border border-outline-variant/30 p-6 shadow-sm">
                             <div class="flex justify-between items-start mb-4">
                                 <div>
-                                    <p class="text-secondary font-label-md text-label-md uppercase tracking-wider mb-1">Tokens Consumed</p>
-                                    <h3 class="text-headline-lg font-headline-lg text-on-surface">1.2M</h3>
+                                    <p class="text-secondary font-label-md text-label-md uppercase tracking-wider mb-1">Paid Purchases</p>
+                                    <h3 class="text-headline-lg font-headline-lg text-on-surface">@Model.PaidPurchaseCount.ToString("N0")</h3>
                                 </div>
                                 <span class="material-symbols-outlined text-primary">database</span>
                             </div>
                             <div class="flex justify-between text-label-sm mb-1">
-                                <span class="text-secondary">Used: 1.2M</span>
-                                <span class="text-secondary">Budget: 2.0M</span>
+                                <span class="text-secondary">Revenue</span>
+                                <span class="text-secondary">@Model.PaidRevenue.ToString("N0") VND</span>
                             </div>
                             <div class="w-full bg-surface-container h-2 rounded-full overflow-hidden">
-                                <div class="bg-primary h-full w-[60%]"></div>
+                                <div class="bg-primary h-full w-full"></div>
                             </div>
                         </div>
                     </div>
@@ -256,8 +253,8 @@
             <section class="mb-10 bg-white rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm">
                 <div class="p-6 border-b border-outline-variant/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h2 class="font-headline-md text-headline-md text-on-surface">User Consumption &amp; Subscriptions</h2>
-                        <p class="text-secondary font-body-sm text-body-sm">Manage student accounts and resource allocation</p>
+                        <h2 class="font-headline-md text-headline-md text-on-surface">Subscription Purchases by Plan</h2>
+                        <p class="text-secondary font-body-sm text-body-sm">Track active students, successful purchases, and paid revenue.</p>
                     </div>
                     <div class="flex items-center gap-3">
                         <div class="relative">
@@ -275,52 +272,39 @@
                     <table class="w-full text-left border-collapse">
                         <thead class="bg-surface-container-low/50 border-b border-outline-variant/10">
                             <tr class="text-secondary font-label-sm text-label-sm uppercase tracking-wider">
-                                <th class="px-6 py-4 font-medium">Student Account</th>
-                                <th class="px-6 py-4 font-medium">Tokens Used</th>
                                 <th class="px-6 py-4 font-medium">Subscription Plan</th>
-                                <th class="px-6 py-4 font-medium">Last Active</th>
+                                <th class="px-6 py-4 font-medium">Price</th>
+                                <th class="px-6 py-4 font-medium">Active Students</th>
+                                <th class="px-6 py-4 font-medium">Paid Purchases</th>
+                                <th class="px-6 py-4 font-medium">Revenue</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-outline-variant/10">
-                            <tr class="hover:bg-surface-container-low/30 transition-all">
-                                <td class="px-6 py-4">
-                                    <div class="flex flex-col">
-                                        <span class="font-medium text-on-surface">Nguyen Van A</span>
-                                        <span class="text-secondary text-xs">a.nguyen@fpt.edu.vn</span>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 text-on-surface">45,200</td>
-                                <td class="px-6 py-4"><span class="px-2 py-1 bg-primary/10 text-primary rounded text-[10px] font-bold uppercase">Enterprise</span></td>
-                                <td class="px-6 py-4 text-secondary text-sm">2 mins ago</td>
-                            </tr>
-                            <tr class="hover:bg-surface-container-low/30 transition-all">
-                                <td class="px-6 py-4">
-                                    <div class="flex flex-col">
-                                        <span class="font-medium text-on-surface">Tran Thi B</span>
-                                        <span class="text-secondary text-xs">b.tran@fpt.edu.vn</span>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 text-on-surface">12,840</td>
-                                <td class="px-6 py-4"><span class="px-2 py-1 bg-secondary-container text-on-secondary-container rounded text-[10px] font-bold uppercase">Pro</span></td>
-                                <td class="px-6 py-4 text-secondary text-sm">1 hour ago</td>
-                            </tr>
-                            <tr class="hover:bg-surface-container-low/30 transition-all">
-                                <td class="px-6 py-4">
-                                    <div class="flex flex-col">
-                                        <span class="font-medium text-on-surface">Le Van C</span>
-                                        <span class="text-secondary text-xs">c.le@fpt.edu.vn</span>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 text-on-surface">2,100</td>
-                                <td class="px-6 py-4"><span class="px-2 py-1 bg-surface-container text-secondary rounded text-[10px] font-bold uppercase">Basic</span></td>
-                                <td class="px-6 py-4 text-secondary text-sm">Yesterday</td>
-                            </tr>
+                            @if (Model.PlanAnalytics.Count == 0)
+                            {
+                                <tr>
+                                    <td class="px-6 py-8 text-secondary text-sm" colspan="5">No subscription plans have been configured.</td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var plan in Model.PlanAnalytics)
+                                {
+                                    <tr class="hover:bg-surface-container-low/30 transition-all">
+                                        <td class="px-6 py-4 font-medium text-on-surface">@plan.PlanName</td>
+                                        <td class="px-6 py-4 text-secondary">@plan.MonthlyPrice.ToString("N0") VND</td>
+                                        <td class="px-6 py-4 text-on-surface">@plan.ActiveStudentCount.ToString("N0")</td>
+                                        <td class="px-6 py-4 text-on-surface">@plan.PaidPurchaseCount.ToString("N0")</td>
+                                        <td class="px-6 py-4 text-on-surface">@plan.PaidRevenue.ToString("N0") VND</td>
+                                    </tr>
+                                }
+                            }
                         </tbody>
                     </table>
                 </div>
 
                 <div class="p-4 border-t border-outline-variant/10 flex justify-center">
-                    <button class="text-primary font-label-sm text-label-sm hover:underline" type="button">View all users</button>
+                    <span class="text-secondary font-label-sm text-label-sm">Data is calculated from successful Stripe Sandbox payments.</span>
                 </div>
             </section>
         </div>

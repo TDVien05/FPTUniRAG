@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using FPTUniRAG.DataAccessLayer.Context;
 using FPTUniRAG.DataAccessLayer.Entities;
 using FPTUniRAG.Options;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -15,17 +16,20 @@ public sealed class StripePaymentService : IStripePaymentService
 
     private readonly AppDbContext _dbContext;
     private readonly HttpClient _httpClient;
+    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly StripeOptions _options;
     private readonly ILogger<StripePaymentService> _logger;
 
     public StripePaymentService(
         AppDbContext dbContext,
         HttpClient httpClient,
+        IHttpContextAccessor httpContextAccessor,
         IOptions<StripeOptions> options,
         ILogger<StripePaymentService> logger)
     {
         _dbContext = dbContext;
         _httpClient = httpClient;
+        _httpContextAccessor = httpContextAccessor;
         _options = options.Value;
         _logger = logger;
     }
@@ -39,7 +43,10 @@ public sealed class StripePaymentService : IStripePaymentService
         string? existingStripePriceId,
         CancellationToken cancellationToken = default)
     {
-        ValidateOptions();
+        if (!HasConfiguredSecretKey())
+        {
+            return StripePlanPriceProvisionResult.Failure(BuildMissingSecretKeyMessage());
+        }
 
         if (monthlyPrice < 0)
         {
@@ -62,6 +69,17 @@ public sealed class StripePaymentService : IStripePaymentService
         if (string.IsNullOrWhiteSpace(productId))
         {
             return StripePlanPriceProvisionResult.Failure("Unable to create a Stripe product for this plan.");
+        }
+
+        var existingPrice = await TryGetPriceAsync(existingStripePriceId, cancellationToken);
+        if (existingPrice is not null &&
+            IsValidStripePriceId(existingPrice.Id) &&
+            string.Equals(existingPrice.ProductId, productId, StringComparison.OrdinalIgnoreCase) &&
+            existingPrice.UnitAmount == unitAmount &&
+            string.Equals(existingPrice.Currency, _options.Currency.Trim(), StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(existingPrice.RecurringInterval, "month", StringComparison.OrdinalIgnoreCase))
+        {
+            return StripePlanPriceProvisionResult.Success(existingPrice.Id!);
         }
 
         var priceParameters = new List<KeyValuePair<string, string>>
@@ -89,7 +107,7 @@ public sealed class StripePaymentService : IStripePaymentService
             return StripePlanPriceProvisionResult.Failure("Stripe did not return a valid recurring price ID for this plan.");
         }
 
-        return StripePlanPriceProvisionResult.Success(price.Id);
+        return StripePlanPriceProvisionResult.Success(price.Id!);
     }
 
     public async Task<StripeCreateCheckoutResult> CreateSubscriptionCheckoutAsync(
@@ -301,30 +319,40 @@ public sealed class StripePaymentService : IStripePaymentService
 
         await using var dbTransaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
 
-        var activeSubscriptions = await _dbContext.StudentSubscriptions
+        var now = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+        var currentSubscription = await _dbContext.StudentSubscriptions
             .Where(subscription => subscription.UserId == transaction.UserId && subscription.SubscriptionStatus == "active")
-            .ToListAsync(cancellationToken);
+            .OrderByDescending(subscription => subscription.PurchasedAt)
+            .FirstOrDefaultAsync(cancellationToken);
 
-        var now = DateTime.UtcNow;
-        foreach (var activeSubscription in activeSubscriptions)
+        if (currentSubscription is null)
         {
-            activeSubscription.SubscriptionStatus = "replaced";
-            activeSubscription.CanceledAt = now;
-            activeSubscription.ExpiresAt ??= now;
-            activeSubscription.Notes = $"Replaced by Stripe checkout {checkoutId}.";
+            _dbContext.StudentSubscriptions.Add(new StudentSubscription
+            {
+                UserId = transaction.UserId,
+                PlanId = transaction.PlanId,
+                SubscriptionStatus = "active",
+                StartedAt = now,
+                PurchasedAt = now,
+                ExpiresAt = now.AddMonths(1),
+                AutoRenew = false,
+                Notes = $"Activated from Stripe test checkout {checkoutId}."
+            });
         }
-
-        _dbContext.StudentSubscriptions.Add(new StudentSubscription
+        else
         {
-            UserId = transaction.UserId,
-            PlanId = transaction.PlanId,
-            SubscriptionStatus = "active",
-            StartedAt = now,
-            PurchasedAt = now,
-            ExpiresAt = now.AddMonths(1),
-            AutoRenew = false,
-            Notes = $"Activated from Stripe test checkout {checkoutId}."
-        });
+            // StudentSubscription is modeled as one row per student, so replace the
+            // current entitlement in place instead of inserting a second row.
+            currentSubscription.PlanId = transaction.PlanId;
+            currentSubscription.SubscriptionStatus = "active";
+            currentSubscription.StartedAt = now;
+            currentSubscription.PurchasedAt = now;
+            currentSubscription.ExpiresAt = now.AddMonths(1);
+            currentSubscription.CanceledAt = null;
+            currentSubscription.AutoRenew = false;
+            currentSubscription.GrantedBy = null;
+            currentSubscription.Notes = $"Activated from Stripe test checkout {checkoutId}.";
+        }
 
         transaction.PaymentStatus = "paid";
         transaction.ConfirmedAt = CreateDatabaseTimestamp();
@@ -335,15 +363,29 @@ public sealed class StripePaymentService : IStripePaymentService
 
     private void ValidateOptions()
     {
-        if (string.IsNullOrWhiteSpace(_options.SecretKey))
+        if (!HasConfiguredSecretKey())
         {
-            throw new InvalidOperationException("Stripe sandbox settings are incomplete. Configure the Stripe section in appsettings.json.");
+            throw new InvalidOperationException(BuildMissingSecretKeyMessage());
         }
+    }
+
+    private bool HasConfiguredSecretKey()
+    {
+        return !string.IsNullOrWhiteSpace(_options.SecretKey);
+    }
+
+    private static string BuildMissingSecretKeyMessage()
+    {
+        return "Stripe Sandbox is not configured. Set Stripe:SecretKey to a Stripe test secret key (sk_test_...) in appsettings.json, user secrets, or the Stripe__SecretKey environment variable.";
     }
 
     private string BuildAbsoluteUrl(string path, string? query = null)
     {
-        var baseUrl = $"{_options.PublicBaseUrl.TrimEnd('/')}/{path.TrimStart('/')}";
+        var request = _httpContextAccessor.HttpContext?.Request;
+        var origin = request is null
+            ? _options.PublicBaseUrl.TrimEnd('/')
+            : $"{request.Scheme}://{request.Host.Value}";
+        var baseUrl = $"{origin.TrimEnd('/')}/{path.TrimStart('/')}";
         return string.IsNullOrWhiteSpace(query) ? baseUrl : $"{baseUrl}?{query}";
     }
 
@@ -444,7 +486,8 @@ public sealed class StripePaymentService : IStripePaymentService
         string? existingStripePriceId,
         CancellationToken cancellationToken)
     {
-        var existingProductId = await TryGetProductIdFromPriceAsync(existingStripePriceId, cancellationToken);
+        var existingPrice = await TryGetPriceAsync(existingStripePriceId, cancellationToken);
+        var existingProductId = existingPrice?.ProductId;
         if (!string.IsNullOrWhiteSpace(existingProductId))
         {
             var updatedProduct = await UpsertProductAsync(existingProductId, planId, planCode, planName, description, cancellationToken);
@@ -457,7 +500,7 @@ public sealed class StripePaymentService : IStripePaymentService
         return await CreateProductAsync(planId, planCode, planName, description, cancellationToken);
     }
 
-    private async Task<string?> TryGetProductIdFromPriceAsync(string? stripePriceId, CancellationToken cancellationToken)
+    private async Task<StripePriceResponse?> TryGetPriceAsync(string? stripePriceId, CancellationToken cancellationToken)
     {
         if (!IsValidStripePriceId(stripePriceId))
         {
@@ -472,8 +515,7 @@ public sealed class StripePaymentService : IStripePaymentService
             return null;
         }
 
-        var price = JsonSerializer.Deserialize<StripePriceResponse>(responseText, SerializerOptions);
-        return price?.ProductId;
+        return JsonSerializer.Deserialize<StripePriceResponse>(responseText, SerializerOptions);
     }
 
     private async Task<string?> UpsertProductAsync(
@@ -645,7 +687,13 @@ public sealed class StripePaymentService : IStripePaymentService
         [property: JsonPropertyName("id")]
         string? Id,
         [property: JsonPropertyName("product")]
-        JsonElement Product)
+        JsonElement Product,
+        [property: JsonPropertyName("unit_amount")]
+        long? UnitAmount,
+        [property: JsonPropertyName("currency")]
+        string? Currency,
+        [property: JsonPropertyName("recurring")]
+        JsonElement Recurring)
     {
         public string? ProductId =>
             Product.ValueKind switch
@@ -654,6 +702,13 @@ public sealed class StripePaymentService : IStripePaymentService
                 JsonValueKind.Object when Product.TryGetProperty("id", out var idElement) && idElement.ValueKind == JsonValueKind.String => idElement.GetString(),
                 _ => null
             };
+
+        public string? RecurringInterval =>
+            Recurring.ValueKind == JsonValueKind.Object &&
+            Recurring.TryGetProperty("interval", out var intervalElement) &&
+            intervalElement.ValueKind == JsonValueKind.String
+                ? intervalElement.GetString()
+                : null;
     }
 
     private sealed record StripeProductResponse(
