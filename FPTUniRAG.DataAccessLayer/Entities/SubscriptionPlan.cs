@@ -13,6 +13,8 @@ public partial class SubscriptionPlan
 
     public string? Description { get; set; }
 
+    public string? StripePriceId { get; set; }
+
     public decimal MonthlyPrice { get; set; }
 
     public long? DailyTokenLimit { get; set; }
@@ -34,6 +36,10 @@ public partial class SubscriptionPlan
     public bool IsActive { get; set; }
 
     public DateTime? CreatedAt { get; set; }
+
+    public virtual ICollection<StripeCheckoutTransaction> StripeCheckoutTransactions { get; set; } = new List<StripeCheckoutTransaction>();
+
+    public virtual ICollection<MomoPaymentTransaction> MomoPaymentTransactions { get; set; } = new List<MomoPaymentTransaction>();
 
     public virtual ICollection<StudentSubscription> StudentSubscriptions { get; set; } = new List<StudentSubscription>();
 

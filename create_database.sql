@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS subscription_plans (
     plan_code character varying(50) NOT NULL,
     plan_name character varying(100) NOT NULL,
     description text,
+    polar_product_id character varying(100),
     monthly_price numeric(12,2) NOT NULL DEFAULT 0,
     daily_token_limit bigint,
     weekly_token_limit bigint,
@@ -50,6 +51,9 @@ CREATE TABLE IF NOT EXISTS subscription_plans (
     is_active boolean NOT NULL DEFAULT true,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE subscription_plans
+    ADD COLUMN IF NOT EXISTS polar_product_id character varying(100);
 
 CREATE UNIQUE INDEX IF NOT EXISTS subscription_plans_plan_code_key
     ON subscription_plans (plan_code);
@@ -76,6 +80,60 @@ CREATE INDEX IF NOT EXISTS idx_student_subscriptions_plan
 
 CREATE INDEX IF NOT EXISTS idx_student_subscriptions_status
     ON student_subscriptions (subscription_status);
+
+CREATE TABLE IF NOT EXISTS momo_payment_transactions (
+    momo_payment_transaction_id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id uuid NOT NULL,
+    plan_id uuid NOT NULL,
+    order_id character varying(100) NOT NULL,
+    request_id character varying(100) NOT NULL,
+    amount numeric(12, 2) NOT NULL,
+    payment_status character varying(50) NOT NULL,
+    pay_url text,
+    result_code bigint,
+    provider_message text,
+    provider_transaction_id bigint,
+    raw_request_json jsonb,
+    raw_response_json jsonb,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    confirmed_at timestamp without time zone
+);
+
+CREATE TABLE IF NOT EXISTS polar_checkout_transactions (
+    polar_checkout_transaction_id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id uuid NOT NULL,
+    plan_id uuid NOT NULL,
+    checkout_id character varying(100) NOT NULL,
+    checkout_url text NOT NULL,
+    payment_status character varying(50) NOT NULL,
+    amount numeric(12, 2) NOT NULL,
+    polar_product_id character varying(100),
+    raw_request_json jsonb,
+    raw_response_json jsonb,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    confirmed_at timestamp without time zone
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS polar_checkout_transactions_checkout_id_key
+    ON polar_checkout_transactions (checkout_id);
+
+CREATE INDEX IF NOT EXISTS idx_polar_checkout_transactions_user
+    ON polar_checkout_transactions (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_polar_checkout_transactions_plan
+    ON polar_checkout_transactions (plan_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS momo_payment_transactions_order_id_key
+    ON momo_payment_transactions (order_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS momo_payment_transactions_request_id_key
+    ON momo_payment_transactions (request_id);
+
+CREATE INDEX IF NOT EXISTS idx_momo_payment_transactions_user
+    ON momo_payment_transactions (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_momo_payment_transactions_plan
+    ON momo_payment_transactions (plan_id);
 
 CREATE UNIQUE INDEX IF NOT EXISTS student_subscriptions_one_active_plan_per_user
     ON student_subscriptions (user_id)
@@ -430,6 +488,34 @@ ALTER TABLE student_subscriptions
     FOREIGN KEY (plan_id)
     REFERENCES subscription_plans(plan_id);
 
+ALTER TABLE momo_payment_transactions
+    DROP CONSTRAINT IF EXISTS fk_momo_payment_transaction_user;
+ALTER TABLE momo_payment_transactions
+    ADD CONSTRAINT fk_momo_payment_transaction_user
+    FOREIGN KEY (user_id)
+    REFERENCES users(user_id);
+
+ALTER TABLE momo_payment_transactions
+    DROP CONSTRAINT IF EXISTS fk_momo_payment_transaction_plan;
+ALTER TABLE momo_payment_transactions
+    ADD CONSTRAINT fk_momo_payment_transaction_plan
+    FOREIGN KEY (plan_id)
+    REFERENCES subscription_plans(plan_id);
+
+ALTER TABLE polar_checkout_transactions
+    DROP CONSTRAINT IF EXISTS fk_polar_checkout_transaction_user;
+ALTER TABLE polar_checkout_transactions
+    ADD CONSTRAINT fk_polar_checkout_transaction_user
+    FOREIGN KEY (user_id)
+    REFERENCES users(user_id);
+
+ALTER TABLE polar_checkout_transactions
+    DROP CONSTRAINT IF EXISTS fk_polar_checkout_transaction_plan;
+ALTER TABLE polar_checkout_transactions
+    ADD CONSTRAINT fk_polar_checkout_transaction_plan
+    FOREIGN KEY (plan_id)
+    REFERENCES subscription_plans(plan_id);
+
 ALTER TABLE student_subscriptions
     DROP CONSTRAINT IF EXISTS fk_student_subscription_granted_by;
 ALTER TABLE student_subscriptions
@@ -571,8 +657,8 @@ SELECT
     u.full_name,
     u.email,
     sp.plan_id,
-    COALESCE(sp.plan_code, 'free') AS plan_code,
-    COALESCE(sp.plan_name, 'Free') AS plan_name,
+    COALESCE(sp.plan_code, 'free'::character varying(50)) AS plan_code,
+    COALESCE(sp.plan_name, 'Free'::character varying(100)) AS plan_name,
     sp.daily_token_limit,
     sp.weekly_token_limit,
     COALESCE(sp.monthly_token_limit, 2000) AS monthly_token_limit,
@@ -583,7 +669,7 @@ SELECT
     COALESCE(sp.has_history_export, false) AS has_history_export,
     ss.started_at,
     ss.expires_at,
-    COALESCE(ss.subscription_status, 'free') AS subscription_status
+    COALESCE(ss.subscription_status, 'free'::character varying(50)) AS subscription_status
 FROM users u
 LEFT JOIN student_subscriptions ss
     ON ss.user_id = u.user_id

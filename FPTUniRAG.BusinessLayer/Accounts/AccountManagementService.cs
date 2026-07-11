@@ -114,19 +114,30 @@ public sealed class AccountManagementService : IAccountManagementService
     public async Task<IReadOnlyList<ManagedAccountDto>> GetManagedAccountsAsync(
         CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Users
+        var users = await _dbContext.Users
             .AsNoTracking()
             .OrderBy(user => user.Role)
             .ThenBy(user => user.FullName)
-            .Select(user => new ManagedAccountDto(
+            .Select(user => new
+            {
                 user.UserId,
                 user.FullName,
                 user.Email,
+                user.Role,
+                user.IsBlocked
+            })
+            .ToListAsync(cancellationToken);
+
+        return users
+            .Select(user => new ManagedAccountDto(
+                user.UserId,
+                NormalizeDisplayName(user.FullName, user.Email),
+                user.Email?.Trim() ?? string.Empty,
                 NormalizeRole(user.Role),
                 user.IsBlocked,
-                user.StudentCode,
-                user.CreatedAt))
-            .ToListAsync(cancellationToken);
+                null,
+                null))
+            .ToList();
     }
 
     public async Task<AccountSummaryDto> GetAccountSummaryAsync(
@@ -136,17 +147,25 @@ public sealed class AccountManagementService : IAccountManagementService
             .AsNoTracking()
             .Select(user => new
             {
-                Role = NormalizeRole(user.Role),
+                user.Role,
                 user.IsBlocked
             })
             .ToListAsync(cancellationToken);
 
+        var normalizedUsers = users
+            .Select(user => new
+            {
+                Role = NormalizeRole(user.Role),
+                user.IsBlocked
+            })
+            .ToList();
+
         return new AccountSummaryDto(
-            users.Count,
-            users.Count(user => user.Role == "student"),
-            users.Count(user => user.Role == "teacher"),
-            users.Count(user => user.Role == "admin"),
-            users.Count(user => user.IsBlocked));
+            normalizedUsers.Count,
+            normalizedUsers.Count(user => user.Role == "student"),
+            normalizedUsers.Count(user => user.Role == "teacher"),
+            normalizedUsers.Count(user => user.Role == "admin"),
+            normalizedUsers.Count(user => user.IsBlocked));
     }
 
     public async Task<ImportStudentsResult> ImportStudentsAsync(
@@ -378,6 +397,21 @@ public sealed class AccountManagementService : IAccountManagementService
         return string.IsNullOrWhiteSpace(role)
             ? "student"
             : role.Trim().ToLowerInvariant();
+    }
+
+    private static string NormalizeDisplayName(string? fullName, string? email)
+    {
+        if (!string.IsNullOrWhiteSpace(fullName))
+        {
+            return fullName.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            return email.Trim();
+        }
+
+        return "Unknown User";
     }
 
     private static bool IsValidImportRow(ImportedStudentRow row, out string error)

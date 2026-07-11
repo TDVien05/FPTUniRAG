@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using FPTUniRAG.BusinessLayer.Accounts;
+using FPTUniRAG.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace FPTUniRAG.Pages;
 
+[ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
 public class LoginModel : PageModel
 {
     private readonly IAccountManagementService _accountManagementService;
@@ -22,18 +24,18 @@ public class LoginModel : PageModel
 
     public string? StatusMessage { get; private set; }
 
-    public async Task<IActionResult> OnGetAsync(bool logout = false)
+    public IActionResult OnGet()
     {
-        if (logout && User.Identity?.IsAuthenticated == true)
-        {
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            StatusMessage = "You have been signed out.";
-            return Page();
-        }
+        ApplyNoStoreHeaders();
 
         if (User.Identity?.IsAuthenticated == true)
         {
-            return RedirectToPage(GetLandingPage(User.FindFirstValue(ClaimTypes.Role)));
+            return RedirectToPage(AccountNavigation.GetLandingPagePath(User.FindFirstValue(ClaimTypes.Role)));
+        }
+
+        if (TempData.TryGetValue("LoginStatusMessage", out var loginStatusMessage))
+        {
+            StatusMessage = loginStatusMessage?.ToString();
         }
 
         return Page();
@@ -41,6 +43,8 @@ public class LoginModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+        ApplyNoStoreHeaders();
+
         if (!ModelState.IsValid)
         {
             return Page();
@@ -83,17 +87,14 @@ public class LoginModel : PageModel
             principal,
             authenticationProperties);
 
-        return RedirectToPage(GetLandingPage(user.Role));
+        return RedirectToPage(AccountNavigation.GetLandingPagePath(user.Role));
     }
 
-    private static string GetLandingPage(string? role)
+    private void ApplyNoStoreHeaders()
     {
-        return role?.Trim().ToLowerInvariant() switch
-        {
-            "admin" => "/AdminDashboard",
-            "teacher" => "/TeacherHome",
-            _ => "/StudentDashboard"
-        };
+        Response.Headers.CacheControl = "no-store, no-cache, max-age=0";
+        Response.Headers.Pragma = "no-cache";
+        Response.Headers.Expires = "0";
     }
 
     public class LoginInput

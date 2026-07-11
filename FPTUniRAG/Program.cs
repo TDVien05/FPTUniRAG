@@ -5,6 +5,7 @@ using FPTUniRAG.Endpoints;
 using FPTUniRAG.Hubs;
 using FPTUniRAG.Options;
 using FPTUniRAG.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +28,7 @@ builder.Services.AddDataProtection()
 
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
 builder.Services.Configure<RagIngestionOptions>(builder.Configuration.GetSection("RagIngestion"));
+builder.Services.Configure<StripeOptions>(builder.Configuration.GetSection("Stripe"));
 builder.Services.AddScoped<IAccountManagementService, AccountManagementService>();
 builder.Services.AddScoped<ISubjectManagementService, SubjectManagementService>();
 builder.Services.AddScoped<ITeacherHeaderSubjectNotifier, SignalRTeacherHeaderSubjectNotifier>();
@@ -49,6 +51,12 @@ builder.Services.AddHttpClient<IOpenRouterChatCompletionService, OpenRouterChatC
     client.BaseAddress = new Uri(options.OpenRouter.BaseUrl.TrimEnd('/') + "/");
     client.Timeout = TimeSpan.FromMinutes(2);
 });
+builder.Services.AddHttpClient<IStripePaymentService, StripePaymentService>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<StripeOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 builder.Services.AddScoped<IChunkEmbeddingStore, PostgresChunkEmbeddingStore>();
 builder.Services.AddScoped<IStudentChunkRetrievalService, StudentChunkRetrievalService>();
 builder.Services.AddScoped<IStudentChatService, StudentChatService>();
@@ -59,8 +67,8 @@ builder.Services.AddSignalR();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
-        options.LoginPath = "/Login";
-        options.AccessDeniedPath = "/Login";
+        options.LoginPath = AccountNavigation.LoginPath;
+        options.AccessDeniedPath = AccountNavigation.LoginPath;
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
         options.SlidingExpiration = true;
         options.EventsType = typeof(AccountCookieAuthenticationEvents);
@@ -104,6 +112,37 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseRouting();
+
+app.Use(async (context, next) =>
+{
+    if (!HttpMethods.IsGet(context.Request.Method))
+    {
+        await next();
+        return;
+    }
+
+    var endpoint = context.GetEndpoint();
+    var isProtectedPage = endpoint?.Metadata.GetOrderedMetadata<IAuthorizeData>()?.Count > 0;
+    var isAuthPage = context.Request.Path.Equals(AccountNavigation.LoginPath, StringComparison.OrdinalIgnoreCase)
+        || context.Request.Path.Equals(AccountNavigation.LogoutPath, StringComparison.OrdinalIgnoreCase);
+
+    if (!isProtectedPage && !isAuthPage)
+    {
+        await next();
+        return;
+    }
+
+    context.Response.OnStarting(static state =>
+    {
+        var response = (HttpResponse)state;
+        response.Headers.CacheControl = "no-store, no-cache, max-age=0";
+        response.Headers.Pragma = "no-cache";
+        response.Headers.Expires = "0";
+        return Task.CompletedTask;
+    }, context.Response);
+
+    await next();
+});
 
 app.UseAuthentication();
 app.UseAuthorization();

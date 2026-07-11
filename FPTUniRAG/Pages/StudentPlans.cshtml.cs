@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FPTUniRAG.DataAccessLayer.Context;
+using FPTUniRAG.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -11,11 +12,16 @@ public class StudentPlansModel : PageModel
     private const long DefaultFreeStudentMonthlyTokenLimit = 2000;
     private readonly AppDbContext _dbContext;
     private readonly ILogger<StudentPlansModel> _logger;
+    private readonly IStripePaymentService _stripePaymentService;
 
-    public StudentPlansModel(AppDbContext dbContext, ILogger<StudentPlansModel> logger)
+    public StudentPlansModel(
+        AppDbContext dbContext,
+        ILogger<StudentPlansModel> logger,
+        IStripePaymentService stripePaymentService)
     {
         _dbContext = dbContext;
         _logger = logger;
+        _stripePaymentService = stripePaymentService;
     }
 
     [TempData]
@@ -58,60 +64,19 @@ public class StudentPlansModel : PageModel
 
         try
         {
-            var selectedPlan = await _dbContext.SubscriptionPlans
-                .SingleOrDefaultAsync(
-                    plan => plan.IsActive && plan.PlanCode == normalizedPlanCode,
-                    cancellationToken);
-
-            if (selectedPlan is null)
+            var paymentResult = await _stripePaymentService.CreateSubscriptionCheckoutAsync(userId, normalizedPlanCode, StudentName, StudentEmail, cancellationToken);
+            if (!paymentResult.Succeeded || string.IsNullOrWhiteSpace(paymentResult.CheckoutUrl))
             {
-                ErrorMessage = "The selected plan is not available right now.";
+                ErrorMessage = paymentResult.Message;
                 return RedirectToPage();
             }
 
-            var now = DateTime.UtcNow;
-            await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-
-            var activeSubscriptions = await _dbContext.StudentSubscriptions
-                .Where(subscription => subscription.UserId == userId && subscription.SubscriptionStatus == "active")
-                .ToListAsync(cancellationToken);
-
-            if (activeSubscriptions.Any(subscription => subscription.PlanId == selectedPlan.PlanId))
-            {
-                SuccessMessage = $"Your {selectedPlan.PlanName} plan is already active.";
-                await transaction.RollbackAsync(cancellationToken);
-                return RedirectToPage();
-            }
-
-            foreach (var activeSubscription in activeSubscriptions)
-            {
-                activeSubscription.SubscriptionStatus = "replaced";
-                activeSubscription.CanceledAt = now;
-                activeSubscription.ExpiresAt ??= now;
-                activeSubscription.Notes = $"Replaced by {selectedPlan.PlanCode} via student purchase page.";
-            }
-
-            _dbContext.StudentSubscriptions.Add(new()
-            {
-                UserId = userId,
-                PlanId = selectedPlan.PlanId,
-                SubscriptionStatus = "active",
-                StartedAt = now,
-                PurchasedAt = now,
-                ExpiresAt = now.AddMonths(1),
-                AutoRenew = false,
-                Notes = $"Purchased by student via StudentPlans on {now:yyyy-MM-dd HH:mm:ss} UTC."
-            });
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-
-            SuccessMessage = $"Switched to {selectedPlan.PlanName}. Your token allocation is now {selectedPlan.MonthlyTokenLimit:N0} per month.";
+            return Redirect(paymentResult.CheckoutUrl);
         }
         catch (Exception exception)
         {
             _logger.LogError(exception, "Unable to purchase student plan {PlanCode} for user {UserId}.", planCode, userId);
-            ErrorMessage = "Unable to activate that plan right now. Please try again.";
+            ErrorMessage = "Unable to initialize Stripe checkout right now. Please try again.";
         }
 
         return RedirectToPage();
@@ -124,6 +89,17 @@ public class StudentPlansModel : PageModel
             .Where(plan => plan.IsActive)
             .OrderBy(plan => plan.MonthlyPrice)
             .ThenBy(plan => plan.PlanName)
+            .Select(plan => new StudentPlanSnapshot(
+                plan.PlanId,
+                plan.PlanCode,
+                plan.PlanName,
+                plan.Description,
+                plan.MonthlyPrice,
+                plan.MonthlyTokenLimit,
+                plan.HasAdvancedModels,
+                plan.HasPrioritySupport,
+                plan.HasFileUpload,
+                plan.HasHistoryExport))
             .ToListAsync(cancellationToken);
 
         var entitlement = await _dbContext.StudentActiveChatEntitlements
@@ -151,6 +127,7 @@ public class StudentPlansModel : PageModel
                 plan.HasPrioritySupport,
                 plan.HasFileUpload,
                 plan.HasHistoryExport,
+                true,
                 recommendedPlanId == plan.PlanId,
                 string.Equals(entitlement?.PlanCode, plan.PlanCode, StringComparison.OrdinalIgnoreCase),
                 BuildHighlights(plan)))
@@ -179,7 +156,7 @@ public class StudentPlansModel : PageModel
             null);
     }
 
-    private static string[] BuildHighlights(DataAccessLayer.Entities.SubscriptionPlan plan)
+    private static string[] BuildHighlights(StudentPlanSnapshot plan)
     {
         var highlights = new List<string>();
 
@@ -214,6 +191,7 @@ public class StudentPlansModel : PageModel
         bool HasPrioritySupport,
         bool HasFileUpload,
         bool HasHistoryExport,
+        bool IsPurchasable,
         bool IsRecommended,
         bool IsCurrent,
         IReadOnlyList<string> Highlights);
@@ -226,4 +204,16 @@ public class StudentPlansModel : PageModel
         bool HasPrioritySupport,
         bool HasHistoryExport,
         DateTime? ExpiresAt);
+
+    private sealed record StudentPlanSnapshot(
+        Guid PlanId,
+        string PlanCode,
+        string PlanName,
+        string? Description,
+        decimal MonthlyPrice,
+        long? MonthlyTokenLimit,
+        bool HasAdvancedModels,
+        bool HasPrioritySupport,
+        bool HasFileUpload,
+        bool HasHistoryExport);
 }
