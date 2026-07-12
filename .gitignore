@@ -45,6 +45,8 @@ FPTUniRAG/appsettings.json
 appsettings.Local.json
 appsettings.*.Local.json
 appsettings.*.local.json
+.keys/
+FPTUniRAG/.keys/
 
 ## Environment and secrets
 .env
