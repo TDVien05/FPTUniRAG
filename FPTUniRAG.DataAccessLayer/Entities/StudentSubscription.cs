@@ -21,6 +21,8 @@ public partial class StudentSubscription
 
     public DateTime? CanceledAt { get; set; }
 
+    public string? StripeSubscriptionId { get; set; }
+
     public bool AutoRenew { get; set; }
 
     public Guid? GrantedBy { get; set; }

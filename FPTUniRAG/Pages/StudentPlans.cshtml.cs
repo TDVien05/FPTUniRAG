@@ -65,14 +65,24 @@ public class StudentPlansModel : PageModel
         var normalizedPlanCode = planCode.Trim().ToLowerInvariant();
         var currentTime = CreateDatabaseTimestamp();
 
-        var hasActiveSubscription = await _dbContext.StudentSubscriptions
+        var activeSubscription = await _dbContext.StudentSubscriptions
             .AsNoTracking()
-            .AnyAsync(
+            .Include(subscription => subscription.Plan)
+            .FirstOrDefaultAsync(
                 subscription => subscription.UserId == userId
                     && subscription.SubscriptionStatus == "active"
                     && (subscription.ExpiresAt == null || subscription.ExpiresAt > currentTime),
                 cancellationToken);
-        if (hasActiveSubscription)
+
+        var usage = await _dbContext.StudentTokenUsageCurrentMonths
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.UserId == userId, cancellationToken);
+        var tokensRemaining = activeSubscription?.Plan.MonthlyTokenLimit is long monthlyLimit && monthlyLimit > 0
+            ? Math.Max(0m, monthlyLimit - (usage?.TotalTokensUsedThisMonth ?? 0))
+            : (decimal?)null;
+        var canReplaceActiveSubscription = tokensRemaining is decimal remaining && remaining <= 0;
+
+        if (activeSubscription is not null && !canReplaceActiveSubscription)
         {
             ErrorMessage = "You already have an active subscription. You cannot purchase another plan right now.";
             return RedirectToPage();
@@ -135,6 +145,9 @@ public class StudentPlansModel : PageModel
             .FirstOrDefaultAsync(item => item.UserId == userId, cancellationToken);
 
         TokensUsedThisMonth = usage?.TotalTokensUsedThisMonth ?? 0;
+        var canReplaceActiveSubscription = activeSubscription?.Plan.MonthlyTokenLimit is long monthlyLimit
+            && monthlyLimit > 0
+            && Math.Max(0m, monthlyLimit - TokensUsedThisMonth) <= 0;
 
         var recommendedPlanId = activePlans.Count >= 2
             ? activePlans[1].PlanId
@@ -151,7 +164,7 @@ public class StudentPlansModel : PageModel
                 plan.HasPrioritySupport,
                 plan.HasFileUpload,
                 plan.HasHistoryExport,
-                !HasActiveSubscription,
+                !HasActiveSubscription || canReplaceActiveSubscription,
                 recommendedPlanId == plan.PlanId,
                 activeSubscription?.PlanId == plan.PlanId,
                 BuildHighlights(plan)))

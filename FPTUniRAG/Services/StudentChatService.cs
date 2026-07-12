@@ -13,12 +13,12 @@ namespace FPTUniRAG.Services;
 public sealed class StudentChatService : IStudentChatService
 {
     private const long DefaultFreeStudentMonthlyTokenLimit = 2000;
-    private const int RetrievalLimit = 4;
+    private const int RetrievalLimit = 8;
     private const int ConversationHistoryLimit = 12;
     private const int StreamFlushIntervalMilliseconds = 40;
     private const int StreamFlushCharacterThreshold = 48;
-    private const int MaxContextCharacters = 6000;
-    private const int MaxChunkContextCharacters = 1600;
+    private const int MaxContextCharacters = 9000;
+    private const int MaxChunkContextCharacters = 1400;
     private static readonly JsonSerializerOptions CitationSerializerOptions = new(JsonSerializerDefaults.Web);
 
     private readonly AppDbContext _dbContext;
@@ -428,7 +428,7 @@ public sealed class StudentChatService : IStudentChatService
                 []),
             cancellationToken);
 
-        var completionMessages = BuildCompletionMessages(
+        var completionContext = BuildCompletionMessages(
             subject.SubjectCode,
             subject.SubjectName,
             previousMessages,
@@ -436,43 +436,15 @@ public sealed class StudentChatService : IStudentChatService
             normalizedMessage);
 
         OpenRouterChatResult completion;
-        var pendingDeltaBuffer = new StringBuilder();
-        var lastDeltaFlushAt = Environment.TickCount64;
         try
         {
             completion = await _chatCompletionService.StreamCompletionAsync(
-                completionMessages,
-                async (delta, token) =>
+                completionContext.Messages,
+                (_, _) =>
                 {
-                    if (string.IsNullOrEmpty(delta))
-                    {
-                        return;
-                    }
-
-                    pendingDeltaBuffer.Append(delta);
-
-                    var now = Environment.TickCount64;
-                    var shouldFlush =
-                        pendingDeltaBuffer.Length >= StreamFlushCharacterThreshold
-                        || now - lastDeltaFlushAt >= StreamFlushIntervalMilliseconds;
-
-                    if (!shouldFlush)
-                    {
-                        return;
-                    }
-
-                    var bufferedDelta = pendingDeltaBuffer.ToString();
-                    pendingDeltaBuffer.Clear();
-                    lastDeltaFlushAt = now;
-                    await writeEvent("assistant-delta", new StudentChatAssistantDeltaDto(bufferedDelta), token);
+                    return Task.CompletedTask;
                 },
                 cancellationToken);
-
-            if (pendingDeltaBuffer.Length > 0)
-            {
-                await writeEvent("assistant-delta", new StudentChatAssistantDeltaDto(pendingDeltaBuffer.ToString()), cancellationToken);
-                pendingDeltaBuffer.Clear();
-            }
         }
         catch (Exception exception)
         {
@@ -481,7 +453,7 @@ public sealed class StudentChatService : IStudentChatService
             return;
         }
 
-        var citations = BuildCitations(retrievedChunks);
+        var citations = BuildCitations(completionContext.ReferencedChunks);
         var assistantMessage = new Message
         {
             MessageId = Guid.NewGuid(),
@@ -528,6 +500,8 @@ public sealed class StudentChatService : IStudentChatService
             return;
         }
 
+        await StreamCompletedAssistantResponseAsync(completion.Content, writeEvent, cancellationToken);
+
         await writeEvent(
             "assistant-complete",
             new StudentChatAssistantCompleteDto(
@@ -536,6 +510,31 @@ public sealed class StudentChatService : IStudentChatService
                 assistantMessage.CreatedAt,
                 citations),
             cancellationToken);
+    }
+
+    private static async Task StreamCompletedAssistantResponseAsync(
+        string content,
+        Func<string, object, CancellationToken, Task> writeEvent,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(content))
+        {
+            return;
+        }
+
+        for (var offset = 0; offset < content.Length; offset += StreamFlushCharacterThreshold)
+        {
+            var length = Math.Min(StreamFlushCharacterThreshold, content.Length - offset);
+            await writeEvent(
+                "assistant-delta",
+                new StudentChatAssistantDeltaDto(content.Substring(offset, length)),
+                cancellationToken);
+
+            if (offset + length < content.Length)
+            {
+                await Task.Delay(StreamFlushIntervalMilliseconds, cancellationToken);
+            }
+        }
     }
 
     private async Task<HashSet<Guid>> GetUsableSubjectIdsAsync(CancellationToken cancellationToken)
@@ -573,7 +572,7 @@ public sealed class StudentChatService : IStudentChatService
         return subjectIds;
     }
 
-    private static IReadOnlyList<OpenRouterChatMessage> BuildCompletionMessages(
+    private static StudentChatPromptContext BuildCompletionMessages(
         string subjectCode,
         string subjectName,
         IReadOnlyList<Message> previousMessages,
@@ -603,11 +602,17 @@ public sealed class StudentChatService : IStudentChatService
             - Do not answer with only one brief paragraph unless the question is extremely simple.
             - Avoid vague filler. Each paragraph should add useful information.
             - Mention the strongest referenced documents naturally when relevant, but do not turn the answer into a bibliography.
+            - Each reference material is labeled [Source N].
+            - Add inline citations such as [1], [2], or [1][3] immediately after the factual statement they support.
+            - Cite important definitions, numbers, procedures, comparisons, and conclusions.
+            - Use at least 2 different sources when the provided materials contain at least 2 relevant sources.
+            - Never invent a citation number and never cite a source that does not support the statement.
             """;
 
         var contextBuilder = new StringBuilder();
         contextBuilder.AppendLine($"Subject: {subjectCode} - {subjectName}");
         contextBuilder.AppendLine("Reference materials:");
+        var referencedChunks = new List<StudentRetrievedChunk>();
 
         var remainingContextCharacters = MaxContextCharacters;
         foreach (var chunk in retrievedChunks)
@@ -623,7 +628,8 @@ public sealed class StudentChatService : IStudentChatService
                 continue;
             }
 
-            contextBuilder.AppendLine($"[Document: {chunk.DocumentTitle} | Chapter: {chunk.ChapterTitle} | Chunk: {chunk.ChunkIndex}]");
+            referencedChunks.Add(chunk);
+            contextBuilder.AppendLine($"[Source {referencedChunks.Count} | Document: {chunk.DocumentTitle} | Chapter: {chunk.ChapterTitle} | Chunk: {chunk.ChunkIndex}]");
             contextBuilder.AppendLine(excerpt);
             contextBuilder.AppendLine();
             remainingContextCharacters -= excerpt.Length;
@@ -645,7 +651,7 @@ public sealed class StudentChatService : IStudentChatService
             "user",
             $"{contextBuilder}\nStudent question: {userMessage}"));
 
-        return messages;
+        return new StudentChatPromptContext(messages, referencedChunks);
     }
 
     private static string NormalizeChatRole(string? senderRole)
@@ -658,28 +664,22 @@ public sealed class StudentChatService : IStudentChatService
     private static IReadOnlyList<StudentChatCitationDto> BuildCitations(IReadOnlyList<StudentRetrievedChunk> retrievedChunks)
     {
         return retrievedChunks
-            .GroupBy(chunk => new
-            {
+            .Select((chunk, index) => new StudentChatCitationDto(
                 chunk.DocumentId,
                 chunk.DocumentTitle,
                 chunk.SubjectCode,
                 chunk.SubjectName,
-                chunk.ChapterTitle
-            })
-            .Select(group => new StudentChatCitationDto(
-                group.Key.DocumentId,
-                group.Key.DocumentTitle,
-                group.Key.SubjectCode,
-                group.Key.SubjectName,
-                group.Key.ChapterTitle,
-                group.Min(item => item.ChunkIndex),
-                Math.Round(group.Max(item => item.SimilarityScore), 4),
-                group.OrderByDescending(item => item.SimilarityScore).First().ChunkId))
-            .OrderByDescending(item => item.SimilarityScore)
-            .ThenBy(item => item.DocumentTitle)
-            .Take(4)
+                chunk.ChapterTitle,
+                chunk.ChunkIndex,
+                Math.Round(chunk.SimilarityScore, 4),
+                chunk.ChunkId,
+                index + 1))
             .ToList();
     }
+
+    private sealed record StudentChatPromptContext(
+        IReadOnlyList<OpenRouterChatMessage> Messages,
+        IReadOnlyList<StudentRetrievedChunk> ReferencedChunks);
 
     private static IReadOnlyList<StudentChatCitationDto> DeserializeCitations(string? citationsJson)
     {

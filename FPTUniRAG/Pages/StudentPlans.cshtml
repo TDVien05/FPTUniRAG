@@ -515,7 +515,7 @@
                             }
                             else
                             {
-                                @if (Model.HasActiveSubscription)
+                                @if (Model.HasActiveSubscription && !(Model.TokensRemainingThisMonth is decimal remaining && remaining <= 0))
                                 {
                                     <button class="plans-action-button" type="button" disabled>
                                         <span class="material-symbols-outlined" aria-hidden="true">lock</span>
@@ -532,6 +532,10 @@
                                             Pay with Stripe
                                         </button>
                                     </form>
+                                    @if (Model.HasActiveSubscription)
+                                    {
+                                        <div class="plans-action-note">Your current plan has no tokens left. Purchasing this plan will replace it immediately.</div>
+                                    }
                                 }
                                 else
                                 {

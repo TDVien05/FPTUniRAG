@@ -77,6 +77,7 @@
         .assistant-markdown table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
         .assistant-markdown th, .assistant-markdown td { border: 1px solid #c1c6d6; padding: 0.5rem 0.75rem; text-align: left; white-space: nowrap; }
         .assistant-markdown th { background: #dee8ff; color: #111c2d; }
+        .assistant-citation-marker { color: #005bbf; font-size: 0.75em; font-weight: 700; vertical-align: super; }
     </style>
 </head>
 <body class="min-h-screen overflow-hidden bg-background font-body text-on-surface">
@@ -234,8 +235,6 @@
             activeAssistantMessage: null,
             activeUserMessage: null,
             connectionReady: false,
-            pendingAssistantDelta: "",
-            deltaRenderScheduled: false,
             citationModalOpen: false
         };
 
@@ -270,7 +269,7 @@
                 .replaceAll("'", "&#39;");
         }
 
-        function renderAssistantMarkdown(value) {
+        function renderAssistantMarkdown(value, citations = []) {
             const markdown = String(value ?? "");
             if (!markdown) {
                 return "";
@@ -281,7 +280,14 @@
             }
 
             try {
-                const renderedHtml = window.marked.parse(markdown, {
+                const citationNumbers = new Set(citations.map((citation, index) => citation.citationNumber || index + 1));
+                const markdownWithCitationButtons = markdown.replace(/\[(\d+)\]/g, (match, rawNumber) => {
+                    const citationNumber = Number.parseInt(rawNumber, 10);
+                    return citationNumbers.has(citationNumber)
+                        ? `<button type="button" class="assistant-citation-marker" data-citation-number="${citationNumber}">[${citationNumber}]</button>`
+                        : match;
+                });
+                const renderedHtml = window.marked.parse(markdownWithCitationButtons, {
                     breaks: true,
                     gfm: true
                 });
@@ -289,7 +295,9 @@
                 return window.DOMPurify.sanitize(renderedHtml, {
                     USE_PROFILES: { html: true },
                     FORBID_TAGS: ["style"],
-                    FORBID_ATTR: ["style"]
+                    FORBID_ATTR: ["style"],
+                    ADD_TAGS: ["button"],
+                    ADD_ATTR: ["type", "class", "data-citation-number"]
                 });
             } catch (_error) {
                 return escapeHtml(markdown).replaceAll("\n", "<br />");
@@ -350,31 +358,16 @@
             openCitationModalShell();
         }
 
-        function flushPendingAssistantDelta() {
+        function appendAssistantDelta(delta) {
             const assistantPlaceholder = state.activeAssistantMessage;
-            if (!assistantPlaceholder || !state.pendingAssistantDelta) {
-                state.pendingAssistantDelta = "";
-                state.deltaRenderScheduled = false;
+            if (!assistantPlaceholder || !delta) {
                 return;
             }
 
-            assistantPlaceholder.messageContent += state.pendingAssistantDelta;
+            assistantPlaceholder.messageContent += delta;
             assistantPlaceholder.isStreaming = true;
-            state.pendingAssistantDelta = "";
-            state.deltaRenderScheduled = false;
             renderChat();
             scrollChatToBottom();
-        }
-
-        function scheduleAssistantDeltaRender() {
-            if (state.deltaRenderScheduled) {
-                return;
-            }
-
-            state.deltaRenderScheduled = true;
-            requestAnimationFrame(() => {
-                flushPendingAssistantDelta();
-            });
         }
 
         function formatSessionTime(value) {
@@ -590,7 +583,7 @@
                         </div>`;
                 }
 
-                const citationTags = (message.citations || []).map(citation => `
+                const citationTags = (message.citations || []).map((citation, index) => `
                     <button
                         type="button"
                         class="citation-trigger rounded-full bg-surface-container-high px-2 py-1 text-xs font-medium text-secondary transition hover:bg-surface-container-highest"
@@ -600,7 +593,7 @@
                         data-document-title="${escapeAttribute(citation.documentTitle)}"
                         data-chapter-title="${escapeAttribute(citation.chapterTitle)}"
                         data-subject-code="${escapeAttribute(citation.subjectCode)}">
-                        ${escapeHtml(citation.documentTitle)}
+                        [${citation.citationNumber || index + 1}] ${escapeHtml(citation.documentTitle)}
                     </button>`).join("");
 
                 const cardClasses = message.isError
@@ -612,14 +605,15 @@
                         <div class="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
                             <span class="material-symbols-outlined text-[18px]">bolt</span>
                         </div>
-                        <div class="max-w-[82%] min-w-0 rounded-3xl px-6 py-5 shadow-sm ${cardClasses}">
-                            <div class="assistant-markdown break-words text-base leading-7 text-on-surface-variant">${renderAssistantMarkdown(message.messageContent || (message.isStreaming ? "Thinking..." : ""))}${message.isStreaming ? "<span class=\"ml-1 inline-block h-5 w-0.5 animate-pulse bg-primary align-middle\"></span>" : ""}</div>
+                        <div class="assistant-message max-w-[82%] min-w-0 rounded-3xl px-6 py-5 shadow-sm ${cardClasses}" data-message-key="${escapeAttribute(message.messageId || message.clientId || "")}">
+                            <div class="assistant-markdown break-words text-base leading-7 text-on-surface-variant">${renderAssistantMarkdown(message.messageContent || (message.isStreaming ? "Thinking..." : ""), message.citations || [])}${message.isStreaming ? "<span class=\"ml-1 inline-block h-5 w-0.5 animate-pulse bg-primary align-middle\"></span>" : ""}</div>
                             ${citationTags ? `<div class="mt-4 flex flex-wrap gap-2">${citationTags}</div>` : ""}
                         </div>
                     </div>`;
             }).join("");
 
             bindCitationTriggers(elements.chatMessages);
+            bindAssistantCitationTriggers(elements.chatMessages);
         }
 
         function renderSources() {
@@ -631,7 +625,7 @@
                 return;
             }
 
-            elements.sourcesPanel.innerHTML = state.latestSources.map(source => `
+            elements.sourcesPanel.innerHTML = state.latestSources.map((source, index) => `
                 <button
                     type="button"
                     class="citation-trigger rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 text-left shadow-sm transition hover:border-primary/40 hover:bg-surface-container-high"
@@ -650,7 +644,7 @@
                         </span>
                     </div>
                     <div class="mt-3">
-                        <h4 class="truncate text-sm font-semibold text-on-surface">${escapeHtml(source.documentTitle)}</h4>
+                        <h4 class="truncate text-sm font-semibold text-on-surface">[${source.citationNumber || index + 1}] ${escapeHtml(source.documentTitle)}</h4>
                         <p class="mt-1 text-xs text-secondary">${escapeHtml(source.subjectCode)} · ${escapeHtml(source.chapterTitle)}</p>
                     </div>
                 </button>`).join("");
@@ -677,6 +671,30 @@
                         documentTitle: button.getAttribute("data-document-title") || "Chunk detail",
                         chapterTitle: button.getAttribute("data-chapter-title") || "",
                         subjectCode: button.getAttribute("data-subject-code") || "Citation"
+                    });
+                });
+            });
+        }
+
+        function bindAssistantCitationTriggers(container) {
+            container.querySelectorAll(".assistant-citation-marker").forEach(button => {
+                button.addEventListener("click", async () => {
+                    const messageKey = button.closest(".assistant-message")?.getAttribute("data-message-key");
+                    const message = state.messages.find(item => String(item.messageId || item.clientId || "") === messageKey);
+                    const citations = message?.citations || [];
+                    const citationNumber = Number.parseInt(button.getAttribute("data-citation-number") || "", 10);
+                    const citation = citations.find((item, index) => (item.citationNumber || index + 1) === citationNumber);
+                    if (!citation) {
+                        return;
+                    }
+
+                    await openCitationDetail({
+                        sessionId: state.sessionId,
+                        documentId: citation.documentId,
+                        chunkIndex: citation.chunkIndex,
+                        documentTitle: citation.documentTitle,
+                        chapterTitle: citation.chapterTitle,
+                        subjectCode: citation.subjectCode
                     });
                 });
             });
@@ -845,13 +863,11 @@
             }
 
             if (eventName === "assistant-delta" && assistantPlaceholder) {
-                state.pendingAssistantDelta += payload.delta || "";
-                scheduleAssistantDeltaRender();
+                appendAssistantDelta(payload.delta || "");
                 return;
             }
 
             if (eventName === "assistant-complete" && assistantPlaceholder) {
-                flushPendingAssistantDelta();
                 assistantPlaceholder.messageId = payload.messageId;
                 assistantPlaceholder.messageContent = payload.messageContent || assistantPlaceholder.messageContent;
                 assistantPlaceholder.createdAt = payload.createdAt;
@@ -867,7 +883,6 @@
             }
 
             if (eventName === "error") {
-                flushPendingAssistantDelta();
                 if (assistantPlaceholder) {
                     assistantPlaceholder.isStreaming = false;
                     assistantPlaceholder.isError = true;
@@ -883,8 +898,6 @@
 
                 state.activeAssistantMessage = null;
                 state.activeUserMessage = null;
-                state.pendingAssistantDelta = "";
-                state.deltaRenderScheduled = false;
             }
         }
 
@@ -926,7 +939,6 @@
                 message
             });
 
-            flushPendingAssistantDelta();
             if (assistantPlaceholder.isStreaming) {
                 assistantPlaceholder.isStreaming = false;
                 renderChat();
@@ -1004,7 +1016,6 @@
             try {
                 await streamMessage(message, optimisticUserMessage, assistantPlaceholder);
             } catch (error) {
-                flushPendingAssistantDelta();
                 state.activeAssistantMessage = null;
                 state.activeUserMessage = null;
                 if (!assistantPlaceholder.messageContent.trim()) {

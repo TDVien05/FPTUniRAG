@@ -67,10 +67,14 @@ CREATE TABLE IF NOT EXISTS student_subscriptions (
     expires_at timestamp without time zone,
     purchased_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     canceled_at timestamp without time zone,
+    stripe_subscription_id character varying(100),
     auto_renew boolean NOT NULL DEFAULT false,
     granted_by uuid,
     notes text
 );
+
+ALTER TABLE student_subscriptions
+    ADD COLUMN IF NOT EXISTS stripe_subscription_id character varying(100);
 
 CREATE INDEX IF NOT EXISTS idx_student_subscriptions_user
     ON student_subscriptions (user_id);

@@ -508,6 +508,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.CanceledAt)
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("canceled_at");
+            entity.Property(e => e.StripeSubscriptionId)
+                .HasMaxLength(100)
+                .HasColumnName("stripe_subscription_id");
             entity.Property(e => e.ExpiresAt)
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("expires_at");
