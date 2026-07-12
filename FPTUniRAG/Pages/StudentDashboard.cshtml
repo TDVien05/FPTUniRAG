@@ -280,16 +280,24 @@
                 return escapeHtml(markdown).replaceAll("\n", "<br />");
             }
 
-            const renderedHtml = window.marked.parse(markdown, {
-                breaks: true,
-                gfm: true
-            });
+            try {
+                const renderedHtml = window.marked.parse(markdown, {
+                    breaks: true,
+                    gfm: true
+                });
 
-            return window.DOMPurify.sanitize(renderedHtml, {
-                USE_PROFILES: { html: true },
-                FORBID_TAGS: ["style"],
-                FORBID_ATTR: ["style"]
-            });
+                return window.DOMPurify.sanitize(renderedHtml, {
+                    USE_PROFILES: { html: true },
+                    FORBID_TAGS: ["style"],
+                    FORBID_ATTR: ["style"]
+                });
+            } catch (_error) {
+                return escapeHtml(markdown).replaceAll("\n", "<br />");
+            }
+        }
+
+        function isAssistantMessage(message) {
+            return String(message?.senderRole || "").toLowerCase() === "assistant";
         }
 
         function escapeAttribute(value) {
@@ -389,7 +397,7 @@
 
         function updateLatestSourcesFromMessages(messages) {
             const assistantMessages = messages.filter(message =>
-                message.senderRole === "assistant"
+                isAssistantMessage(message)
                 && Array.isArray(message.citations)
                 && message.citations.length);
             const latestAssistantMessage = assistantMessages.at(-1);
@@ -573,7 +581,7 @@
             }
 
             elements.chatMessages.innerHTML = state.messages.map(message => {
-                if (message.senderRole === "student") {
+                if (String(message.senderRole || "").toLowerCase() !== "assistant") {
                     return `
                         <div class="flex justify-end">
                             <div class="max-w-[72%] rounded-3xl border border-outline-variant bg-surface-container-lowest px-6 py-4 shadow-sm">
