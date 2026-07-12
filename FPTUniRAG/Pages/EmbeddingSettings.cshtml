@@ -1,0 +1,80 @@
+@page
+@model FPTUniRAG.Pages.EmbeddingSettingsModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Embedding Settings - FPT UniRAG";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="admin-dashboard-page accounts-page">
+    <main class="admin-shell" aria-label="Embedding settings">
+        <aside class="admin-sidebar" aria-label="Admin navigation">
+            <a class="admin-logo" href="/AdminDashboard" aria-label="FPT UniRAG dashboard">
+                <span class="admin-logo-mark"><span class="material-symbols-outlined">school</span></span>
+                <span><strong>FPT UniRAG</strong><small>Academic RAG</small></span>
+            </a>
+            <nav class="admin-nav">
+                <a class="admin-nav-item" href="/AdminDashboard"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
+                <a class="admin-nav-item" href="/Accounts"><span class="material-symbols-outlined">groups</span>Accounts</a>
+                <a class="admin-nav-item" href="/SubscriptionPlans"><span class="material-symbols-outlined">payments</span>Subscription Plans</a>
+                <a class="admin-nav-item active" href="/EmbeddingSettings" aria-current="page"><span class="material-symbols-outlined">tune</span>Embedding Settings</a>
+                <a class="admin-nav-item" href="/Analysis"><span class="material-symbols-outlined">analytics</span>Analytics</a>
+            </nav>
+            <section class="admin-sidebar-footer">
+                <a class="admin-sidebar-footer-link" href="/ChangePassword"><span class="material-symbols-outlined">lock</span><span>Change Password</span></a>
+                <a class="admin-sidebar-footer-link" href="/Logout"><span class="material-symbols-outlined">logout</span><span>Logout</span></a>
+            </section>
+        </aside>
+        <section class="accounts-main">
+            <div class="accounts-canvas">
+                <header class="accounts-header">
+                    <div>
+                        <p class="accounts-eyebrow">System configuration</p>
+                        <h1>Embedding Settings</h1>
+                        <p>Choose the OpenRouter embedding model used for new document uploads and retry jobs.</p>
+                    </div>
+                </header>
+
+                @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-success" role="status">@Model.SuccessMessage</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-error" role="alert">@Model.ErrorMessage</div>
+                }
+
+                <section class="accounts-card">
+                    <div class="accounts-card-header">
+                        <div>
+                            <h2>Active embedding model</h2>
+                            <p>Existing embeddings are not rebuilt automatically when this value changes.</p>
+                        </div>
+                    </div>
+                    <form method="post" class="accounts-form">
+                        <label for="SelectedModel">Embedding model</label>
+                        <select asp-for="SelectedModel" id="SelectedModel">
+                            @foreach (var option in Model.AvailableModels)
+                            {
+                                <option value="@option.Model">@option.Model (@option.Dimensions dimensions)</option>
+                            }
+                        </select>
+                        <p class="text-secondary">Current: <strong>@Model.Current?.Model</strong> · @Model.Current?.Dimensions dimensions</p>
+                        <p class="text-secondary">Only documents embedded with the active model are used for semantic retrieval.</p>
+                        <button class="admin-primary-button" type="submit">Save embedding model</button>
+                    </form>
+                </section>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

@@ -22,6 +22,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Document> Documents { get; set; }
 
+    public virtual DbSet<EmbeddingSetting> EmbeddingSettings { get; set; }
+
     public virtual DbSet<Message> Messages { get; set; }
 
     public virtual DbSet<MomoPaymentTransaction> MomoPaymentTransactions { get; set; }
@@ -483,6 +485,21 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("subscription_status");
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.WeeklyTokenLimit).HasColumnName("weekly_token_limit");
+        });
+
+        modelBuilder.Entity<EmbeddingSetting>(entity =>
+        {
+            entity.HasKey(e => e.SettingId).HasName("embedding_settings_pkey");
+            entity.ToTable("embedding_settings");
+            entity.Property(e => e.SettingId).HasColumnName("setting_id");
+            entity.Property(e => e.EmbeddingModel)
+                .HasMaxLength(255)
+                .HasColumnName("embedding_model");
+            entity.Property(e => e.EmbeddingDimensions).HasColumnName("embedding_dimensions");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
         });
 
         modelBuilder.Entity<StudentSubscription>(entity =>

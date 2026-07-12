@@ -435,13 +435,14 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
 
     private async Task SaveEmbeddingsForChunksAsync(
         IReadOnlyList<Chunk> chunks,
-        IReadOnlyList<float[]> embeddings,
+        EmbeddingBatchResult embeddings,
         CancellationToken cancellationToken)
     {
         await _chunkEmbeddingStore.SaveEmbeddingsAsync(
             chunks
-                .Select((chunk, index) => (chunk.ChunkId, embeddings[index]))
+                .Select((chunk, index) => (chunk.ChunkId, embeddings.Vectors[index]))
                 .ToList(),
+            embeddings.Model,
             cancellationToken);
     }
 

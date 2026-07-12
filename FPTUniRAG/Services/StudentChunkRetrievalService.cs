@@ -10,17 +10,20 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
 {
     private readonly AppDbContext _dbContext;
     private readonly IOpenRouterEmbeddingService _embeddingService;
+    private readonly IEmbeddingConfigurationService _embeddingConfigurationService;
     private readonly ILogger<StudentChunkRetrievalService> _logger;
     private readonly string _tableName;
 
     public StudentChunkRetrievalService(
         AppDbContext dbContext,
         IOpenRouterEmbeddingService embeddingService,
+        IEmbeddingConfigurationService embeddingConfigurationService,
         IOptions<Options.RagIngestionOptions> options,
         ILogger<StudentChunkRetrievalService> logger)
     {
         _dbContext = dbContext;
         _embeddingService = embeddingService;
+        _embeddingConfigurationService = embeddingConfigurationService;
         _logger = logger;
         _tableName = ResolveTableName(options.Value.PostgresVector.TableName);
     }
@@ -29,6 +32,7 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
         Guid subjectId,
         CancellationToken cancellationToken = default)
     {
+        var embeddingConfiguration = await _embeddingConfigurationService.GetCurrentAsync(cancellationToken);
         await using var command = _dbContext.Database.GetDbConnection().CreateCommand();
         command.CommandText =
             $"""
@@ -39,6 +43,7 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
                 INNER JOIN documents d ON d.document_id = c.document_id
                 WHERE d.subject_id = @subjectId
                   AND lower(coalesce(d.status, '')) = 'completed'
+                  AND ce.embedding_model = @embeddingModel
             );
             """;
 
@@ -73,9 +78,10 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
         }
 
         float[]? queryEmbedding = null;
+        var embeddingConfiguration = await _embeddingConfigurationService.GetCurrentAsync(cancellationToken);
         try
         {
-            queryEmbedding = (await _embeddingService.CreateEmbeddingsAsync([normalizedQuery], cancellationToken)).SingleOrDefault();
+            queryEmbedding = (await _embeddingService.CreateEmbeddingsAsync([normalizedQuery], cancellationToken)).Vectors.SingleOrDefault();
         }
         catch (Exception exception)
         {
@@ -110,10 +116,12 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
             INNER JOIN subjects s ON s.subject_id = d.subject_id
             INNER JOIN chapters ch ON ch.chapter_id = d.chapter_id
             WHERE d.subject_id = @subjectId
-              AND lower(coalesce(d.status, '')) = 'completed';
+              AND lower(coalesce(d.status, '')) = 'completed'
+              AND ce.embedding_model = @embeddingModel;
             """;
 
         command.Parameters.Add(new NpgsqlParameter("subjectId", subjectId));
+        command.Parameters.Add(new NpgsqlParameter("embeddingModel", embeddingConfiguration.Model));
 
         if (command.Connection is not null && command.Connection.State != System.Data.ConnectionState.Open)
         {
