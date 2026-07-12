@@ -272,7 +272,7 @@ public sealed class StripePaymentService : IStripePaymentService
             var subscriptionStatus = await GetSubscriptionStatusAsync(session.SubscriptionId, cancellationToken);
             if (paymentStatus == "paid" || paymentStatus == "no_payment_required" || subscriptionStatus is "active" or "trialing")
             {
-                await ActivateSubscriptionAsync(transaction, normalizedSessionId, cancellationToken);
+                await ActivateSubscriptionAsync(transaction, normalizedSessionId, session.SubscriptionId, cancellationToken);
                 return StripeCheckoutConfirmationResult.Paid(
                     "Payment successful",
                     $"Your {transaction.Plan.PlanName} plan is now active. You can continue chatting immediately.",
@@ -310,6 +310,7 @@ public sealed class StripePaymentService : IStripePaymentService
     private async Task ActivateSubscriptionAsync(
         StripeCheckoutTransaction transaction,
         string checkoutId,
+        string? stripeSubscriptionId,
         CancellationToken cancellationToken)
     {
         if (transaction.PaymentStatus == "paid" && transaction.ConfirmedAt is not null)
@@ -335,23 +336,44 @@ public sealed class StripePaymentService : IStripePaymentService
                 StartedAt = now,
                 PurchasedAt = now,
                 ExpiresAt = now.AddMonths(1),
+                StripeSubscriptionId = stripeSubscriptionId,
                 AutoRenew = false,
                 Notes = $"Activated from Stripe test checkout {checkoutId}."
             });
         }
         else
         {
+            var previousStripeSubscriptionId = currentSubscription.StripeSubscriptionId;
+            if (string.IsNullOrWhiteSpace(previousStripeSubscriptionId))
+            {
+                var previousTransaction = await _dbContext.StripeCheckoutTransactions
+                    .AsNoTracking()
+                    .Where(item => item.UserId == transaction.UserId && item.PaymentStatus == "paid")
+                    .OrderByDescending(item => item.ConfirmedAt ?? item.CreatedAt)
+                    .FirstOrDefaultAsync(cancellationToken);
+                previousStripeSubscriptionId = ExtractStripeSubscriptionId(previousTransaction?.RawResponseJson);
+            }
+
+            if (!await CancelStripeSubscriptionAsync(previousStripeSubscriptionId, cancellationToken))
+            {
+                _logger.LogWarning(
+                    "Could not cancel the previous Stripe subscription {StripeSubscriptionId} before replacing local subscription {StudentSubscriptionId}.",
+                    previousStripeSubscriptionId,
+                    currentSubscription.StudentSubscriptionId);
+            }
+
             // StudentSubscription is modeled as one row per student, so replace the
-            // current entitlement in place instead of inserting a second row.
+            // current entitlement in place while recording the replacement in Notes.
             currentSubscription.PlanId = transaction.PlanId;
             currentSubscription.SubscriptionStatus = "active";
             currentSubscription.StartedAt = now;
             currentSubscription.PurchasedAt = now;
             currentSubscription.ExpiresAt = now.AddMonths(1);
             currentSubscription.CanceledAt = null;
+            currentSubscription.StripeSubscriptionId = stripeSubscriptionId;
             currentSubscription.AutoRenew = false;
             currentSubscription.GrantedBy = null;
-            currentSubscription.Notes = $"Activated from Stripe test checkout {checkoutId}.";
+            currentSubscription.Notes = $"Replaced the previous exhausted subscription from Stripe test checkout {checkoutId}.";
         }
 
         transaction.PaymentStatus = "paid";
@@ -359,6 +381,52 @@ public sealed class StripePaymentService : IStripePaymentService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         await dbTransaction.CommitAsync(cancellationToken);
+    }
+
+    private async Task<bool> CancelStripeSubscriptionAsync(
+        string? stripeSubscriptionId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(stripeSubscriptionId))
+        {
+            return true;
+        }
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Delete,
+            $"subscriptions/{Uri.EscapeDataString(stripeSubscriptionId.Trim())}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.SecretKey);
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return true;
+        }
+
+        var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
+        _logger.LogWarning(
+            "Stripe cancellation returned status {StatusCode} for subscription {StripeSubscriptionId}: {Payload}",
+            response.StatusCode,
+            stripeSubscriptionId,
+            responseText);
+        return false;
+    }
+
+    private static string? ExtractStripeSubscriptionId(string? rawResponseJson)
+    {
+        if (string.IsNullOrWhiteSpace(rawResponseJson))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<StripeCheckoutSessionResponse>(rawResponseJson, SerializerOptions)?.SubscriptionId;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private void ValidateOptions()

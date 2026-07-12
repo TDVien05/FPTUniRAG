@@ -22,7 +22,8 @@ public sealed record StudentChatCitationDto(
     string ChapterTitle,
     int ChunkIndex,
     double SimilarityScore,
-    Guid? ChunkId = null);
+    Guid? ChunkId = null,
+    int CitationNumber = 0);
 
 public sealed record StudentChatCitationDetailDto(
     Guid DocumentId,
