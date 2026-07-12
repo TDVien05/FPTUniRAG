@@ -10,30 +10,37 @@ public sealed class OpenRouterEmbeddingService : IOpenRouterEmbeddingService
 {
     private readonly HttpClient _httpClient;
     private readonly RagIngestionOptions _options;
+    private readonly IEmbeddingConfigurationService _configurationService;
 
-    public OpenRouterEmbeddingService(HttpClient httpClient, IOptions<RagIngestionOptions> options)
+    public OpenRouterEmbeddingService(
+        HttpClient httpClient,
+        IOptions<RagIngestionOptions> options,
+        IEmbeddingConfigurationService configurationService)
     {
         _httpClient = httpClient;
         _options = options.Value;
+        _configurationService = configurationService;
     }
 
-    public async Task<IReadOnlyList<float[]>> CreateEmbeddingsAsync(
+    public async Task<EmbeddingBatchResult> CreateEmbeddingsAsync(
         IReadOnlyList<string> chunks,
         CancellationToken cancellationToken = default)
     {
         if (chunks.Count == 0)
         {
-            return [];
+            var emptyConfiguration = await _configurationService.GetCurrentAsync(cancellationToken);
+            return new EmbeddingBatchResult(emptyConfiguration.Model, emptyConfiguration.Dimensions, []);
         }
 
         ValidateConfiguration();
+        var configuration = await _configurationService.GetCurrentAsync(cancellationToken);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "embeddings")
         {
             Content = JsonContent.Create(new OpenRouterEmbeddingRequest(
-                _options.OpenRouter.EmbeddingModel,
+                configuration.Model,
                 chunks,
-                _options.OpenRouter.EmbeddingDimensions))
+                configuration.Dimensions))
         };
 
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.OpenRouter.ApiKey);
@@ -52,10 +59,12 @@ public sealed class OpenRouterEmbeddingService : IOpenRouterEmbeddingService
             throw new InvalidOperationException("OpenRouter returned an invalid embedding payload.");
         }
 
-        return payload.Data
+        var vectors = payload.Data
             .OrderBy(item => item.Index)
             .Select(item => item.Embedding.ToArray())
             .ToList();
+
+        return new EmbeddingBatchResult(configuration.Model, vectors[0].Length, vectors);
     }
 
     private void ValidateConfiguration()
@@ -65,10 +74,6 @@ public sealed class OpenRouterEmbeddingService : IOpenRouterEmbeddingService
             throw new InvalidOperationException("RagIngestion:OpenRouter:ApiKey is missing in appsettings.json.");
         }
 
-        if (string.IsNullOrWhiteSpace(_options.OpenRouter.EmbeddingModel))
-        {
-            throw new InvalidOperationException("RagIngestion:OpenRouter:EmbeddingModel is missing in appsettings.json.");
-        }
     }
 
     private sealed record OpenRouterEmbeddingRequest(

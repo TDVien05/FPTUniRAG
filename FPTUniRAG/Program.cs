@@ -61,6 +61,7 @@ builder.Services.AddHttpClient<IStripePaymentService, StripePaymentService>((ser
 builder.Services.AddScoped<IChunkEmbeddingStore, PostgresChunkEmbeddingStore>();
 builder.Services.AddScoped<IStudentChunkRetrievalService, StudentChunkRetrievalService>();
 builder.Services.AddScoped<IStudentChatService, StudentChatService>();
+builder.Services.AddScoped<IEmbeddingConfigurationService, EmbeddingConfigurationService>();
 builder.Services.AddScoped<AccountCookieAuthenticationEvents>();
 builder.Services.AddHostedService<AdminAccountInitializationHostedService>();
 builder.Services.AddSignalR();
@@ -98,6 +99,7 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AuthorizePage("/StudentDashboard", "StudentOrAdmin");
     options.Conventions.AuthorizePage("/StudentPlans", "StudentOrAdmin");
     options.Conventions.AuthorizePage("/SubscriptionPlans", "AdminOnly");
+    options.Conventions.AuthorizePage("/EmbeddingSettings", "AdminOnly");
 });
 
 var app = builder.Build();

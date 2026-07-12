@@ -2,7 +2,12 @@ namespace FPTUniRAG.Services;
 
 public interface IOpenRouterEmbeddingService
 {
-    Task<IReadOnlyList<float[]>> CreateEmbeddingsAsync(
+    Task<EmbeddingBatchResult> CreateEmbeddingsAsync(
         IReadOnlyList<string> chunks,
         CancellationToken cancellationToken = default);
 }
+
+public sealed record EmbeddingBatchResult(
+    string Model,
+    int Dimensions,
+    IReadOnlyList<float[]> Vectors);

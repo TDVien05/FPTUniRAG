@@ -24,6 +24,7 @@ public sealed class PostgresChunkEmbeddingStore : IChunkEmbeddingStore
 
     public async Task SaveEmbeddingsAsync(
         IReadOnlyList<(Guid ChunkId, float[] Embedding)> embeddings,
+        string embeddingModel,
         CancellationToken cancellationToken = default)
     {
         ValidateOptions();
@@ -44,7 +45,7 @@ public sealed class PostgresChunkEmbeddingStore : IChunkEmbeddingStore
         {
             foreach (var (chunkId, embedding) in batch)
             {
-                await UpsertEmbeddingAsync(connection, dbTransaction, chunkId, embedding, timestamp, cancellationToken);
+                await UpsertEmbeddingAsync(connection, dbTransaction, chunkId, embedding, embeddingModel, timestamp, cancellationToken);
             }
         }
 
@@ -85,6 +86,7 @@ public sealed class PostgresChunkEmbeddingStore : IChunkEmbeddingStore
         DbTransaction transaction,
         Guid chunkId,
         float[] embedding,
+        string embeddingModel,
         DateTime timestamp,
         CancellationToken cancellationToken)
     {
@@ -120,7 +122,7 @@ public sealed class PostgresChunkEmbeddingStore : IChunkEmbeddingStore
             """;
 
         command.Parameters.Add(new NpgsqlParameter<Guid>("chunkId", chunkId));
-        command.Parameters.Add(new NpgsqlParameter<string>("embeddingModel", _options.OpenRouter.EmbeddingModel));
+        command.Parameters.Add(new NpgsqlParameter<string>("embeddingModel", embeddingModel));
         command.Parameters.Add(new NpgsqlParameter<int>("embeddingDimensions", embedding.Length));
         command.Parameters.Add(new NpgsqlParameter<float[]>("embedding", NpgsqlDbType.Array | NpgsqlDbType.Real)
         {
@@ -134,11 +136,6 @@ public sealed class PostgresChunkEmbeddingStore : IChunkEmbeddingStore
 
     private void ValidateOptions()
     {
-        if (string.IsNullOrWhiteSpace(_options.OpenRouter.EmbeddingModel))
-        {
-            throw new InvalidOperationException("RagIngestion:OpenRouter:EmbeddingModel is missing in appsettings.json.");
-        }
-
         if (_options.PostgresVector.BatchSize <= 0)
         {
             throw new InvalidOperationException("RagIngestion:PostgresVector:BatchSize must be greater than zero.");

@@ -13,14 +13,17 @@ namespace FPTUniRAG.Pages;
 public class TeacherUploadModel : PageModel
 {
     private readonly ITeacherDocumentWorkflowService _teacherDocumentWorkflowService;
+    private readonly IEmbeddingConfigurationService _embeddingConfigurationService;
     private readonly RagIngestionOptions _options;
 
     public TeacherUploadModel(
         ITeacherDocumentWorkflowService teacherDocumentWorkflowService,
-        IOptions<RagIngestionOptions> options)
+        IOptions<RagIngestionOptions> options,
+        IEmbeddingConfigurationService embeddingConfigurationService)
     {
         _teacherDocumentWorkflowService = teacherDocumentWorkflowService;
         _options = options.Value;
+        _embeddingConfigurationService = embeddingConfigurationService;
     }
 
     [BindProperty]
@@ -41,7 +44,9 @@ public class TeacherUploadModel : PageModel
 
     public int SemanticMinChunkSize => _options.Semantic.MinChunkSize;
 
-    public string EmbeddingModel => _options.OpenRouter.EmbeddingModel;
+    public EmbeddingConfigurationSnapshot? EmbeddingConfiguration { get; private set; }
+
+    public string EmbeddingModel => EmbeddingConfiguration?.Model ?? _options.OpenRouter.EmbeddingModel;
 
     public async Task<IActionResult> OnGetAsync(Guid subjectId, CancellationToken cancellationToken)
     {
@@ -55,6 +60,7 @@ public class TeacherUploadModel : PageModel
             teacherEmail,
             subjectId,
             cancellationToken);
+        EmbeddingConfiguration = await _embeddingConfigurationService.GetCurrentAsync(cancellationToken);
 
         if (UploadContext is null)
         {
