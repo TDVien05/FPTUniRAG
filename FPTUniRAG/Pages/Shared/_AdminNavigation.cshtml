@@ -7,6 +7,7 @@
     var isAccounts = currentPath.Equals("/Accounts", StringComparison.OrdinalIgnoreCase);
     var isSubscriptionPlans = currentPath.Equals("/SubscriptionPlans", StringComparison.OrdinalIgnoreCase);
     var isEmbeddingSettings = currentPath.Equals("/EmbeddingSettings", StringComparison.OrdinalIgnoreCase);
+    var isFreeQuotaSettings = currentPath.Equals("/FreeQuotaSettings", StringComparison.OrdinalIgnoreCase);
     var isEmbeddingBenchmark = currentPath.Equals("/EmbeddingBenchmark", StringComparison.OrdinalIgnoreCase);
     var isAnalysis = currentPath.Equals("/Analysis", StringComparison.OrdinalIgnoreCase);
 }
@@ -50,6 +51,10 @@
         <a class="admin-nav-item @(isEmbeddingSettings ? "active" : string.Empty)" href="/EmbeddingSettings" @(isEmbeddingSettings ? "aria-current=page" : string.Empty)>
             <span class="material-symbols-outlined" aria-hidden="true">tune</span>
             Embedding Settings
+        </a>
+        <a class="admin-nav-item @(isFreeQuotaSettings ? "active" : string.Empty)" href="/FreeQuotaSettings" @(isFreeQuotaSettings ? "aria-current=page" : string.Empty)>
+            <span class="material-symbols-outlined" aria-hidden="true">data_usage</span>
+            Free Student Quota
         </a>
         <a class="admin-nav-item @(isEmbeddingBenchmark ? "active" : string.Empty)" href="/EmbeddingBenchmark" @(isEmbeddingBenchmark ? "aria-current=page" : string.Empty)>
             <span class="material-symbols-outlined" aria-hidden="true">speed</span>

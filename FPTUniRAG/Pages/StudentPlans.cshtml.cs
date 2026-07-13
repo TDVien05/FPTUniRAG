@@ -9,19 +9,21 @@ namespace FPTUniRAG.Pages;
 
 public class StudentPlansModel : PageModel
 {
-    private const long DefaultFreeStudentMonthlyTokenLimit = 2000;
     private readonly AppDbContext _dbContext;
     private readonly ILogger<StudentPlansModel> _logger;
     private readonly IStripePaymentService _stripePaymentService;
+    private readonly IFreeTokenQuotaService _freeTokenQuotaService;
 
     public StudentPlansModel(
         AppDbContext dbContext,
         ILogger<StudentPlansModel> logger,
-        IStripePaymentService stripePaymentService)
+        IStripePaymentService stripePaymentService,
+        IFreeTokenQuotaService freeTokenQuotaService)
     {
         _dbContext = dbContext;
         _logger = logger;
         _stripePaymentService = stripePaymentService;
+        _freeTokenQuotaService = freeTokenQuotaService;
     }
 
     [TempData]
@@ -111,6 +113,7 @@ public class StudentPlansModel : PageModel
     private async Task LoadPageStateAsync(Guid userId, CancellationToken cancellationToken)
     {
         var currentTime = CreateDatabaseTimestamp();
+        var freeMonthlyTokenLimit = await _freeTokenQuotaService.GetMonthlyTokenLimitAsync(cancellationToken);
         var activePlans = await _dbContext.SubscriptionPlans
             .AsNoTracking()
             .Where(plan => plan.IsActive)
@@ -186,7 +189,7 @@ public class StudentPlansModel : PageModel
             "free",
             "Free",
             0,
-            DefaultFreeStudentMonthlyTokenLimit,
+            freeMonthlyTokenLimit,
             null,
             null);
     }

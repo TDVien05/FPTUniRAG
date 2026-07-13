@@ -569,6 +569,14 @@
                 window.location.reload();
             });
 
+            connection.on("subscriptionPlanUpdated", () => {
+                window.location.reload();
+            });
+
+            connection.on("freeTokenLimitUpdated", () => {
+                window.location.reload();
+            });
+
             connection.on("subscriptionPlanDeleted", () => {
                 window.location.reload();
             });

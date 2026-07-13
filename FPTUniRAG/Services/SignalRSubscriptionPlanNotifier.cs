@@ -25,4 +25,18 @@ public sealed class SignalRSubscriptionPlanNotifier : ISubscriptionPlanNotifier
             SubscriptionPlanHub.PlanDeletedEvent,
             cancellationToken);
     }
+
+    public Task NotifyPlanUpdatedAsync(CancellationToken cancellationToken = default)
+    {
+        return _hubContext.Clients.All.SendAsync(
+            SubscriptionPlanHub.PlanUpdatedEvent,
+            cancellationToken);
+    }
+
+    public Task NotifyFreeTokenLimitUpdatedAsync(CancellationToken cancellationToken = default)
+    {
+        return _hubContext.Clients.All.SendAsync(
+            SubscriptionPlanHub.FreeTokenLimitUpdatedEvent,
+            cancellationToken);
+    }
 }

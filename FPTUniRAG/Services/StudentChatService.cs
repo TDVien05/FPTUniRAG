@@ -12,7 +12,6 @@ namespace FPTUniRAG.Services;
 
 public sealed class StudentChatService : IStudentChatService
 {
-    private const long DefaultFreeStudentMonthlyTokenLimit = 2000;
     private const int RetrievalLimit = 8;
     private const int ConversationHistoryLimit = 12;
     private const int StreamFlushIntervalMilliseconds = 40;
@@ -25,6 +24,7 @@ public sealed class StudentChatService : IStudentChatService
     private readonly IStudentChunkRetrievalService _retrievalService;
     private readonly IOpenRouterChatCompletionService _chatCompletionService;
     private readonly ILogger<StudentChatService> _logger;
+    private readonly IFreeTokenQuotaService _freeTokenQuotaService;
     private readonly string _embeddingTableName;
 
     public StudentChatService(
@@ -32,12 +32,14 @@ public sealed class StudentChatService : IStudentChatService
         IStudentChunkRetrievalService retrievalService,
         IOpenRouterChatCompletionService chatCompletionService,
         IOptions<RagIngestionOptions> options,
-        ILogger<StudentChatService> logger)
+        ILogger<StudentChatService> logger,
+        IFreeTokenQuotaService freeTokenQuotaService)
     {
         _dbContext = dbContext;
         _retrievalService = retrievalService;
         _chatCompletionService = chatCompletionService;
         _logger = logger;
+        _freeTokenQuotaService = freeTokenQuotaService;
         _embeddingTableName = ResolveTableName(options.Value.PostgresVector.TableName);
     }
 
@@ -304,7 +306,7 @@ public sealed class StudentChatService : IStudentChatService
         {
             var quotaExceededMessage = quotaContext.HasPaidPlan
                 ? $"You have used all {quotaContext.MonthlyTokenLimit:N0} tokens in your current plan this month. Please upgrade your subscription plan to continue."
-                : $"You have used all {DefaultFreeStudentMonthlyTokenLimit:N0} free tokens. Please purchase a subscription plan to continue chatting.";
+                : $"You have used all {quotaContext.MonthlyTokenLimit:N0} free tokens. Please purchase a subscription plan to continue chatting.";
 
             await writeEvent("error", new StudentChatErrorDto(quotaExceededMessage), cancellationToken);
             return;
@@ -771,7 +773,7 @@ public sealed class StudentChatService : IStudentChatService
 
         var monthlyTokenLimit = entitlement?.MonthlyTokenLimit is > 0
             ? entitlement.MonthlyTokenLimit.Value
-            : DefaultFreeStudentMonthlyTokenLimit;
+            : await _freeTokenQuotaService.GetMonthlyTokenLimitAsync(cancellationToken);
 
         var tokensUsedThisMonth = usage?.TotalTokensUsedThisMonth ?? 0;
         return new StudentChatQuotaContext(

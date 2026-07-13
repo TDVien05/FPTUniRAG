@@ -1,0 +1,77 @@
+@page "/FreeQuotaSettings"
+@model FPTUniRAG.Pages.FreeQuotaSettingsModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Free Student Quota - FPT UniRAG";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:FILL@0..1&display=block" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="admin-dashboard-page accounts-page">
+    <main class="admin-shell" aria-label="Free student quota settings">
+        @await Html.PartialAsync("_AdminNavigation")
+        <section class="accounts-main">
+            <div class="accounts-canvas">
+                <nav class="subject-breadcrumbs" aria-label="Breadcrumb">
+                    <a href="/AdminDashboard">Dashboard</a>
+                    <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                    <strong>Free Student Quota</strong>
+                </nav>
+
+                <header class="subject-create-header accounts-header">
+                    <div>
+                        <p class="accounts-eyebrow">System configuration</p>
+                        <h1>Free Student Quota</h1>
+                        <p>Set the monthly token allowance for students who have not purchased a subscription.</p>
+                    </div>
+                </header>
+
+                @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-success" role="status">@Model.SuccessMessage</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-error" role="alert">@Model.ErrorMessage</div>
+                }
+
+                <section class="accounts-card" aria-labelledby="free-quota-title">
+                    <div class="accounts-card-header">
+                        <div>
+                            <p class="accounts-eyebrow">Student access</p>
+                            <h2 id="free-quota-title">Monthly free tokens</h2>
+                            <p>Paid subscription limits are not changed by this setting.</p>
+                        </div>
+                        <span class="accounts-card-icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">data_usage</span>
+                        </span>
+                    </div>
+                    <form method="post" class="accounts-form">
+                        <label class="subject-field" for="MonthlyTokenLimit">
+                            <span>Free tokens per month</span>
+                            <input asp-for="MonthlyTokenLimit" id="MonthlyTokenLimit" type="number" min="1" step="1" />
+                            <small>Current value: @Model.CurrentMonthlyTokenLimit.ToString("N0") tokens.</small>
+                            <span asp-validation-for="MonthlyTokenLimit" class="accounts-field-error"></span>
+                        </label>
+                        <footer class="subject-form-actions accounts-actions">
+                            <button class="subject-submit-button" type="submit">
+                                Save free quota
+                                <span class="material-symbols-outlined" aria-hidden="true">save</span>
+                            </button>
+                        </footer>
+                    </form>
+                </section>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

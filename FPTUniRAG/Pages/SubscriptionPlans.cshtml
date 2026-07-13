@@ -263,7 +263,7 @@
                 <header class="subject-create-header accounts-header">
                     <div>
                         <h1>Subscription Plan Configuration</h1>
-                        <p>Configure the plans students can buy: code, display name, token limit, price, and feature flags. The student pricing page now reads directly from this configuration.</p>
+                        <p>Configure the plans students can buy: code, display name, token limit, price, and availability. The student pricing page now reads directly from this configuration.</p>
                     </div>
                 </header>
 
@@ -346,38 +346,6 @@
                                     <span>
                                         <strong>Active</strong>
                                         <small>Visible to students on the pricing page.</small>
-                                    </span>
-                                </label>
-
-                                <label class="plan-admin-toggle">
-                                    <input asp-for="CreateInput.HasAdvancedModels" type="checkbox" />
-                                    <span>
-                                        <strong>Advanced models</strong>
-                                        <small>Expose stronger reasoning capability.</small>
-                                    </span>
-                                </label>
-
-                                <label class="plan-admin-toggle">
-                                    <input asp-for="CreateInput.HasPrioritySupport" type="checkbox" />
-                                    <span>
-                                        <strong>Priority support</strong>
-                                        <small>Mark the plan as higher support priority.</small>
-                                    </span>
-                                </label>
-
-                                <label class="plan-admin-toggle">
-                                    <input asp-for="CreateInput.HasFileUpload" type="checkbox" />
-                                    <span>
-                                        <strong>File upload</strong>
-                                        <small>Allow study flows that include file-based context.</small>
-                                    </span>
-                                </label>
-
-                                <label class="plan-admin-toggle">
-                                    <input asp-for="CreateInput.HasHistoryExport" type="checkbox" />
-                                    <span>
-                                        <strong>History export</strong>
-                                        <small>Enable exporting or richer history usage.</small>
                                     </span>
                                 </label>
                             </div>
@@ -496,38 +464,6 @@
                                                     <span>
                                                         <strong>Active</strong>
                                                         <small>Controls whether students can buy this plan.</small>
-                                                    </span>
-                                                </label>
-
-                                                <label class="plan-admin-toggle">
-                                                    <input name="hasAdvancedModels" type="checkbox" value="true" checked="@plan.HasAdvancedModels" />
-                                                    <span>
-                                                        <strong>Advanced models</strong>
-                                                        <small>Advertise stronger model access.</small>
-                                                    </span>
-                                                </label>
-
-                                                <label class="plan-admin-toggle">
-                                                    <input name="hasPrioritySupport" type="checkbox" value="true" checked="@plan.HasPrioritySupport" />
-                                                    <span>
-                                                        <strong>Priority support</strong>
-                                                        <small>Marks the plan as higher support priority.</small>
-                                                    </span>
-                                                </label>
-
-                                                <label class="plan-admin-toggle">
-                                                    <input name="hasFileUpload" type="checkbox" value="true" checked="@plan.HasFileUpload" />
-                                                    <span>
-                                                        <strong>File upload</strong>
-                                                        <small>Keep file-based study flows available.</small>
-                                                    </span>
-                                                </label>
-
-                                                <label class="plan-admin-toggle">
-                                                    <input name="hasHistoryExport" type="checkbox" value="true" checked="@plan.HasHistoryExport" />
-                                                    <span>
-                                                        <strong>History export</strong>
-                                                        <small>Expose history export capability to students.</small>
                                                     </span>
                                                 </label>
                                             </div>

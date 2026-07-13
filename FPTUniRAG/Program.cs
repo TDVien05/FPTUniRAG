@@ -34,6 +34,7 @@ builder.Services.AddScoped<IAccountManagementService, AccountManagementService>(
 builder.Services.AddScoped<ISubjectManagementService, SubjectManagementService>();
 builder.Services.AddScoped<ITeacherHeaderSubjectNotifier, SignalRTeacherHeaderSubjectNotifier>();
 builder.Services.AddScoped<ISubscriptionPlanNotifier, SignalRSubscriptionPlanNotifier>();
+builder.Services.AddScoped<IFreeTokenQuotaService, FreeTokenQuotaService>();
 builder.Services.AddScoped<ICredentialEmailSender, SmtpCredentialEmailSender>();
 builder.Services.AddSingleton<IPasswordService, Pbkdf2PasswordService>();
 builder.Services.AddScoped<ITesseractOcrService, TesseractOcrService>();
@@ -104,6 +105,7 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AuthorizePage("/StudentPlans", "StudentOrAdmin");
     options.Conventions.AuthorizePage("/SubscriptionPlans", "AdminOnly");
     options.Conventions.AuthorizePage("/EmbeddingSettings", "AdminOnly");
+    options.Conventions.AuthorizePage("/FreeQuotaSettings", "AdminOnly");
     options.Conventions.AuthorizePage("/EmbeddingBenchmark", "AdminOnly");
 });
 

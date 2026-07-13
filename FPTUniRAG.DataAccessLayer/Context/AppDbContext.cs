@@ -38,6 +38,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<StudentActiveChatEntitlement> StudentActiveChatEntitlements { get; set; }
 
+    public virtual DbSet<StudentFreeQuotaSetting> StudentFreeQuotaSettings { get; set; }
+
     public virtual DbSet<StudentSubscription> StudentSubscriptions { get; set; }
 
     public virtual DbSet<StudentTokenUsageCurrentDay> StudentTokenUsageCurrentDays { get; set; }
@@ -536,6 +538,18 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(255)
                 .HasColumnName("embedding_model");
             entity.Property(e => e.EmbeddingDimensions).HasColumnName("embedding_dimensions");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
+        });
+
+        modelBuilder.Entity<StudentFreeQuotaSetting>(entity =>
+        {
+            entity.HasKey(e => e.SettingId).HasName("student_free_quota_settings_pkey");
+            entity.ToTable("student_free_quota_settings");
+            entity.Property(e => e.SettingId).HasColumnName("setting_id");
+            entity.Property(e => e.MonthlyTokenLimit).HasColumnName("monthly_token_limit");
             entity.Property(e => e.UpdatedAt)
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("updated_at");

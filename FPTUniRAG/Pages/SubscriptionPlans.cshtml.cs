@@ -91,10 +91,10 @@ public class SubscriptionPlansModel : PageModel
             DailyTokenLimit = null,
             WeeklyTokenLimit = null,
             HasUnlimitedChat = false,
-            HasAdvancedModels = CreateInput.HasAdvancedModels,
-            HasPrioritySupport = CreateInput.HasPrioritySupport,
-            HasFileUpload = CreateInput.HasFileUpload,
-            HasHistoryExport = CreateInput.HasHistoryExport,
+            HasAdvancedModels = false,
+            HasPrioritySupport = false,
+            HasFileUpload = true,
+            HasHistoryExport = false,
             IsActive = CreateInput.IsActive
         };
 
@@ -130,10 +130,6 @@ public class SubscriptionPlansModel : PageModel
         decimal monthlyPrice,
         long monthlyTokenLimit,
         bool isActive,
-        bool hasAdvancedModels,
-        bool hasPrioritySupport,
-        bool hasFileUpload,
-        bool hasHistoryExport,
         CancellationToken cancellationToken)
     {
         var plan = await _dbContext.SubscriptionPlans.SingleOrDefaultAsync(item => item.PlanId == planId, cancellationToken);
@@ -184,10 +180,6 @@ public class SubscriptionPlansModel : PageModel
         plan.DailyTokenLimit = null;
         plan.WeeklyTokenLimit = null;
         plan.HasUnlimitedChat = false;
-        plan.HasAdvancedModels = hasAdvancedModels;
-        plan.HasPrioritySupport = hasPrioritySupport;
-        plan.HasFileUpload = hasFileUpload;
-        plan.HasHistoryExport = hasHistoryExport;
         plan.IsActive = isActive;
 
         var priceResult = await _stripePaymentService.EnsurePlanPriceAsync(
@@ -207,6 +199,7 @@ public class SubscriptionPlansModel : PageModel
         plan.StripePriceId = priceResult.StripePriceId;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await _subscriptionPlanNotifier.NotifyPlanUpdatedAsync(cancellationToken);
         SuccessMessage = $"Updated plan {plan.PlanName}.";
         return RedirectToPage("/SubscriptionPlans");
     }
@@ -326,12 +319,5 @@ public class SubscriptionPlansModel : PageModel
 
         public bool IsActive { get; set; } = true;
 
-        public bool HasAdvancedModels { get; set; }
-
-        public bool HasPrioritySupport { get; set; }
-
-        public bool HasFileUpload { get; set; } = true;
-
-        public bool HasHistoryExport { get; set; }
     }
 }
