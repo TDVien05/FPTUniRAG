@@ -15,8 +15,19 @@ public sealed class SignalRTeacherHeaderSubjectNotifier : ITeacherHeaderSubjectN
 
     public Task NotifyHeaderSubjectsChangedAsync(string teacherEmail, CancellationToken cancellationToken = default)
     {
-        return _hubContext.Clients
-            .Group(TeacherHeaderSubjectHub.GetTeacherGroupName(teacherEmail))
-            .SendCoreAsync("headerSubjectsChanged", [], cancellationToken);
+        return NotifyHeaderSubjectsChangedAsync([teacherEmail], cancellationToken);
+    }
+
+    public Task NotifyHeaderSubjectsChangedAsync(IEnumerable<string> teacherEmails, CancellationToken cancellationToken = default)
+    {
+        var groups = teacherEmails
+            .Where(email => !string.IsNullOrWhiteSpace(email))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(TeacherHeaderSubjectHub.GetTeacherGroupName)
+            .ToArray();
+
+        return groups.Length == 0
+            ? Task.CompletedTask
+            : _hubContext.Clients.Groups(groups).SendCoreAsync("headerSubjectsChanged", [], cancellationToken);
     }
 }

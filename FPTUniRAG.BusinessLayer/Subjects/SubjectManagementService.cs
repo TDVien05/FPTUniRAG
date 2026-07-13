@@ -330,7 +330,9 @@ public sealed class SubjectManagementService : ISubjectManagementService
         subject.DefaultChunkingStrategy = normalizedChunkingStrategy;
         subject.DefaultFixedChunkSize = request.DefaultFixedChunkSize;
 
+        var headerTeacherEmails = await GetHeaderTeacherEmailsAsync(subjectId, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await _teacherHeaderSubjectNotifier.NotifyHeaderSubjectsChangedAsync(headerTeacherEmails, cancellationToken);
         return OperationResult.Success("Subject updated successfully.");
     }
 
@@ -462,6 +464,8 @@ public sealed class SubjectManagementService : ISubjectManagementService
             .Select(document => document.DocumentId)
             .ToListAsync(cancellationToken);
 
+        var headerTeacherEmails = await GetHeaderTeacherEmailsAsync(subjectId, cancellationToken);
+
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         if (sessionIds.Count > 0)
@@ -510,7 +514,19 @@ public sealed class SubjectManagementService : ISubjectManagementService
             .ExecuteDeleteAsync(cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
+        await _teacherHeaderSubjectNotifier.NotifyHeaderSubjectsChangedAsync(headerTeacherEmails, cancellationToken);
         return OperationResult.Success("Subject deleted successfully.");
+    }
+
+    private async Task<IReadOnlyList<string>> GetHeaderTeacherEmailsAsync(
+        Guid subjectId,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.TeacherSubjects
+            .AsNoTracking()
+            .Where(link => link.SubjectId == subjectId && link.IsHeadOfDepartment && link.Teacher.Email != null)
+            .Select(link => link.Teacher.Email!)
+            .ToListAsync(cancellationToken);
     }
 
     private async Task<bool> SubjectCodeExistsAsync(

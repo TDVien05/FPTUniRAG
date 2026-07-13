@@ -11,6 +11,10 @@ public interface IAccountManagementService
         AdminSeedAccount adminAccount,
         CancellationToken cancellationToken = default);
 
+    Task EnsureStudentAccountAsync(
+        StudentSeedAccount studentAccount,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<ManagedAccountDto>> GetManagedAccountsAsync(
         CancellationToken cancellationToken = default);
 

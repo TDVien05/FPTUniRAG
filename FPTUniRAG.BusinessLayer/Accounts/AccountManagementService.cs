@@ -73,37 +73,47 @@ public sealed class AccountManagementService : IAccountManagementService
         AdminSeedAccount adminAccount,
         CancellationToken cancellationToken = default)
     {
-        var normalizedEmail = adminAccount.Email.Trim();
-        var fullName = string.IsNullOrWhiteSpace(adminAccount.DisplayName)
-            ? "Admin User"
-            : adminAccount.DisplayName.Trim();
+        await EnsureSeedAccountAsync(adminAccount.Email, adminAccount.Password, adminAccount.DisplayName, "admin", null, cancellationToken);
+    }
 
-        var existingUser = await _dbContext.Users
-            .FirstOrDefaultAsync(
-                user => user.Email.ToLower() == normalizedEmail.ToLower(),
-                cancellationToken);
+    public async Task EnsureStudentAccountAsync(
+        StudentSeedAccount studentAccount,
+        CancellationToken cancellationToken = default)
+    {
+        await EnsureSeedAccountAsync(studentAccount.Email, studentAccount.Password, studentAccount.DisplayName, "student", studentAccount.StudentCode, cancellationToken);
+    }
+
+    private async Task EnsureSeedAccountAsync(
+        string email,
+        string password,
+        string displayName,
+        string role,
+        string? studentCode,
+        CancellationToken cancellationToken)
+    {
+        var normalizedEmail = email.Trim();
+        var fullName = string.IsNullOrWhiteSpace(displayName) ? "Default User" : displayName.Trim();
+        var normalizedStudentCode = string.IsNullOrWhiteSpace(studentCode) ? null : studentCode.Trim();
+        var existingUser = await _dbContext.Users.FirstOrDefaultAsync(user => user.Email.ToLower() == normalizedEmail.ToLower(), cancellationToken);
 
         if (existingUser is null)
         {
             existingUser = new User
             {
-                UserId = Guid.NewGuid(),
-                Email = normalizedEmail,
-                FullName = fullName,
-                Role = "admin",
-                CreatedAt = CreateDatabaseTimestamp(),
-                IsBlocked = false
+                UserId = Guid.NewGuid(), Email = normalizedEmail, FullName = fullName, Role = role,
+                StudentCode = normalizedStudentCode, CreatedAt = CreateDatabaseTimestamp(), IsBlocked = false,
+                PasswordHash = _passwordService.HashPassword(password)
             };
-            existingUser.PasswordHash = _passwordService.HashPassword(adminAccount.Password);
             _dbContext.Users.Add(existingUser);
         }
         else
         {
             existingUser.Email = normalizedEmail;
             existingUser.FullName = fullName;
-            existingUser.Role = "admin";
+            existingUser.Role = role;
+            existingUser.StudentCode = normalizedStudentCode;
             existingUser.IsBlocked = false;
-            existingUser.PasswordHash = _passwordService.HashPassword(adminAccount.Password);
+            existingUser.PasswordHash = _passwordService.HashPassword(password);
             existingUser.PasswordResetTokenHash = null;
             existingUser.PasswordResetTokenExpiresAt = null;
         }
