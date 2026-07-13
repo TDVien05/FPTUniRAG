@@ -19,7 +19,8 @@
 </head>
 <body class="admin-dashboard-page accounts-page">
     <main class="admin-shell" aria-label="Assign teacher to subject">
-        <aside class="admin-sidebar" aria-label="Admin navigation">
+        @await Html.PartialAsync("_AdminNavigation")
+        @* <aside class="admin-sidebar" aria-label="Admin navigation">
             <a class="admin-logo" href="/AdminDashboard" aria-label="FPT UniRAG dashboard">
                 <span class="admin-logo-mark" aria-hidden="true">
                     <span class="material-symbols-outlined">school</span>
@@ -75,7 +76,7 @@
                     <span>Logout</span>
                 </a>
             </section>
-        </aside>
+        </aside> *@
 
         <section class="accounts-main">
             <div class="accounts-canvas">

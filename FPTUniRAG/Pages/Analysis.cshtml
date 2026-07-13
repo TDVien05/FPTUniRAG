@@ -113,7 +113,8 @@
 </head>
 <body class="admin-dashboard-page bg-background text-on-background overflow-x-hidden">
     <main class="admin-shell" aria-label="Platform analytics">
-        <aside class="admin-sidebar" aria-label="Admin navigation">
+        @await Html.PartialAsync("_AdminNavigation")
+        @* <aside class="admin-sidebar" aria-label="Admin navigation">
             <a class="admin-logo" href="/AdminDashboard" aria-label="FPT UniRAG dashboard">
                 <span class="admin-logo-mark" aria-hidden="true"><span class="material-symbols-outlined">school</span></span>
                 <span><strong>FPT UniRAG</strong><small>Academic RAG</small></span>
@@ -141,7 +142,7 @@
                 <a class="admin-sidebar-footer-link" href="/ChangePassword"><span class="material-symbols-outlined" aria-hidden="true">lock</span><span>Change Password</span></a>
                 <a class="admin-sidebar-footer-link" href="/Logout"><span class="material-symbols-outlined" aria-hidden="true">logout</span><span>Logout</span></a>
             </section>
-        </aside>
+        </aside> *@
 
         <section class="admin-main min-h-screen pb-10">
         <header class="sticky top-0 z-30 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 h-16 flex items-center shadow-sm">

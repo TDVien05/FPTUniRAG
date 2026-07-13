@@ -19,7 +19,8 @@
 </head>
 <body class="admin-dashboard-page accounts-page">
     <main class="admin-shell" aria-label="Embedding benchmark">
-        <aside class="admin-sidebar" aria-label="Admin navigation">
+        @await Html.PartialAsync("_AdminNavigation")
+        @* <aside class="admin-sidebar" aria-label="Admin navigation">
             <a class="admin-logo" href="/AdminDashboard" aria-label="FPT UniRAG dashboard">
                 <span class="admin-logo-mark"><span class="material-symbols-outlined">school</span></span>
                 <span><strong>FPT UniRAG</strong><small>Academic RAG</small></span>
@@ -36,7 +37,7 @@
                 <a class="admin-sidebar-footer-link" href="/ChangePassword"><span class="material-symbols-outlined">lock</span><span>Change Password</span></a>
                 <a class="admin-sidebar-footer-link" href="/Logout"><span class="material-symbols-outlined">logout</span><span>Logout</span></a>
             </section>
-        </aside>
+        </aside> *@
         <section class="accounts-main">
             <div class="accounts-canvas">
                 <header class="accounts-header">

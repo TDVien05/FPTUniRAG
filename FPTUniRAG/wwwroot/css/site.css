@@ -1982,6 +1982,39 @@ body.admin-dashboard-page {
   margin-bottom: 20px;
 }
 
+.embedding-settings-current {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: -4px;
+}
+
+.embedding-settings-current > div {
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid #d7e3ff;
+  border-radius: 12px;
+  background: #f7faff;
+}
+
+.embedding-settings-current span {
+  display: block;
+  color: var(--admin-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.embedding-settings-current strong {
+  display: block;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+  color: var(--admin-text);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
 .accounts-eyebrow {
   margin: 0 0 6px;
   color: var(--admin-primary);
@@ -2398,6 +2431,10 @@ body.admin-dashboard-page {
   }
 
   .accounts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .embedding-settings-current {
     grid-template-columns: 1fr;
   }
 
