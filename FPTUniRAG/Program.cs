@@ -40,6 +40,8 @@ builder.Services.AddScoped<IDocumentTextExtractor, DocumentTextExtractor>();
 builder.Services.AddScoped<IFixedChunkingService, FixedChunkingService>();
 builder.Services.AddScoped<ISemanticChunkingService, SemanticChunkingService>();
 builder.Services.AddScoped<ITeacherDocumentWorkflowService, TeacherDocumentWorkflowService>();
+builder.Services.AddSingleton<IDocumentProcessingQueue, DocumentProcessingQueue>();
+builder.Services.AddHostedService<DocumentProcessingBackgroundService>();
 builder.Services.AddHttpClient<IOpenRouterEmbeddingService, OpenRouterEmbeddingService>((serviceProvider, client) =>
 {
     var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RagIngestionOptions>>().Value;

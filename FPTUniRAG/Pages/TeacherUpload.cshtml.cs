@@ -46,6 +46,9 @@ public class TeacherUploadModel : PageModel
 
     public EmbeddingConfigurationSnapshot? EmbeddingConfiguration { get; private set; }
 
+    [BindProperty(SupportsGet = true)]
+    public Guid? ProcessingDocumentId { get; set; }
+
     public string EmbeddingModel => EmbeddingConfiguration?.Model ?? _options.OpenRouter.EmbeddingModel;
 
     public async Task<IActionResult> OnGetAsync(Guid subjectId, CancellationToken cancellationToken)
@@ -106,6 +109,24 @@ public class TeacherUploadModel : PageModel
         }
 
         NoticeMessage = result.Message;
-        return RedirectToPage("/TeacherDocumentDetails", new { documentId = result.DocumentId.Value });
+        ProcessingDocumentId = result.DocumentId.Value;
+        EmbeddingConfiguration = await _embeddingConfigurationService.GetCurrentAsync(cancellationToken);
+        return Page();
+    }
+
+    public async Task<IActionResult> OnGetStatusAsync(Guid documentId, CancellationToken cancellationToken)
+    {
+        var teacherEmail = User.FindFirstValue(ClaimTypes.Email);
+        if (string.IsNullOrWhiteSpace(teacherEmail))
+        {
+            return Challenge();
+        }
+
+        var status = await _teacherDocumentWorkflowService.GetProcessingStatusAsync(
+            teacherEmail,
+            documentId,
+            cancellationToken);
+
+        return status is null ? NotFound() : new JsonResult(status);
     }
 }

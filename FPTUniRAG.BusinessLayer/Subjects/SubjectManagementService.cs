@@ -113,7 +113,19 @@ public sealed class SubjectManagementService : ISubjectManagementService
                 link.Subject.Documents
                     .OrderByDescending(document => document.CreatedAt)
                     .Select(document => document.Status)
-                    .FirstOrDefault()))
+                    .FirstOrDefault(),
+                link.Subject.Documents
+                    .OrderBy(document => document.Chapter.ChapterOrder)
+                    .ThenBy(document => document.CreatedAt)
+                    .Select(document => new TeacherSubjectDocumentDto(
+                        document.DocumentId,
+                        document.ChapterId,
+                        document.Chapter.ChapterTitle,
+                        document.Title,
+                        document.Status ?? "unknown",
+                        document.Chunks.Count(),
+                        document.CreatedAt))
+                    .ToList()))
             .ToListAsync(cancellationToken);
     }
 

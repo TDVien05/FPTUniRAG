@@ -239,46 +239,56 @@
                             {
                                 foreach (var item in Model.DocumentsBySubject)
                                 {
-                                    <tr class="hover:bg-surface-container-low/50 transition-colors group">
-                                        <td class="px-6 py-4 font-medium text-sm">@item.SubjectCode</td>
-                                        <td class="px-6 py-4 text-sm text-on-surface">@item.SubjectName</td>
-                                        <td class="px-6 py-4 text-sm text-secondary">@item.DocumentCount file(s)</td>
-                                        <td class="px-6 py-4 text-sm text-secondary">
-                                            @(string.IsNullOrWhiteSpace(item.LatestDocumentTitle)
-                                                ? "No document uploaded yet"
-                                                : item.LatestDocumentTitle)
-                                            @if (!string.IsNullOrWhiteSpace(item.LatestDocumentStatus))
-                                            {
-                                                <span class="block text-[11px] uppercase tracking-wide text-primary mt-1">@item.LatestDocumentStatus</span>
-                                            }
-                                        </td>
-                                        <td class="px-6 py-4 text-sm text-secondary">
-                                            @(item.LastUpdatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")
-                                        </td>
-                                        <td class="px-6 py-4 text-right">
-                                            <div class="flex justify-end gap-2">
-                                                @if (item.LatestDocumentId.HasValue)
-                                                {
-                                                    <a class="flex items-center gap-1 px-3 py-1 border border-outline-variant/40 text-xs font-medium rounded hover:bg-surface-container-low transition-all" href="/TeacherDocuments/Details?documentId=@item.LatestDocumentId.Value">
-                                                        <span class="material-symbols-outlined text-sm">visibility</span>View Chunks
-                                                    </a>
-                                                    @if (string.Equals(item.LatestDocumentStatus, "failed", StringComparison.OrdinalIgnoreCase))
-                                                    {
-                                                        <form method="post" asp-page-handler="Retry">
-                                                            <input type="hidden" name="documentId" value="@item.LatestDocumentId.Value" />
-                                                            <input type="hidden" name="Query" value="@Model.Query" />
-                                                            <button class="flex items-center gap-1 px-3 py-1 border border-amber-300 bg-amber-50 text-amber-900 text-xs font-medium rounded hover:bg-amber-100 transition-all" type="submit">
-                                                                <span class="material-symbols-outlined text-sm">refresh</span>Retry Sync
-                                                            </button>
-                                                        </form>
-                                                    }
-                                                }
-                                                <a class="flex items-center gap-1 px-3 py-1 bg-primary text-white text-xs font-medium rounded hover:bg-primary/90 transition-all" href="/TeacherUpload?subjectId=@item.SubjectId">
+                                    if (item.Documents.Count == 0)
+                                    {
+                                        <tr class="hover:bg-surface-container-low/50 transition-colors group">
+                                            <td class="px-6 py-4 font-medium text-sm">@item.SubjectCode</td>
+                                            <td class="px-6 py-4 text-sm text-on-surface">@item.SubjectName</td>
+                                            <td class="px-6 py-4 text-sm text-secondary">No chapters</td>
+                                            <td class="px-6 py-4 text-sm text-secondary">No document uploaded yet</td>
+                                            <td class="px-6 py-4 text-sm text-secondary">N/A</td>
+                                            <td class="px-6 py-4 text-right">
+                                                <a class="flex items-center justify-end gap-1 px-3 py-1 bg-primary text-white text-xs font-medium rounded hover:bg-primary/90 transition-all" href="/TeacherUpload?subjectId=@item.SubjectId">
                                                     <span class="material-symbols-outlined text-sm">upload_file</span>Upload
                                                 </a>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                            </td>
+                                        </tr>
+                                    }
+                                    else
+                                    {
+                                        foreach (var document in item.Documents)
+                                        {
+                                            <tr class="hover:bg-surface-container-low/50 transition-colors group">
+                                                <td class="px-6 py-4 font-medium text-sm">@item.SubjectCode</td>
+                                                <td class="px-6 py-4 text-sm text-on-surface">@item.SubjectName</td>
+                                                <td class="px-6 py-4 text-sm text-secondary">
+                                                    <strong class="block text-on-surface">@document.ChapterTitle</strong>
+                                                    <span>@document.DocumentTitle · @document.ChunkCount chunk(s)</span>
+                                                </td>
+                                                <td class="px-6 py-4 text-sm text-secondary">
+                                                    <span class="uppercase tracking-wide text-primary">@document.Status</span>
+                                                </td>
+                                                <td class="px-6 py-4 text-sm text-secondary">@(document.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")</td>
+                                                <td class="px-6 py-4 text-right">
+                                                    <div class="flex justify-end gap-2">
+                                                        <a class="flex items-center gap-1 px-3 py-1 border border-outline-variant/40 text-xs font-medium rounded hover:bg-surface-container-low transition-all" href="/TeacherDocuments/Details?documentId=@document.DocumentId">
+                                                            <span class="material-symbols-outlined text-sm">visibility</span>View Chunks
+                                                        </a>
+                                                        @if (string.Equals(document.Status, "failed", StringComparison.OrdinalIgnoreCase))
+                                                        {
+                                                            <form method="post" asp-page-handler="Retry">
+                                                                <input type="hidden" name="documentId" value="@document.DocumentId" />
+                                                                <input type="hidden" name="Query" value="@Model.Query" />
+                                                                <button class="flex items-center gap-1 px-3 py-1 border border-amber-300 bg-amber-50 text-amber-900 text-xs font-medium rounded hover:bg-amber-100 transition-all" type="submit">
+                                                                    <span class="material-symbols-outlined text-sm">refresh</span>Retry Sync
+                                                                </button>
+                                                            </form>
+                                                        }
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
                                 }
                             }
                         </tbody>

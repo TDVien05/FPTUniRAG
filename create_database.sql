@@ -348,7 +348,9 @@ CREATE TABLE IF NOT EXISTS processing_jobs (
     job_status character varying(50) DEFAULT 'queued',
     started_at timestamp without time zone,
     finished_at timestamp without time zone,
-    error_message text
+    error_message text,
+    progress_percent integer NOT NULL DEFAULT 0,
+    processing_stage character varying(50)
 );
 
 CREATE INDEX IF NOT EXISTS idx_processing_document
