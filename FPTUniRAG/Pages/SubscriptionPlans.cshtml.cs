@@ -15,15 +15,18 @@ public class SubscriptionPlansModel : PageModel
     private readonly AppDbContext _dbContext;
     private readonly ILogger<SubscriptionPlansModel> _logger;
     private readonly IStripePaymentService _stripePaymentService;
+    private readonly ISubscriptionPlanNotifier _subscriptionPlanNotifier;
 
     public SubscriptionPlansModel(
         AppDbContext dbContext,
         ILogger<SubscriptionPlansModel> logger,
-        IStripePaymentService stripePaymentService)
+        IStripePaymentService stripePaymentService,
+        ISubscriptionPlanNotifier subscriptionPlanNotifier)
     {
         _dbContext = dbContext;
         _logger = logger;
         _stripePaymentService = stripePaymentService;
+        _subscriptionPlanNotifier = subscriptionPlanNotifier;
     }
 
     [BindProperty]
@@ -114,6 +117,7 @@ public class SubscriptionPlansModel : PageModel
 
         _dbContext.SubscriptionPlans.Add(plan);
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await _subscriptionPlanNotifier.NotifyPlanCreatedAsync(cancellationToken);
         SuccessMessage = $"Created plan {CreateInput.PlanName.Trim()}.";
         return RedirectToPage("/SubscriptionPlans");
     }
@@ -229,6 +233,7 @@ public class SubscriptionPlansModel : PageModel
 
         _dbContext.SubscriptionPlans.Remove(plan);
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await _subscriptionPlanNotifier.NotifyPlanDeletedAsync(cancellationToken);
         SuccessMessage = $"Deleted plan {plan.PlanName}.";
         return RedirectToPage("/SubscriptionPlans");
     }

@@ -552,5 +552,31 @@
             </section>
         }
     </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        (() => {
+            if (!window.signalR) {
+                return;
+            }
+
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/hubs/subscription-plans")
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on("subscriptionPlanCreated", () => {
+                window.location.reload();
+            });
+
+            connection.on("subscriptionPlanDeleted", () => {
+                window.location.reload();
+            });
+
+            connection.start().catch(() => {
+                // The page remains usable if realtime updates are temporarily unavailable.
+            });
+        })();
+    </script>
 </body>
 </html>

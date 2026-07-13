@@ -33,6 +33,7 @@ builder.Services.Configure<StripeOptions>(builder.Configuration.GetSection("Stri
 builder.Services.AddScoped<IAccountManagementService, AccountManagementService>();
 builder.Services.AddScoped<ISubjectManagementService, SubjectManagementService>();
 builder.Services.AddScoped<ITeacherHeaderSubjectNotifier, SignalRTeacherHeaderSubjectNotifier>();
+builder.Services.AddScoped<ISubscriptionPlanNotifier, SignalRSubscriptionPlanNotifier>();
 builder.Services.AddScoped<ICredentialEmailSender, SmtpCredentialEmailSender>();
 builder.Services.AddSingleton<IPasswordService, Pbkdf2PasswordService>();
 builder.Services.AddScoped<ITesseractOcrService, TesseractOcrService>();
@@ -162,5 +163,6 @@ app.MapTeacherSubjectApiEndpoints();
 app.MapStudentChatApiEndpoints();
 app.MapHub<TeacherHeaderSubjectHub>("/hubs/teacher-header-subjects");
 app.MapHub<StudentChatHub>("/hubs/student-chat");
+app.MapHub<SubscriptionPlanHub>("/hubs/subscription-plans");
 
 app.Run();
