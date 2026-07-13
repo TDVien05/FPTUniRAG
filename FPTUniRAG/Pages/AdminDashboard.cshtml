@@ -21,7 +21,8 @@
 </head>
 <body class="admin-dashboard-page">
     <main class="admin-shell" aria-label="FPT UniRAG admin dashboard">
-        <aside class="admin-sidebar" aria-label="Admin navigation">
+        @await Html.PartialAsync("_AdminNavigation")
+        @* <aside class="admin-sidebar" aria-label="Admin navigation">
             <a class="admin-logo" href="/AdminDashboard" aria-label="FPT UniRAG dashboard">
                 <span class="admin-logo-mark" aria-hidden="true">
                     <span class="material-symbols-outlined">school</span>
@@ -85,7 +86,7 @@
                     <span>Logout</span>
                 </a>
             </section>
-        </aside>
+        </aside> *@
 
         <section class="admin-main">
             <div class="admin-content">

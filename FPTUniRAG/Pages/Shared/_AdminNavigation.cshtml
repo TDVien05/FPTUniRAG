@@ -1,0 +1,78 @@
+@{
+    var currentPath = Context.Request.Path.Value ?? string.Empty;
+    var isSubjects = currentPath.Equals("/Subjects", StringComparison.OrdinalIgnoreCase)
+        || currentPath.StartsWith("/Subjects/", StringComparison.OrdinalIgnoreCase);
+    var isDashboard = currentPath.Equals("/AdminDashboard", StringComparison.OrdinalIgnoreCase)
+        || currentPath == "/";
+    var isAccounts = currentPath.Equals("/Accounts", StringComparison.OrdinalIgnoreCase);
+    var isSubscriptionPlans = currentPath.Equals("/SubscriptionPlans", StringComparison.OrdinalIgnoreCase);
+    var isEmbeddingSettings = currentPath.Equals("/EmbeddingSettings", StringComparison.OrdinalIgnoreCase);
+    var isEmbeddingBenchmark = currentPath.Equals("/EmbeddingBenchmark", StringComparison.OrdinalIgnoreCase);
+    var isAnalysis = currentPath.Equals("/Analysis", StringComparison.OrdinalIgnoreCase);
+}
+
+<aside class="admin-sidebar" aria-label="Admin navigation">
+    <a class="admin-logo" href="/AdminDashboard" aria-label="FPT UniRAG dashboard">
+        <span class="admin-logo-mark" aria-hidden="true">
+            <span class="material-symbols-outlined">school</span>
+        </span>
+        <span>
+            <strong>FPT UniRAG</strong>
+            <small>Academic RAG</small>
+        </span>
+    </a>
+
+    <nav class="admin-nav">
+        <a class="admin-nav-item @(isDashboard ? "active" : string.Empty)" href="/AdminDashboard" @(isDashboard ? "aria-current=page" : string.Empty)>
+            <span class="material-symbols-outlined" aria-hidden="true">dashboard</span>
+            Dashboard
+        </a>
+        <details class="admin-nav-group" @(isSubjects ? "open" : string.Empty)>
+            <summary class="admin-nav-item @(isSubjects ? "active" : string.Empty)">
+                <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+                Subjects
+                <span class="material-symbols-outlined admin-nav-chevron" aria-hidden="true">expand_more</span>
+            </summary>
+            <div class="admin-subnav">
+                <a class="@(currentPath.Equals("/Subjects", StringComparison.OrdinalIgnoreCase) ? "active" : string.Empty)" href="/Subjects">Manage Subjects</a>
+                <a class="@(currentPath.Equals("/Subjects/AssignTeacher", StringComparison.OrdinalIgnoreCase) ? "active" : string.Empty)" href="/Subjects/AssignTeacher">Assign Teacher</a>
+                <a class="@(currentPath.Equals("/Subjects/AssignHeader", StringComparison.OrdinalIgnoreCase) ? "active" : string.Empty)" href="/Subjects/AssignHeader">Assign Header</a>
+            </div>
+        </details>
+        <a class="admin-nav-item @(isAccounts ? "active" : string.Empty)" href="/Accounts" @(isAccounts ? "aria-current=page" : string.Empty)>
+            <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+            Accounts
+        </a>
+        <a class="admin-nav-item @(isSubscriptionPlans ? "active" : string.Empty)" href="/SubscriptionPlans" @(isSubscriptionPlans ? "aria-current=page" : string.Empty)>
+            <span class="material-symbols-outlined" aria-hidden="true">payments</span>
+            Subscription Plans
+        </a>
+        <a class="admin-nav-item @(isEmbeddingSettings ? "active" : string.Empty)" href="/EmbeddingSettings" @(isEmbeddingSettings ? "aria-current=page" : string.Empty)>
+            <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+            Embedding Settings
+        </a>
+        <a class="admin-nav-item @(isEmbeddingBenchmark ? "active" : string.Empty)" href="/EmbeddingBenchmark" @(isEmbeddingBenchmark ? "aria-current=page" : string.Empty)>
+            <span class="material-symbols-outlined" aria-hidden="true">speed</span>
+            Embedding Benchmark
+        </a>
+        <a class="admin-nav-item @(isAnalysis ? "active" : string.Empty)" href="/Analysis" @(isAnalysis ? "aria-current=page" : string.Empty)>
+            <span class="material-symbols-outlined" aria-hidden="true">analytics</span>
+            Analytics
+        </a>
+    </nav>
+
+    <section class="admin-sidebar-footer" aria-label="Sidebar actions">
+        <a class="admin-sidebar-footer-link" href="#">
+            <span class="material-symbols-outlined" aria-hidden="true">help_outline</span>
+            <span>Help</span>
+        </a>
+        <a class="admin-sidebar-footer-link" href="/ChangePassword">
+            <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+            <span>Change Password</span>
+        </a>
+        <a class="admin-sidebar-footer-link" href="/Logout">
+            <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+            <span>Logout</span>
+        </a>
+    </section>
+</aside>
