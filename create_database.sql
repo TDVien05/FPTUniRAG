@@ -318,6 +318,30 @@ CREATE TABLE IF NOT EXISTS chunks (
 CREATE INDEX IF NOT EXISTS idx_chunks_document
     ON chunks (document_id);
 
+CREATE TABLE IF NOT EXISTS document_embedding_runs (
+    embedding_run_id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    document_id uuid NOT NULL,
+    embedding_model character varying(255) NOT NULL,
+    embedding_dimensions integer NOT NULL DEFAULT 0,
+    document_size_bytes bigint,
+    chunk_count integer NOT NULL DEFAULT 0,
+    vector_count integer NOT NULL DEFAULT 0,
+    started_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at timestamp without time zone,
+    status character varying(50) NOT NULL,
+    error_message text,
+    CONSTRAINT fk_document_embedding_runs_document
+        FOREIGN KEY (document_id)
+        REFERENCES documents(document_id)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS ix_document_embedding_runs_document_id
+    ON document_embedding_runs(document_id);
+
+CREATE INDEX IF NOT EXISTS ix_document_embedding_runs_model
+    ON document_embedding_runs(embedding_model);
+
 CREATE TABLE IF NOT EXISTS processing_jobs (
     job_id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     document_id uuid NOT NULL,
