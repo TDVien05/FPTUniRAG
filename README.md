@@ -201,24 +201,17 @@ Configure SMTP if the application needs to email teacher/student credentials:
 
 Do not commit real OpenRouter, Stripe, SMTP, or database credentials.
 
-### 4. Apply database scripts
+### 4. Apply the database schema
 
-For a new database, `create_database.sql` creates the complete schema. For an existing database, apply the scripts in `FPTUniRAG.DataAccessLayer/Scripts` in date order.
+`create_database.sql` is the single source of truth for the current PostgreSQL schema. The Docker bootstrap runs it automatically when the PostgreSQL volume is created for the first time.
 
-Example for the current free quota setting:
+For an existing local database, apply the consolidated schema manually:
 
 ```bash
-docker exec -i fptunirag-postgres psql -U postgres -d prn222 < FPTUniRAG.DataAccessLayer/Scripts/20260714_add_student_free_quota.sql
+docker exec -i fptunirag-postgres psql -U postgres -d prn222 < create_database.sql
 ```
 
-Useful migration scripts include:
-
-- `20260708_add_subject_chunking_strategy.sql`
-- `20260712_add_embedding_settings.sql`
-- `20260712_add_stripe_subscription_id.sql`
-- `20260713_add_document_embedding_runs.sql`
-- `20260713_add_processing_progress.sql`
-- `20260714_add_student_free_quota.sql`
+The schema includes subject chunking settings, embedding settings, document embedding runs, processing progress, Stripe subscription IDs, and the student free-quota setting.
 
 ### 5. Restore, build, and run
 

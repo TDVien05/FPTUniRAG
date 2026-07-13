@@ -1,2 +1,0 @@
-DROP TABLE IF EXISTS chunk_embeddings;
-DROP EXTENSION IF EXISTS vector;

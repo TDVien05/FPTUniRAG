@@ -713,7 +713,13 @@ SELECT
     COALESCE(sp.plan_name, 'Free'::character varying(100)) AS plan_name,
     sp.daily_token_limit,
     sp.weekly_token_limit,
-    COALESCE(sp.monthly_token_limit, 2000) AS monthly_token_limit,
+    COALESCE(
+        sp.monthly_token_limit,
+        (SELECT sfq.monthly_token_limit
+         FROM student_free_quota_settings sfq
+         WHERE sfq.setting_id = 1),
+        2000
+    ) AS monthly_token_limit,
     COALESCE(sp.has_unlimited_chat, false) AS has_unlimited_chat,
     COALESCE(sp.has_advanced_models, false) AS has_advanced_models,
     COALESCE(sp.has_priority_support, false) AS has_priority_support,
