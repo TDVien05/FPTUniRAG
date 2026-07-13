@@ -48,6 +48,7 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
             """;
 
         command.Parameters.Add(new NpgsqlParameter("subjectId", subjectId));
+        command.Parameters.Add(new NpgsqlParameter("embeddingModel", embeddingConfiguration.Model));
 
         if (command.Connection is not null && command.Connection.State != System.Data.ConnectionState.Open)
         {
