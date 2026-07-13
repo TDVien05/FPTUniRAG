@@ -67,7 +67,17 @@ public sealed record TeacherDocumentManagementItemDto(
     DateTime? LastUpdatedAt,
     Guid? LatestDocumentId,
     string? LatestDocumentTitle,
-    string? LatestDocumentStatus);
+    string? LatestDocumentStatus,
+    IReadOnlyList<TeacherSubjectDocumentDto> Documents);
+
+public sealed record TeacherSubjectDocumentDto(
+    Guid DocumentId,
+    Guid ChapterId,
+    string ChapterTitle,
+    string DocumentTitle,
+    string Status,
+    int ChunkCount,
+    DateTime? CreatedAt);
 
 public sealed record SubjectHeaderAssignmentListItemDto(
     Guid SubjectId,

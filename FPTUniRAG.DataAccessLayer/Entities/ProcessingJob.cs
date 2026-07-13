@@ -17,5 +17,9 @@ public partial class ProcessingJob
 
     public string? ErrorMessage { get; set; }
 
+    public int ProgressPercent { get; set; }
+
+    public string? ProcessingStage { get; set; }
+
     public virtual Document Document { get; set; } = null!;
 }

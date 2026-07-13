@@ -17,6 +17,7 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
     private readonly IChunkEmbeddingStore _chunkEmbeddingStore;
     private readonly RagIngestionOptions _options;
     private readonly IWebHostEnvironment _environment;
+    private readonly IDocumentProcessingQueue _processingQueue;
 
     public TeacherDocumentWorkflowService(
         AppDbContext dbContext,
@@ -26,7 +27,8 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
         IOpenRouterEmbeddingService openRouterEmbeddingService,
         IChunkEmbeddingStore chunkEmbeddingStore,
         IOptions<RagIngestionOptions> options,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IDocumentProcessingQueue processingQueue)
     {
         _dbContext = dbContext;
         _documentTextExtractor = documentTextExtractor;
@@ -36,6 +38,7 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
         _chunkEmbeddingStore = chunkEmbeddingStore;
         _options = options.Value;
         _environment = environment;
+        _processingQueue = processingQueue;
     }
 
     public async Task<TeacherUploadContextDto?> GetUploadContextAsync(
@@ -161,108 +164,19 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
         {
             JobId = Guid.NewGuid(),
             DocumentId = document.DocumentId,
-            JobStatus = "processing",
-            StartedAt = CreateDatabaseTimestamp()
+            JobStatus = "queued",
+            ProgressPercent = 0,
+            ProcessingStage = "queued"
         };
+
+        document.Status = "queued";
 
         _dbContext.Documents.Add(document);
         _dbContext.ProcessingJobs.Add(job);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        var chunksPersisted = false;
-        DocumentEmbeddingRun? embeddingRun = null;
-
-        try
-        {
-            string content;
-            await using (var stream = command.File.OpenReadStream())
-            {
-                content = await _documentTextExtractor.ExtractTextAsync(stream, command.File.FileName, cancellationToken);
-            }
-
-            if (string.IsNullOrWhiteSpace(content))
-            {
-                throw new InvalidOperationException("No readable content was extracted from the uploaded file.");
-            }
-
-            var chunkContents = resolvedChunking.Strategy switch
-            {
-                SubjectChunkingStrategies.Semantic => _semanticChunkingService.CreateChunks(
-                    content,
-                    _options.Semantic.MaxChunkSize,
-                    _options.Semantic.MinChunkSize),
-                _ => _fixedChunkingService.CreateChunks(content, document.ChunkSize, document.ChunkOverlap)
-            };
-            if (chunkContents.Count == 0)
-            {
-                throw new InvalidOperationException("The uploaded document did not produce any chunks.");
-            }
-
-            var chunkEntities = chunkContents
-                .Select((chunkContent, index) => new Chunk
-                {
-                    ChunkId = Guid.NewGuid(),
-                    DocumentId = document.DocumentId,
-                    ChunkIndex = index,
-                    Content = chunkContent,
-                    CreatedAt = CreateDatabaseTimestamp()
-                })
-                .ToList();
-
-            _dbContext.Chunks.AddRange(chunkEntities);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            chunksPersisted = true;
-
-            embeddingRun = new DocumentEmbeddingRun
-            {
-                EmbeddingRunId = Guid.NewGuid(),
-                DocumentId = document.DocumentId,
-                ChunkCount = chunkEntities.Count,
-                DocumentSizeBytes = command.File.Length,
-                StartedAt = CreateDatabaseTimestamp(),
-                EmbeddingModel = "pending",
-                Status = "processing"
-            };
-            _dbContext.DocumentEmbeddingRuns.Add(embeddingRun);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            var embeddings = await _openRouterEmbeddingService.CreateEmbeddingsAsync(chunkContents, cancellationToken);
-            await SaveEmbeddingsForChunksAsync(chunkEntities, embeddings, cancellationToken);
-
-            embeddingRun.EmbeddingModel = embeddings.Model;
-            embeddingRun.EmbeddingDimensions = embeddings.Dimensions;
-            embeddingRun.VectorCount = embeddings.Vectors.Count;
-            embeddingRun.Status = "completed";
-            embeddingRun.CompletedAt = CreateDatabaseTimestamp();
-
-            document.Status = "completed";
-            job.JobStatus = "completed";
-            job.FinishedAt = CreateDatabaseTimestamp();
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            return new TeacherDocumentUploadResult(true, "Document uploaded and chunked successfully.", document.DocumentId);
-        }
-        catch (Exception exception)
-        {
-            if (embeddingRun is not null)
-            {
-                embeddingRun.Status = "failed";
-                embeddingRun.ErrorMessage = exception.Message;
-                embeddingRun.CompletedAt = CreateDatabaseTimestamp();
-            }
-            document.Status = "failed";
-            job.JobStatus = "failed";
-            job.ErrorMessage = exception.Message;
-            job.FinishedAt = CreateDatabaseTimestamp();
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            return chunksPersisted
-                ? new TeacherDocumentUploadResult(
-                    true,
-                    "Document and chunks were saved, but vector sync failed. You can retry the embedding sync from Document Management.",
-                    document.DocumentId)
-                : new TeacherDocumentUploadResult(false, exception.Message, document.DocumentId);
-        }
+        await _processingQueue.QueueAsync(document.DocumentId, cancellationToken);
+        return new TeacherDocumentUploadResult(true, "Document uploaded and queued for processing.", document.DocumentId);
     }
 
     public async Task<TeacherDocumentUploadResult> RetryEmbeddingSyncAsync(
@@ -280,12 +194,11 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
             return new TeacherDocumentUploadResult(false, "The selected document is unavailable.", null);
         }
 
-        var orderedChunks = await _dbContext.Chunks
-            .Where(chunk => chunk.DocumentId == document.DocumentId)
-            .OrderBy(chunk => chunk.ChunkIndex)
-            .ToListAsync(cancellationToken);
+        var hasChunks = await _dbContext.Chunks.AnyAsync(
+            chunk => chunk.DocumentId == document.DocumentId,
+            cancellationToken);
 
-        if (orderedChunks.Count == 0)
+        if (!hasChunks)
         {
             return new TeacherDocumentUploadResult(false, "This document does not have stored chunks to retry.", document.DocumentId);
         }
@@ -307,30 +220,136 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
         }
         else
         {
-            processingJob.JobStatus = "processing";
-            processingJob.StartedAt = CreateDatabaseTimestamp();
+            processingJob.JobStatus = "queued";
+            processingJob.StartedAt = null;
             processingJob.FinishedAt = null;
             processingJob.ErrorMessage = null;
         }
 
-        document.Status = "processing";
+        processingJob.ProgressPercent = 0;
+        processingJob.ProcessingStage = "queued";
+        document.Status = "queued";
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        DocumentEmbeddingRun? embeddingRun = null;
+        await _processingQueue.QueueAsync(document.DocumentId, cancellationToken);
+        return new TeacherDocumentUploadResult(true, "Embedding sync queued for processing.", document.DocumentId);
+    }
 
+    public async Task<TeacherDocumentProcessingStatusDto?> GetProcessingStatusAsync(
+        string teacherEmail,
+        Guid documentId,
+        CancellationToken cancellationToken = default)
+    {
+        return await GetHeaderSubjectQuery(teacherEmail)
+            .SelectMany(link => link.Subject.Documents)
+            .Where(document => document.DocumentId == documentId)
+            .SelectMany(document => document.ProcessingJobs
+                .OrderByDescending(job => job.StartedAt)
+                .Take(1)
+                .Select(job => new TeacherDocumentProcessingStatusDto(
+                    document.DocumentId,
+                    job.JobStatus ?? document.Status ?? "unknown",
+                    job.ProgressPercent,
+                    job.ProcessingStage ?? job.JobStatus ?? document.Status ?? "unknown",
+                    job.ErrorMessage,
+                    job.JobStatus == "completed",
+                    job.JobStatus == "failed")))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task ProcessDocumentAsync(Guid documentId, CancellationToken cancellationToken = default)
+    {
+        var document = await _dbContext.Documents
+            .Include(item => item.ProcessingJobs)
+            .FirstOrDefaultAsync(item => item.DocumentId == documentId, cancellationToken);
+
+        if (document is null)
+        {
+            return;
+        }
+
+        var job = document.ProcessingJobs
+            .OrderByDescending(item => item.StartedAt ?? DateTime.MinValue)
+            .FirstOrDefault();
+
+        if (job is null)
+        {
+            throw new InvalidOperationException($"No processing job exists for document {documentId}.");
+        }
+
+        job.JobStatus = "processing";
+        job.StartedAt ??= CreateDatabaseTimestamp();
+        job.FinishedAt = null;
+        job.ErrorMessage = null;
+        document.Status = "processing";
+        await UpdateProgressAsync(document, job, 0, "queued", cancellationToken);
+
+        DocumentEmbeddingRun? embeddingRun = null;
         try
         {
-            var chunkContents = orderedChunks
-                .Select(chunk => chunk.Content)
-                .ToList();
+            var orderedChunks = await _dbContext.Chunks
+                .Where(chunk => chunk.DocumentId == documentId)
+                .OrderBy(chunk => chunk.ChunkIndex)
+                .ToListAsync(cancellationToken);
 
-            var documentSize = TryGetDocumentSize(document.FileUrl);
+            if (orderedChunks.Count == 0)
+            {
+                await UpdateProgressAsync(document, job, 15, "extracting", cancellationToken);
+                var filePath = GetAbsoluteDocumentPath(document.FileUrl);
+                if (!File.Exists(filePath))
+                {
+                    throw new FileNotFoundException("The stored document file could not be found.", filePath);
+                }
+
+                string content;
+                await using (var stream = File.OpenRead(filePath))
+                {
+                    content = await _documentTextExtractor.ExtractTextAsync(
+                        stream,
+                        Path.GetFileName(filePath),
+                        cancellationToken);
+                }
+
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    throw new InvalidOperationException("No readable content was extracted from the uploaded file.");
+                }
+
+                await UpdateProgressAsync(document, job, 35, "chunking", cancellationToken);
+                var chunkContents = document.ChunkingStrategy == SubjectChunkingStrategies.Semantic
+                    ? _semanticChunkingService.CreateChunks(content, _options.Semantic.MaxChunkSize, _options.Semantic.MinChunkSize)
+                    : _fixedChunkingService.CreateChunks(content, document.ChunkSize, document.ChunkOverlap);
+
+                if (chunkContents.Count == 0)
+                {
+                    throw new InvalidOperationException("The uploaded document did not produce any chunks.");
+                }
+
+                orderedChunks = chunkContents
+                    .Select((chunkContent, index) => new Chunk
+                    {
+                        ChunkId = Guid.NewGuid(),
+                        DocumentId = document.DocumentId,
+                        ChunkIndex = index,
+                        Content = chunkContent,
+                        CreatedAt = CreateDatabaseTimestamp()
+                    })
+                    .ToList();
+                _dbContext.Chunks.AddRange(orderedChunks);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            else
+            {
+                await UpdateProgressAsync(document, job, 35, "chunking", cancellationToken);
+            }
+
+            await UpdateProgressAsync(document, job, 75, "embedding", cancellationToken);
             embeddingRun = new DocumentEmbeddingRun
             {
                 EmbeddingRunId = Guid.NewGuid(),
                 DocumentId = document.DocumentId,
                 ChunkCount = orderedChunks.Count,
-                DocumentSizeBytes = documentSize,
+                DocumentSizeBytes = TryGetDocumentSize(document.FileUrl),
                 StartedAt = CreateDatabaseTimestamp(),
                 EmbeddingModel = "pending",
                 Status = "processing"
@@ -338,7 +357,9 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
             _dbContext.DocumentEmbeddingRuns.Add(embeddingRun);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            var embeddings = await _openRouterEmbeddingService.CreateEmbeddingsAsync(chunkContents, cancellationToken);
+            var embeddings = await _openRouterEmbeddingService.CreateEmbeddingsAsync(
+                orderedChunks.Select(chunk => chunk.Content).ToList(),
+                cancellationToken);
             await SaveEmbeddingsForChunksAsync(orderedChunks, embeddings, cancellationToken);
 
             embeddingRun.EmbeddingModel = embeddings.Model;
@@ -346,13 +367,14 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
             embeddingRun.VectorCount = embeddings.Vectors.Count;
             embeddingRun.Status = "completed";
             embeddingRun.CompletedAt = CreateDatabaseTimestamp();
+            await UpdateProgressAsync(document, job, 95, "saving", cancellationToken);
 
             document.Status = "completed";
-            processingJob.JobStatus = "completed";
-            processingJob.FinishedAt = CreateDatabaseTimestamp();
+            job.JobStatus = "completed";
+            job.ProgressPercent = 100;
+            job.ProcessingStage = "completed";
+            job.FinishedAt = CreateDatabaseTimestamp();
             await _dbContext.SaveChangesAsync(cancellationToken);
-
-            return new TeacherDocumentUploadResult(true, "Embedding sync completed successfully.", document.DocumentId);
         }
         catch (Exception exception)
         {
@@ -362,14 +384,27 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
                 embeddingRun.ErrorMessage = exception.Message;
                 embeddingRun.CompletedAt = CreateDatabaseTimestamp();
             }
-            document.Status = "failed";
-            processingJob.JobStatus = "failed";
-            processingJob.ErrorMessage = exception.Message;
-            processingJob.FinishedAt = CreateDatabaseTimestamp();
-            await _dbContext.SaveChangesAsync(cancellationToken);
 
-            return new TeacherDocumentUploadResult(false, exception.Message, document.DocumentId);
+            document.Status = "failed";
+            job.JobStatus = "failed";
+            job.ProcessingStage = "failed";
+            job.ErrorMessage = exception.Message;
+            job.FinishedAt = CreateDatabaseTimestamp();
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
+    }
+
+    private async Task UpdateProgressAsync(
+        Document document,
+        ProcessingJob job,
+        int progressPercent,
+        string stage,
+        CancellationToken cancellationToken)
+    {
+        document.Status = stage == "completed" ? "completed" : "processing";
+        job.ProgressPercent = progressPercent;
+        job.ProcessingStage = stage;
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<TeacherDocumentDetailDto?> GetDocumentDetailAsync(
@@ -489,10 +524,15 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
 
     private long? TryGetDocumentSize(string relativeFilePath)
     {
-        var absolutePath = Path.IsPathRooted(relativeFilePath)
+        var absolutePath = GetAbsoluteDocumentPath(relativeFilePath);
+        return File.Exists(absolutePath) ? new FileInfo(absolutePath).Length : null;
+    }
+
+    private string GetAbsoluteDocumentPath(string relativeFilePath)
+    {
+        return Path.IsPathRooted(relativeFilePath)
             ? relativeFilePath
             : Path.Combine(_environment.ContentRootPath, relativeFilePath.Replace('/', Path.DirectorySeparatorChar));
-        return File.Exists(absolutePath) ? new FileInfo(absolutePath).Length : null;
     }
 
     private async Task SaveEmbeddingsForChunksAsync(

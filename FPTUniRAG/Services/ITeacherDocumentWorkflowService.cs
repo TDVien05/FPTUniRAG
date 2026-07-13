@@ -21,4 +21,11 @@ public interface ITeacherDocumentWorkflowService
         string teacherEmail,
         Guid documentId,
         CancellationToken cancellationToken = default);
+
+    Task<TeacherDocumentProcessingStatusDto?> GetProcessingStatusAsync(
+        string teacherEmail,
+        Guid documentId,
+        CancellationToken cancellationToken = default);
+
+    Task ProcessDocumentAsync(Guid documentId, CancellationToken cancellationToken = default);
 }

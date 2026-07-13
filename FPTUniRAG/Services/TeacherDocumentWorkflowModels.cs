@@ -38,6 +38,15 @@ public sealed record TeacherDocumentUploadResult(
     string Message,
     Guid? DocumentId);
 
+public sealed record TeacherDocumentProcessingStatusDto(
+    Guid DocumentId,
+    string Status,
+    int ProgressPercent,
+    string Stage,
+    string? ErrorMessage,
+    bool IsCompleted,
+    bool IsFailed);
+
 public sealed class TeacherDocumentUploadCommand
 {
     public Guid SubjectId { get; set; }

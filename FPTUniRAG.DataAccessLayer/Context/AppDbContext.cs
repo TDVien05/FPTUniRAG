@@ -434,6 +434,10 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("job_id");
             entity.Property(e => e.DocumentId).HasColumnName("document_id");
             entity.Property(e => e.ErrorMessage).HasColumnName("error_message");
+            entity.Property(e => e.ProgressPercent).HasColumnName("progress_percent");
+            entity.Property(e => e.ProcessingStage)
+                .HasMaxLength(50)
+                .HasColumnName("processing_stage");
             entity.Property(e => e.FinishedAt)
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("finished_at");
