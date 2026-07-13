@@ -22,6 +22,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Document> Documents { get; set; }
 
+    public virtual DbSet<DocumentEmbeddingRun> DocumentEmbeddingRuns { get; set; }
+
     public virtual DbSet<EmbeddingSetting> EmbeddingSettings { get; set; }
 
     public virtual DbSet<Message> Messages { get; set; }
@@ -268,6 +270,40 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.Session).WithMany(p => p.Messages)
                 .HasForeignKey(d => d.SessionId)
                 .HasConstraintName("fk_message_session");
+        });
+
+        modelBuilder.Entity<DocumentEmbeddingRun>(entity =>
+        {
+            entity.HasKey(e => e.EmbeddingRunId).HasName("document_embedding_runs_pkey");
+            entity.ToTable("document_embedding_runs");
+            entity.HasIndex(e => e.DocumentId, "ix_document_embedding_runs_document_id");
+            entity.HasIndex(e => e.EmbeddingModel, "ix_document_embedding_runs_model");
+            entity.Property(e => e.EmbeddingRunId)
+                .HasDefaultValueSql("uuid_generate_v4()")
+                .HasColumnName("embedding_run_id");
+            entity.Property(e => e.DocumentId).HasColumnName("document_id");
+            entity.Property(e => e.EmbeddingModel)
+                .HasMaxLength(255)
+                .HasColumnName("embedding_model");
+            entity.Property(e => e.EmbeddingDimensions).HasColumnName("embedding_dimensions");
+            entity.Property(e => e.DocumentSizeBytes).HasColumnName("document_size_bytes");
+            entity.Property(e => e.ChunkCount).HasColumnName("chunk_count");
+            entity.Property(e => e.VectorCount).HasColumnName("vector_count");
+            entity.Property(e => e.StartedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("started_at");
+            entity.Property(e => e.CompletedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("completed_at");
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .HasColumnName("status");
+            entity.Property(e => e.ErrorMessage).HasColumnName("error_message");
+            entity.HasOne(e => e.Document)
+                .WithMany(e => e.EmbeddingRuns)
+                .HasForeignKey(e => e.DocumentId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_document_embedding_runs_document");
         });
 
         modelBuilder.Entity<MomoPaymentTransaction>(entity =>

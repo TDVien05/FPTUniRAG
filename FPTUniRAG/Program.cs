@@ -62,6 +62,7 @@ builder.Services.AddScoped<IChunkEmbeddingStore, PostgresChunkEmbeddingStore>();
 builder.Services.AddScoped<IStudentChunkRetrievalService, StudentChunkRetrievalService>();
 builder.Services.AddScoped<IStudentChatService, StudentChatService>();
 builder.Services.AddScoped<IEmbeddingConfigurationService, EmbeddingConfigurationService>();
+builder.Services.AddScoped<IEmbeddingBenchmarkService, EmbeddingBenchmarkService>();
 builder.Services.AddScoped<AccountCookieAuthenticationEvents>();
 builder.Services.AddHostedService<AdminAccountInitializationHostedService>();
 builder.Services.AddSignalR();
@@ -100,6 +101,7 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AuthorizePage("/StudentPlans", "StudentOrAdmin");
     options.Conventions.AuthorizePage("/SubscriptionPlans", "AdminOnly");
     options.Conventions.AuthorizePage("/EmbeddingSettings", "AdminOnly");
+    options.Conventions.AuthorizePage("/EmbeddingBenchmark", "AdminOnly");
 });
 
 var app = builder.Build();

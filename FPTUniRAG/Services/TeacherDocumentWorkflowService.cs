@@ -170,6 +170,7 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         var chunksPersisted = false;
+        DocumentEmbeddingRun? embeddingRun = null;
 
         try
         {
@@ -212,8 +213,27 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
             await _dbContext.SaveChangesAsync(cancellationToken);
             chunksPersisted = true;
 
+            embeddingRun = new DocumentEmbeddingRun
+            {
+                EmbeddingRunId = Guid.NewGuid(),
+                DocumentId = document.DocumentId,
+                ChunkCount = chunkEntities.Count,
+                DocumentSizeBytes = command.File.Length,
+                StartedAt = CreateDatabaseTimestamp(),
+                EmbeddingModel = "pending",
+                Status = "processing"
+            };
+            _dbContext.DocumentEmbeddingRuns.Add(embeddingRun);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
             var embeddings = await _openRouterEmbeddingService.CreateEmbeddingsAsync(chunkContents, cancellationToken);
             await SaveEmbeddingsForChunksAsync(chunkEntities, embeddings, cancellationToken);
+
+            embeddingRun.EmbeddingModel = embeddings.Model;
+            embeddingRun.EmbeddingDimensions = embeddings.Dimensions;
+            embeddingRun.VectorCount = embeddings.Vectors.Count;
+            embeddingRun.Status = "completed";
+            embeddingRun.CompletedAt = CreateDatabaseTimestamp();
 
             document.Status = "completed";
             job.JobStatus = "completed";
@@ -224,6 +244,12 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
         }
         catch (Exception exception)
         {
+            if (embeddingRun is not null)
+            {
+                embeddingRun.Status = "failed";
+                embeddingRun.ErrorMessage = exception.Message;
+                embeddingRun.CompletedAt = CreateDatabaseTimestamp();
+            }
             document.Status = "failed";
             job.JobStatus = "failed";
             job.ErrorMessage = exception.Message;
@@ -290,14 +316,36 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
         document.Status = "processing";
         await _dbContext.SaveChangesAsync(cancellationToken);
 
+        DocumentEmbeddingRun? embeddingRun = null;
+
         try
         {
             var chunkContents = orderedChunks
                 .Select(chunk => chunk.Content)
                 .ToList();
 
+            var documentSize = TryGetDocumentSize(document.FileUrl);
+            embeddingRun = new DocumentEmbeddingRun
+            {
+                EmbeddingRunId = Guid.NewGuid(),
+                DocumentId = document.DocumentId,
+                ChunkCount = orderedChunks.Count,
+                DocumentSizeBytes = documentSize,
+                StartedAt = CreateDatabaseTimestamp(),
+                EmbeddingModel = "pending",
+                Status = "processing"
+            };
+            _dbContext.DocumentEmbeddingRuns.Add(embeddingRun);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
             var embeddings = await _openRouterEmbeddingService.CreateEmbeddingsAsync(chunkContents, cancellationToken);
             await SaveEmbeddingsForChunksAsync(orderedChunks, embeddings, cancellationToken);
+
+            embeddingRun.EmbeddingModel = embeddings.Model;
+            embeddingRun.EmbeddingDimensions = embeddings.Dimensions;
+            embeddingRun.VectorCount = embeddings.Vectors.Count;
+            embeddingRun.Status = "completed";
+            embeddingRun.CompletedAt = CreateDatabaseTimestamp();
 
             document.Status = "completed";
             processingJob.JobStatus = "completed";
@@ -308,6 +356,12 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
         }
         catch (Exception exception)
         {
+            if (embeddingRun is not null)
+            {
+                embeddingRun.Status = "failed";
+                embeddingRun.ErrorMessage = exception.Message;
+                embeddingRun.CompletedAt = CreateDatabaseTimestamp();
+            }
             document.Status = "failed";
             processingJob.JobStatus = "failed";
             processingJob.ErrorMessage = exception.Message;
@@ -431,6 +485,14 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
     private static DateTime CreateDatabaseTimestamp()
     {
         return DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+    }
+
+    private long? TryGetDocumentSize(string relativeFilePath)
+    {
+        var absolutePath = Path.IsPathRooted(relativeFilePath)
+            ? relativeFilePath
+            : Path.Combine(_environment.ContentRootPath, relativeFilePath.Replace('/', Path.DirectorySeparatorChar));
+        return File.Exists(absolutePath) ? new FileInfo(absolutePath).Length : null;
     }
 
     private async Task SaveEmbeddingsForChunksAsync(

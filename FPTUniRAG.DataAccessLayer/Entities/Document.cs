@@ -35,6 +35,8 @@ public partial class Document
 
     public virtual ICollection<Chunk> Chunks { get; set; } = new List<Chunk>();
 
+    public virtual ICollection<DocumentEmbeddingRun> EmbeddingRuns { get; set; } = new List<DocumentEmbeddingRun>();
+
     public virtual ICollection<ProcessingJob> ProcessingJobs { get; set; } = new List<ProcessingJob>();
 
     public virtual Subject Subject { get; set; } = null!;
