@@ -1,10 +1,8 @@
 @page
-@inject IConfiguration Configuration
+@model FPTUniRAG.Pages.AdminDashboardModel
 @{
     Layout = null;
     ViewData["Title"] = "Admin Dashboard - FPT UniRAG";
-
-    var totalSubjects = 124;
 }
 
 <!DOCTYPE html>
@@ -95,8 +93,8 @@
                         <span class="admin-stat-icon blue"><span class="material-symbols-outlined" aria-hidden="true">menu_book</span></span>
                         <div>
                             <p>Total Subjects</p>
-                            <strong>@totalSubjects</strong>
-                            <small>+8 this semester</small>
+                            <strong>@Model.Dashboard.TotalSubjects</strong>
+                            <small>@Model.Dashboard.SubjectsWithDocuments with uploaded documents</small>
                         </div>
                     </article>
                     <article class="admin-stat-card">
@@ -132,46 +130,28 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td><strong>SWD392</strong><span>Software Architecture</span></td>
-                                        <td>Minh Tran</td>
-                                        <td>Today, 09:42</td>
-                                        <td><span class="admin-badge success">Indexed</span></td>
-                                        <td class="admin-row-actions">
-                                            <button type="button" aria-label="Edit SWD392"><span class="material-symbols-outlined">edit</span></button>
-                                            <button type="button" aria-label="Open SWD392"><span class="material-symbols-outlined">open_in_new</span></button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>PRN222</strong><span>.NET Web Development</span></td>
-                                        <td>Hoa Dao</td>
-                                        <td>Yesterday, 15:10</td>
-                                        <td><span class="admin-badge success">Ready</span></td>
-                                        <td class="admin-row-actions">
-                                            <button type="button" aria-label="Edit PRN222"><span class="material-symbols-outlined">edit</span></button>
-                                            <button type="button" aria-label="Open PRN222"><span class="material-symbols-outlined">open_in_new</span></button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>NWC203</strong><span>Computer Networks</span></td>
-                                        <td>Quang Nguyen</td>
-                                        <td>Jul 01, 11:24</td>
-                                        <td><span class="admin-badge pending">Processing</span></td>
-                                        <td class="admin-row-actions">
-                                            <button type="button" aria-label="Edit NWC203"><span class="material-symbols-outlined">edit</span></button>
-                                            <button type="button" aria-label="Open NWC203"><span class="material-symbols-outlined">open_in_new</span></button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>AIL303</strong><span>Artificial Intelligence</span></td>
-                                        <td>An Le</td>
-                                        <td>Jun 30, 18:02</td>
-                                        <td><span class="admin-badge draft">Review</span></td>
-                                        <td class="admin-row-actions">
-                                            <button type="button" aria-label="Edit AIL303"><span class="material-symbols-outlined">edit</span></button>
-                                            <button type="button" aria-label="Open AIL303"><span class="material-symbols-outlined">open_in_new</span></button>
-                                        </td>
-                                    </tr>
+                                    @if (Model.Dashboard.RecentSubjects.Count == 0)
+                                    {
+                                        <tr>
+                                            <td colspan="5">No subjects are available in the database.</td>
+                                        </tr>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var subject in Model.Dashboard.RecentSubjects)
+                                        {
+                                            <tr>
+                                                <td><strong>@subject.SubjectCode</strong><span>@subject.SubjectName</span></td>
+                                                <td>@(string.IsNullOrWhiteSpace(subject.HeaderTeacherName) ? "Unassigned" : subject.HeaderTeacherName)</td>
+                                                <td>@AdminDashboardModel.FormatLastUpdated(subject.LastUpdatedAt)</td>
+                                                <td><span class="admin-badge @AdminDashboardModel.GetStatusCssClass(subject)">@AdminDashboardModel.GetStatusLabel(subject)</span></td>
+                                                <td class="admin-row-actions">
+                                                    <a asp-page="/Subjects/Edit" asp-route-subjectId="@subject.SubjectId" aria-label="Edit @subject.SubjectCode"><span class="material-symbols-outlined">edit</span></a>
+                                                    <a asp-page="/Subjects/Delete" asp-route-subjectId="@subject.SubjectId" aria-label="Delete @subject.SubjectCode"><span class="material-symbols-outlined">delete</span></a>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
                                 </tbody>
                                 </table>
                             </div>

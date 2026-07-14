@@ -1,10 +1,12 @@
 using FPTUniRAG.BusinessLayer.Accounts;
+using FPTUniRAG.BusinessLayer.AdminDashboard;
+using FPTUniRAG.BusinessLayer.Hubs;
 using FPTUniRAG.BusinessLayer.Subjects;
 using FPTUniRAG.DataAccessLayer.Context;
 using FPTUniRAG.Endpoints;
 using FPTUniRAG.Hubs;
-using FPTUniRAG.Options;
-using FPTUniRAG.Services;
+using FPTUniRAG.BusinessLayer.Options;
+using FPTUniRAG.BusinessLayer.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
@@ -31,6 +33,7 @@ builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp")
 builder.Services.Configure<RagIngestionOptions>(builder.Configuration.GetSection("RagIngestion"));
 builder.Services.Configure<StripeOptions>(builder.Configuration.GetSection("Stripe"));
 builder.Services.AddScoped<IAccountManagementService, AccountManagementService>();
+builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 builder.Services.AddScoped<ISubjectManagementService, SubjectManagementService>();
 builder.Services.AddScoped<ITeacherHeaderSubjectNotifier, SignalRTeacherHeaderSubjectNotifier>();
 builder.Services.AddScoped<ISubscriptionPlanNotifier, SignalRSubscriptionPlanNotifier>();

@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using FPTUniRAG.Services;
+using FPTUniRAG.BusinessLayer.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;

@@ -1,4 +1,4 @@
-using FPTUniRAG.Services;
+using FPTUniRAG.BusinessLayer.Services;
 
 namespace FPTUniRAG.Endpoints;
 

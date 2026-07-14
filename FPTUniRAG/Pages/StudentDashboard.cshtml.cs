@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using FPTUniRAG.Services;
+using FPTUniRAG.BusinessLayer.Services;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace FPTUniRAG.Pages;

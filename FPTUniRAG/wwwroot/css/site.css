@@ -1219,7 +1219,8 @@ body.admin-dashboard-page {
 }
 
 .admin-icon-button,
-.admin-row-actions button {
+.admin-row-actions button,
+.admin-row-actions a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1237,7 +1238,8 @@ body.admin-dashboard-page {
 }
 
 .admin-icon-button:hover,
-.admin-row-actions button:hover {
+.admin-row-actions button:hover,
+.admin-row-actions a:hover {
   border-color: var(--admin-border-strong);
   background: var(--admin-surface-soft);
   color: var(--admin-primary);
@@ -1587,10 +1589,12 @@ body.admin-dashboard-page {
   gap: 8px;
 }
 
-.admin-row-actions button {
+.admin-row-actions button,
+.admin-row-actions a {
   width: 34px;
   height: 34px;
   border-radius: 12px;
+  text-decoration: none;
 }
 
 .admin-row-actions .material-symbols-outlined {

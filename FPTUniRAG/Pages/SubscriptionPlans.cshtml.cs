@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using FPTUniRAG.DataAccessLayer.Context;
 using FPTUniRAG.DataAccessLayer.Entities;
-using FPTUniRAG.Services;
+using FPTUniRAG.BusinessLayer.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;

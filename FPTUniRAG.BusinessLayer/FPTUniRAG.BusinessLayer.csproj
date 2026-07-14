@@ -7,6 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="MailKit" Version="4.12.1" />
+    <PackageReference Include="UglyToad.PdfPig" Version="1.7.0-custom-5" />
     <ProjectReference Include="..\FPTUniRAG.DataAccessLayer\FPTUniRAG.DataAccessLayer.csproj">
       <Private>True</Private>
     </ProjectReference>
