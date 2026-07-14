@@ -30,7 +30,7 @@
 
 FPT UniRAG is an academic AI assistant for FPT University. Students chat with course material, teachers upload and process documents, and administrators manage subjects, accounts, subscription plans, quotas, and embedding configuration.
 
-The application is an ASP.NET Core Razor Pages solution backed by PostgreSQL, OpenRouter, Stripe, and SignalR.
+The application is a three-project ASP.NET Core Razor Pages solution backed by PostgreSQL, OpenRouter, Stripe, and SignalR.
 
 ## ✨ Highlights
 
@@ -57,18 +57,14 @@ The application is an ASP.NET Core Razor Pages solution backed by PostgreSQL, Op
 
 ## 🏗️ Architecture
 
-```mermaid
-flowchart LR
-    Student[🎓 Student Browser] --> Web[ASP.NET Core Razor Pages]
-    Teacher[👨‍🏫 Teacher Browser] --> Web
-    Admin[🛠️ Admin Browser] --> Web
+![FPT UniRAG layered architecture](./prn222.drawio.png)
 
-    Web <--> Realtime[SignalR Hubs]
-    Web --> Business[Business Layer]
-    Business --> Data[Data Access Layer]
-    Data --> PostgreSQL[(PostgreSQL)]
-    Business --> OpenRouter[OpenRouter API]
-    Business --> Stripe[Stripe Sandbox]
+Requests enter the presentation layer through Razor Pages, minimal API endpoints, or SignalR hubs. The presentation project calls services in the business layer, which coordinates authentication, account and subject management, subscriptions, document processing, RAG, and reporting. Repositories in the data access layer use `AppDbContext` to access PostgreSQL. OpenRouter and Stripe are called from the business layer; SMTP and optional Tesseract OCR are additional integrations used by account provisioning and document extraction.
+
+The dependency direction is:
+
+```text
+FPTUniRAG (Presentation) -> FPTUniRAG.BusinessLayer -> FPTUniRAG.DataAccessLayer
 ```
 
 ## Project context
@@ -86,8 +82,8 @@ flowchart LR
   1. Student chooses a subject.
   2. Relevant chunks are retrieved from embedding records stored in PostgreSQL.
   3. OpenRouter generates the answer with course citations.
-  4. SignalR streams chat events to the browser.
-- Teacher document workflow for upload, extraction, chunking, embedding, and background processing.
+  4. The student chat API returns session data and streams the generated answer to the browser.
+- Teacher document workflow for upload, extraction, fixed or semantic chunking, PostgreSQL vector embedding, and queued background processing.
 - Admin CRUD for subjects and subscription plans.
 - Stripe Sandbox product/price synchronization and checkout.
 - Database-backed monthly free-token quota for students without an active paid plan.
@@ -95,17 +91,18 @@ flowchart LR
   - teacher subject assignments and subject changes;
   - subscription plan create, update, activate/deactivate, and delete;
   - free student quota changes;
-  - student chat streaming.
+  - student chat events.
 
 ## Repository structure
 
 ```text
 FPTUniRAG/
-├── FPTUniRAG/                  # ASP.NET Core app, Razor Pages, hubs, services
-├── FPTUniRAG.BusinessLayer/    # Account, subject, and business contracts/services
-├── FPTUniRAG.DataAccessLayer/  # EF Core DbContext, entities, SQL scripts
+├── FPTUniRAG/                  # Presentation: Razor Pages, endpoints, hubs, startup
+├── FPTUniRAG.BusinessLayer/    # Application services, RAG, payments, notifications
+├── FPTUniRAG.DataAccessLayer/  # EF Core context, entities, repositories
 ├── create_database.sql         # PostgreSQL bootstrap schema
 ├── docker-compose.yml          # PostgreSQL container
+├── prn222.drawio.png           # Layered architecture diagram
 └── FPTUniRAG.slnx              # Solution file
 ```
 
@@ -205,11 +202,13 @@ Do not commit real OpenRouter, Stripe, SMTP, or database credentials.
 
 `create_database.sql` is the single source of truth for the current PostgreSQL schema. The Docker bootstrap runs it automatically when the PostgreSQL volume is created for the first time.
 
-For an existing local database, apply the consolidated schema manually:
+For an existing local database, apply the consolidated schema manually from PowerShell:
 
-```bash
-docker exec -i fptunirag-postgres psql -U postgres -d prn222 < create_database.sql
+```powershell
+Get-Content create_database.sql -Raw | docker exec -i fptunirag-postgres psql -U postgres -d prn222
 ```
+
+From Bash, use `docker exec -i fptunirag-postgres psql -U postgres -d prn222 < create_database.sql`.
 
 The schema includes subject chunking settings, embedding settings, document embedding runs, processing progress, Stripe subscription IDs, and the student free-quota setting.
 
@@ -251,13 +250,17 @@ Change these values in local `appsettings.json` before sharing or deploying the 
 | `/AdminDashboard` | Admin | Admin dashboard |
 | `/Accounts` | Admin | Manage student and teacher accounts |
 | `/Subjects` | Admin | Subject CRUD and assignments |
+| `/Analysis` | Admin | Subscription and token-usage analytics |
 | `/SubscriptionPlans` | Admin | Manage paid plans |
 | `/FreeQuotaSettings` | Admin | Configure free monthly student tokens |
 | `/EmbeddingSettings` | Admin | Select active embedding model |
+| `/EmbeddingBenchmark` | Admin | Run and inspect embedding benchmarks |
 | `/TeacherHome` | Teacher | Header subject dashboard |
 | `/TeacherUpload` | Teacher | Upload course documents |
+| `/TeacherDocuments` | Teacher | Manage uploaded documents and chapters |
 | `/StudentDashboard` | Student | AI chat workspace |
 | `/StudentPlans` | Student | View and purchase plans |
+| `/ChangePassword` | Authenticated | Change the current account password |
 
 ## Configuration notes
 
@@ -279,7 +282,7 @@ docker compose ps
 docker exec -it fptunirag-postgres psql -U postgres -d prn222 -c "select 1;"
 ```
 
-If the error mentions a missing column or table, apply the pending SQL scripts in date order.
+If the error mentions a missing column or table, reapply the consolidated `create_database.sql` schema to the existing `prn222` database.
 
 ### PostgreSQL schema changes do not appear
 
