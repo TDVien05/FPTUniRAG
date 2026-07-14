@@ -1,28 +1,32 @@
+using FPTUniRAG.BusinessLayer.Accounts.Authentication;
+using FPTUniRAG.BusinessLayer.Accounts.Email;
+using FPTUniRAG.BusinessLayer.Accounts.Importing;
+using FPTUniRAG.BusinessLayer.Accounts.Seeding;
+using FPTUniRAG.BusinessLayer.Common;
 using System.Globalization;
 using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text;
-using FPTUniRAG.DataAccessLayer.Context;
+using FPTUniRAG.DataAccessLayer.Repositories.Accounts;
 using FPTUniRAG.DataAccessLayer.Entities;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace FPTUniRAG.BusinessLayer.Accounts;
 
 public sealed class AccountManagementService : IAccountManagementService
 {
-    private readonly AppDbContext _dbContext;
+    private readonly IAccountRepository _accountRepository;
     private readonly IPasswordService _passwordService;
     private readonly ICredentialEmailSender _credentialEmailSender;
     private readonly ILogger<AccountManagementService> _logger;
 
     public AccountManagementService(
-        AppDbContext dbContext,
+        IAccountRepository accountRepository,
         IPasswordService passwordService,
         ICredentialEmailSender credentialEmailSender,
         ILogger<AccountManagementService> logger)
     {
-        _dbContext = dbContext;
+        _accountRepository = accountRepository;
         _passwordService = passwordService;
         _credentialEmailSender = credentialEmailSender;
         _logger = logger;
@@ -39,11 +43,7 @@ public sealed class AccountManagementService : IAccountManagementService
             return new AuthenticationResult(AuthenticationStatus.InvalidCredentials);
         }
 
-        var user = await _dbContext.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(
-                candidate => candidate.Email.ToLower() == normalizedEmail.ToLower(),
-                cancellationToken);
+        var user = await _accountRepository.FindUserByEmailAsync(normalizedEmail, cancellationToken: cancellationToken);
 
         if (user is null)
         {
@@ -94,49 +94,19 @@ public sealed class AccountManagementService : IAccountManagementService
         var normalizedEmail = email.Trim();
         var fullName = string.IsNullOrWhiteSpace(displayName) ? "Default User" : displayName.Trim();
         var normalizedStudentCode = string.IsNullOrWhiteSpace(studentCode) ? null : studentCode.Trim();
-        var existingUser = await _dbContext.Users.FirstOrDefaultAsync(user => user.Email.ToLower() == normalizedEmail.ToLower(), cancellationToken);
-
-        if (existingUser is null)
+        var seedUser = new User
         {
-            existingUser = new User
-            {
-                UserId = Guid.NewGuid(), Email = normalizedEmail, FullName = fullName, Role = role,
-                StudentCode = normalizedStudentCode, CreatedAt = CreateDatabaseTimestamp(), IsBlocked = false,
-                PasswordHash = _passwordService.HashPassword(password)
-            };
-            _dbContext.Users.Add(existingUser);
-        }
-        else
-        {
-            existingUser.Email = normalizedEmail;
-            existingUser.FullName = fullName;
-            existingUser.Role = role;
-            existingUser.StudentCode = normalizedStudentCode;
-            existingUser.IsBlocked = false;
-            existingUser.PasswordHash = _passwordService.HashPassword(password);
-            existingUser.PasswordResetTokenHash = null;
-            existingUser.PasswordResetTokenExpiresAt = null;
-        }
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
+            UserId = Guid.NewGuid(), Email = normalizedEmail, FullName = fullName, Role = role,
+            StudentCode = normalizedStudentCode, CreatedAt = CreateDatabaseTimestamp(), IsBlocked = false,
+            PasswordHash = _passwordService.HashPassword(password)
+        };
+        await _accountRepository.UpsertSeedUserAsync(seedUser, cancellationToken);
     }
 
     public async Task<IReadOnlyList<ManagedAccountDto>> GetManagedAccountsAsync(
         CancellationToken cancellationToken = default)
     {
-        var users = await _dbContext.Users
-            .AsNoTracking()
-            .OrderBy(user => user.Role)
-            .ThenBy(user => user.FullName)
-            .Select(user => new
-            {
-                user.UserId,
-                user.FullName,
-                user.Email,
-                user.Role,
-                user.IsBlocked
-            })
-            .ToListAsync(cancellationToken);
+        var users = await _accountRepository.GetAccountsAsync(cancellationToken);
 
         return users
             .Select(user => new ManagedAccountDto(
@@ -153,14 +123,7 @@ public sealed class AccountManagementService : IAccountManagementService
     public async Task<AccountSummaryDto> GetAccountSummaryAsync(
         CancellationToken cancellationToken = default)
     {
-        var users = await _dbContext.Users
-            .AsNoTracking()
-            .Select(user => new
-            {
-                user.Role,
-                user.IsBlocked
-            })
-            .ToListAsync(cancellationToken);
+        var users = await _accountRepository.GetAccountStatusesAsync(cancellationToken);
 
         var normalizedUsers = users
             .Select(user => new
@@ -210,18 +173,13 @@ public sealed class AccountManagementService : IAccountManagementService
                 continue;
             }
 
-            if (await _dbContext.Users.AnyAsync(
-                    user => user.Email.ToLower() == row.Email.ToLower()
-                        || (user.StudentCode != null && user.StudentCode.ToLower() == row.StudentCode.ToLower()),
-                    cancellationToken))
+            if (await _accountRepository.StudentIdentityExistsAsync(row.Email, row.StudentCode, cancellationToken))
             {
                 results.Add(new ImportStudentsRowResult(row.RowNumber, row.StudentCode, row.Email, false, "Skipped because the email or MSSV already exists."));
                 continue;
             }
 
             var password = GeneratePassword();
-            await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-
             try
             {
                 var user = new User
@@ -236,22 +194,12 @@ public sealed class AccountManagementService : IAccountManagementService
                 };
                 user.PasswordHash = _passwordService.HashPassword(password);
 
-                _dbContext.Users.Add(user);
-                await _dbContext.SaveChangesAsync(cancellationToken);
-
-                await _credentialEmailSender.SendCredentialsAsync(
-                    user.Email,
-                    user.FullName,
-                    password,
-                    "student",
-                    cancellationToken);
-
-                await transaction.CommitAsync(cancellationToken);
+                await _accountRepository.CreateUserAsync(user, token =>
+                    _credentialEmailSender.SendCredentialsAsync(user.Email, user.FullName, password, "student", token), cancellationToken);
                 results.Add(new ImportStudentsRowResult(row.RowNumber, row.StudentCode, row.Email, true, "Student account created and credentials emailed."));
             }
             catch (Exception exception)
             {
-                await transaction.RollbackAsync(cancellationToken);
                 _logger.LogWarning(exception, "Failed to import student account for {Email}", row.Email);
                 results.Add(new ImportStudentsRowResult(row.RowNumber, row.StudentCode, row.Email, false, $"Failed to create account: {GetDetailedErrorMessage(exception)}"));
             }
@@ -275,8 +223,7 @@ public sealed class AccountManagementService : IAccountManagementService
             return OperationResult.Failure("Teacher email is invalid.");
         }
 
-        if (await _dbContext.Users.AnyAsync(user => user.Email.ToLower() == teacherEmail.ToLower(), cancellationToken)
-            || await _dbContext.Teachers.AnyAsync(teacher => teacher.Email != null && teacher.Email.ToLower() == teacherEmail.ToLower(), cancellationToken))
+        if (await _accountRepository.TeacherIdentityExistsAsync(teacherEmail, cancellationToken))
         {
             return OperationResult.Failure("A teacher account with this email already exists.");
         }
@@ -284,7 +231,6 @@ public sealed class AccountManagementService : IAccountManagementService
         var fullName = DeriveNameFromEmail(teacherEmail);
         var password = GeneratePassword();
 
-        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
         try
         {
             var user = new User
@@ -306,23 +252,12 @@ public sealed class AccountManagementService : IAccountManagementService
                 CreatedAt = CreateDatabaseTimestamp()
             };
 
-            _dbContext.Users.Add(user);
-            _dbContext.Teachers.Add(teacher);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            await _credentialEmailSender.SendCredentialsAsync(
-                teacherEmail,
-                fullName,
-                password,
-                "teacher",
-                cancellationToken);
-
-            await transaction.CommitAsync(cancellationToken);
+            await _accountRepository.CreateTeacherAsync(user, teacher, token =>
+                _credentialEmailSender.SendCredentialsAsync(teacherEmail, fullName, password, "teacher", token), cancellationToken);
             return OperationResult.Success("Teacher account created and credentials emailed.");
         }
         catch (Exception exception)
         {
-            await transaction.RollbackAsync(cancellationToken);
             _logger.LogWarning(exception, "Failed to create teacher account for {Email}", teacherEmail);
             return OperationResult.Failure($"Failed to create teacher account: {GetDetailedErrorMessage(exception)}");
         }
@@ -333,7 +268,7 @@ public sealed class AccountManagementService : IAccountManagementService
         bool isBlocked,
         CancellationToken cancellationToken = default)
     {
-        var user = await _dbContext.Users.FirstOrDefaultAsync(candidate => candidate.UserId == userId, cancellationToken);
+        var user = await _accountRepository.FindUserByIdAsync(userId, cancellationToken);
         if (user is null)
         {
             return OperationResult.Failure("The selected account no longer exists.");
@@ -345,7 +280,7 @@ public sealed class AccountManagementService : IAccountManagementService
         }
 
         user.IsBlocked = isBlocked;
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _accountRepository.SaveUserAsync(user, cancellationToken);
 
         return OperationResult.Success(isBlocked
             ? "Account blocked successfully."
@@ -375,9 +310,7 @@ public sealed class AccountManagementService : IAccountManagementService
             return OperationResult.Failure(passwordValidationError);
         }
 
-        var user = await _dbContext.Users.FirstOrDefaultAsync(
-            candidate => candidate.Email.ToLower() == normalizedEmail.ToLower(),
-            cancellationToken);
+        var user = await _accountRepository.FindUserByEmailAsync(normalizedEmail, tracked: true, cancellationToken);
 
         if (user is null)
         {
@@ -398,7 +331,7 @@ public sealed class AccountManagementService : IAccountManagementService
         user.PasswordResetTokenHash = null;
         user.PasswordResetTokenExpiresAt = null;
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _accountRepository.SaveUserAsync(user, cancellationToken);
         return OperationResult.Success("Password changed successfully.");
     }
 

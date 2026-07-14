@@ -1,4 +1,4 @@
-using FPTUniRAG.BusinessLayer.Services;
+using FPTUniRAG.BusinessLayer.Rag.Embeddings;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 

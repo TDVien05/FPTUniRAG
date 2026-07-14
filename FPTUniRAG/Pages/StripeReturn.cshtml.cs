@@ -1,4 +1,4 @@
-using FPTUniRAG.BusinessLayer.Services;
+using FPTUniRAG.BusinessLayer.Payments.Stripe;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;

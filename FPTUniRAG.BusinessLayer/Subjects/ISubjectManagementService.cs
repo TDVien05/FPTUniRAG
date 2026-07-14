@@ -1,4 +1,4 @@
-using FPTUniRAG.BusinessLayer.Accounts;
+using FPTUniRAG.BusinessLayer.Common;
 
 namespace FPTUniRAG.BusinessLayer.Subjects;
 

@@ -1,53 +1,22 @@
-using FPTUniRAG.DataAccessLayer.Context;
-using Microsoft.EntityFrameworkCore;
+using FPTUniRAG.DataAccessLayer.Repositories.Reporting;
 
 namespace FPTUniRAG.BusinessLayer.AdminDashboard;
 
 public sealed class AdminDashboardService : IAdminDashboardService
 {
     private const int RecentSubjectLimit = 4;
-    private readonly AppDbContext _dbContext;
+    private readonly IAdminReportingRepository _reportingRepository;
 
-    public AdminDashboardService(AppDbContext dbContext)
+    public AdminDashboardService(IAdminReportingRepository reportingRepository)
     {
-        _dbContext = dbContext;
+        _reportingRepository = reportingRepository;
     }
 
     public async Task<AdminDashboardDto> GetDashboardAsync(CancellationToken cancellationToken = default)
     {
-        var totalSubjects = await _dbContext.Subjects
-            .AsNoTracking()
-            .CountAsync(cancellationToken);
+        var dashboard = await _reportingRepository.GetDashboardAsync(RecentSubjectLimit, cancellationToken);
 
-        var subjectsWithDocuments = await _dbContext.Subjects
-            .AsNoTracking()
-            .CountAsync(subject => subject.Documents.Any(), cancellationToken);
-
-        var recentSubjectRows = await _dbContext.Subjects
-            .AsNoTracking()
-            .Select(subject => new
-            {
-                subject.SubjectId,
-                subject.SubjectCode,
-                subject.SubjectName,
-                HeaderTeacherName = subject.TeacherSubjects
-                    .Where(link => link.IsHeadOfDepartment)
-                    .Select(link => link.Teacher.FullName)
-                    .FirstOrDefault(),
-                LastUpdatedAt = subject.Documents.Max(document => document.CreatedAt) ?? subject.CreatedAt,
-                LatestDocumentStatus = subject.Documents
-                    .OrderByDescending(document => document.CreatedAt)
-                    .ThenByDescending(document => document.DocumentId)
-                    .Select(document => document.Status)
-                    .FirstOrDefault(),
-                DocumentCount = subject.Documents.Count()
-            })
-            .OrderByDescending(subject => subject.LastUpdatedAt)
-            .ThenBy(subject => subject.SubjectCode)
-            .Take(RecentSubjectLimit)
-            .ToListAsync(cancellationToken);
-
-        var recentSubjects = recentSubjectRows
+        var recentSubjects = dashboard.RecentSubjects
             .Select(subject => new AdminDashboardSubjectDto(
                 subject.SubjectId,
                 subject.SubjectCode,
@@ -58,6 +27,6 @@ public sealed class AdminDashboardService : IAdminDashboardService
                 subject.DocumentCount))
             .ToList();
 
-        return new AdminDashboardDto(totalSubjects, subjectsWithDocuments, recentSubjects);
+        return new AdminDashboardDto(dashboard.TotalSubjects, dashboard.SubjectsWithDocuments, recentSubjects);
     }
 }

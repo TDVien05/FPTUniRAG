@@ -1,26 +1,25 @@
+using FPTUniRAG.BusinessLayer.Payments.Stripe;
+using FPTUniRAG.BusinessLayer.Subscriptions;
 using System.Security.Claims;
-using FPTUniRAG.DataAccessLayer.Context;
-using FPTUniRAG.BusinessLayer.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
 
 namespace FPTUniRAG.Pages;
 
 public class StudentPlansModel : PageModel
 {
-    private readonly AppDbContext _dbContext;
+    private readonly IStudentPlanService _studentPlanService;
     private readonly ILogger<StudentPlansModel> _logger;
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IFreeTokenQuotaService _freeTokenQuotaService;
 
     public StudentPlansModel(
-        AppDbContext dbContext,
+        IStudentPlanService studentPlanService,
         ILogger<StudentPlansModel> logger,
         IStripePaymentService stripePaymentService,
         IFreeTokenQuotaService freeTokenQuotaService)
     {
-        _dbContext = dbContext;
+        _studentPlanService = studentPlanService;
         _logger = logger;
         _stripePaymentService = stripePaymentService;
         _freeTokenQuotaService = freeTokenQuotaService;
@@ -65,26 +64,7 @@ public class StudentPlansModel : PageModel
         }
 
         var normalizedPlanCode = planCode.Trim().ToLowerInvariant();
-        var currentTime = CreateDatabaseTimestamp();
-
-        var activeSubscription = await _dbContext.StudentSubscriptions
-            .AsNoTracking()
-            .Include(subscription => subscription.Plan)
-            .FirstOrDefaultAsync(
-                subscription => subscription.UserId == userId
-                    && subscription.SubscriptionStatus == "active"
-                    && (subscription.ExpiresAt == null || subscription.ExpiresAt > currentTime),
-                cancellationToken);
-
-        var usage = await _dbContext.StudentTokenUsageCurrentMonths
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.UserId == userId, cancellationToken);
-        var tokensRemaining = activeSubscription?.Plan.MonthlyTokenLimit is long monthlyLimit && monthlyLimit > 0
-            ? Math.Max(0m, monthlyLimit - (usage?.TotalTokensUsedThisMonth ?? 0))
-            : (decimal?)null;
-        var canReplaceActiveSubscription = tokensRemaining is decimal remaining && remaining <= 0;
-
-        if (activeSubscription is not null && !canReplaceActiveSubscription)
+        if (!await _studentPlanService.CanPurchaseAsync(userId, cancellationToken))
         {
             ErrorMessage = "You already have an active subscription. You cannot purchase another plan right now.";
             return RedirectToPage();
@@ -112,45 +92,11 @@ public class StudentPlansModel : PageModel
 
     private async Task LoadPageStateAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var currentTime = CreateDatabaseTimestamp();
-        var freeMonthlyTokenLimit = await _freeTokenQuotaService.GetMonthlyTokenLimitAsync(cancellationToken);
-        var activePlans = await _dbContext.SubscriptionPlans
-            .AsNoTracking()
-            .Where(plan => plan.IsActive)
-            .OrderBy(plan => plan.MonthlyPrice)
-            .ThenBy(plan => plan.PlanName)
-            .Select(plan => new StudentPlanSnapshot(
-                plan.PlanId,
-                plan.PlanCode,
-                plan.PlanName,
-                plan.Description,
-                plan.MonthlyPrice,
-                plan.MonthlyTokenLimit,
-                plan.HasAdvancedModels,
-                plan.HasPrioritySupport,
-                plan.HasFileUpload,
-                plan.HasHistoryExport))
-            .ToListAsync(cancellationToken);
-
-        var activeSubscription = await _dbContext.StudentSubscriptions
-            .AsNoTracking()
-            .Include(subscription => subscription.Plan)
-            .FirstOrDefaultAsync(
-                subscription => subscription.UserId == userId
-                    && subscription.SubscriptionStatus == "active"
-                    && (subscription.ExpiresAt == null || subscription.ExpiresAt > currentTime),
-                cancellationToken);
-
-        HasActiveSubscription = activeSubscription is not null;
-
-        var usage = await _dbContext.StudentTokenUsageCurrentMonths
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.UserId == userId, cancellationToken);
-
-        TokensUsedThisMonth = usage?.TotalTokensUsedThisMonth ?? 0;
-        var canReplaceActiveSubscription = activeSubscription?.Plan.MonthlyTokenLimit is long monthlyLimit
-            && monthlyLimit > 0
-            && Math.Max(0m, monthlyLimit - TokensUsedThisMonth) <= 0;
+        var state = await _studentPlanService.GetStateAsync(userId, cancellationToken);
+        var activePlans = state.Plans.Select(p => new StudentPlanSnapshot(p.PlanId, p.PlanCode, p.PlanName, p.Description, p.MonthlyPrice, p.MonthlyTokenLimit, p.HasAdvancedModels, p.HasPrioritySupport, p.HasFileUpload, p.HasHistoryExport)).ToList();
+        HasActiveSubscription = state.HasActiveSubscription;
+        TokensUsedThisMonth = state.TokensUsedThisMonth;
+        var canReplaceActiveSubscription = state.CanReplace;
 
         var recommendedPlanId = activePlans.Count >= 2
             ? activePlans[1].PlanId
@@ -169,19 +115,15 @@ public class StudentPlansModel : PageModel
                 plan.HasHistoryExport,
                 !HasActiveSubscription || canReplaceActiveSubscription,
                 recommendedPlanId == plan.PlanId,
-                activeSubscription?.PlanId == plan.PlanId,
+                state.CurrentPlan.PlanId == plan.PlanId,
                 BuildHighlights(plan)))
             .ToArray();
 
-        if (activeSubscription is not null)
+        if (state.HasActiveSubscription)
         {
             CurrentPlan = new StudentCurrentPlanViewModel(
-                activeSubscription.Plan.PlanCode,
-                activeSubscription.Plan.PlanName,
-                activeSubscription.Plan.MonthlyPrice,
-                activeSubscription.Plan.MonthlyTokenLimit,
-                activeSubscription.StartedAt,
-                activeSubscription.ExpiresAt);
+                state.CurrentPlan.PlanCode, state.CurrentPlan.PlanName, state.CurrentPlan.MonthlyPrice,
+                state.CurrentPlan.MonthlyTokenLimit, state.CurrentPlan.StartedAt, state.CurrentPlan.ExpiresAt);
             return;
         }
 
@@ -189,7 +131,7 @@ public class StudentPlansModel : PageModel
             "free",
             "Free",
             0,
-            freeMonthlyTokenLimit,
+            state.CurrentPlan.MonthlyTokenLimit,
             null,
             null);
     }
