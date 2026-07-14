@@ -90,4 +90,33 @@ public class TeacherDocumentsModel : PageModel
 
         return RedirectToPage(new { Query });
     }
+
+    public async Task<IActionResult> OnPostDeleteChapterAsync(
+        Guid subjectId,
+        Guid chapterId,
+        CancellationToken cancellationToken)
+    {
+        var teacherEmail = User.FindFirstValue(ClaimTypes.Email);
+        if (string.IsNullOrWhiteSpace(teacherEmail))
+        {
+            return Challenge();
+        }
+
+        var result = await _teacherDocumentWorkflowService.DeleteChapterAsync(
+            teacherEmail,
+            subjectId,
+            chapterId,
+            cancellationToken);
+
+        if (result.Succeeded)
+        {
+            SuccessMessage = result.Message;
+        }
+        else
+        {
+            ErrorMessage = result.Message;
+        }
+
+        return RedirectToPage(new { Query });
+    }
 }

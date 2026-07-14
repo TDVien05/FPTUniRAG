@@ -4,7 +4,7 @@ public sealed class FixedChunkingService : IFixedChunkingService
 {
     public IReadOnlyList<string> CreateChunks(string content, int chunkSize, int chunkOverlap)
     {
-        var normalizedContent = content.Trim();
+        var normalizedContent = NormalizeLineEndings(content).Trim();
         if (string.IsNullOrWhiteSpace(normalizedContent))
         {
             return [];
@@ -20,25 +20,45 @@ public sealed class FixedChunkingService : IFixedChunkingService
             throw new InvalidOperationException("Chunk overlap must be zero or greater and smaller than chunk size.");
         }
 
-        var chunks = new List<string>();
-        var start = 0;
-        while (start < normalizedContent.Length)
+        var countedCharacterIndexes = new List<int>(normalizedContent.Length);
+        for (var index = 0; index < normalizedContent.Length; index++)
         {
-            var length = Math.Min(chunkSize, normalizedContent.Length - start);
-            var chunk = normalizedContent.Substring(start, length).Trim();
-            if (!string.IsNullOrWhiteSpace(chunk))
+            if (ChunkCharacterCounter.IsCountedCharacter(normalizedContent[index]))
             {
-                chunks.Add(chunk);
+                countedCharacterIndexes.Add(index);
             }
+        }
 
-            if (start + length >= normalizedContent.Length)
+        if (countedCharacterIndexes.Count == 0)
+        {
+            return [];
+        }
+
+        var chunks = new List<string>();
+        var countedStart = 0;
+        while (countedStart < countedCharacterIndexes.Count)
+        {
+            var countedEnd = Math.Min(countedStart + chunkSize, countedCharacterIndexes.Count);
+            var sourceStart = countedCharacterIndexes[countedStart];
+            var sourceEnd = countedEnd < countedCharacterIndexes.Count
+                ? countedCharacterIndexes[countedEnd]
+                : normalizedContent.Length;
+
+            chunks.Add(normalizedContent.Substring(sourceStart, sourceEnd - sourceStart));
+
+            if (countedEnd >= countedCharacterIndexes.Count)
             {
                 break;
             }
 
-            start += chunkSize - chunkOverlap;
+            countedStart += chunkSize - chunkOverlap;
         }
 
         return chunks;
+    }
+
+    private static string NormalizeLineEndings(string content)
+    {
+        return content.Replace("\r\n", "\n").Replace('\r', '\n');
     }
 }

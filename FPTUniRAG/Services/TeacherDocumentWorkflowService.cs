@@ -4,6 +4,7 @@ using FPTUniRAG.BusinessLayer.Subjects;
 using FPTUniRAG.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace FPTUniRAG.Services;
 
@@ -18,6 +19,8 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
     private readonly RagIngestionOptions _options;
     private readonly IWebHostEnvironment _environment;
     private readonly IDocumentProcessingQueue _processingQueue;
+    private readonly ILogger<TeacherDocumentWorkflowService> _logger;
+    private readonly string _embeddingTableName;
 
     public TeacherDocumentWorkflowService(
         AppDbContext dbContext,
@@ -28,7 +31,8 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
         IChunkEmbeddingStore chunkEmbeddingStore,
         IOptions<RagIngestionOptions> options,
         IWebHostEnvironment environment,
-        IDocumentProcessingQueue processingQueue)
+        IDocumentProcessingQueue processingQueue,
+        ILogger<TeacherDocumentWorkflowService> logger)
     {
         _dbContext = dbContext;
         _documentTextExtractor = documentTextExtractor;
@@ -39,6 +43,8 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
         _options = options.Value;
         _environment = environment;
         _processingQueue = processingQueue;
+        _logger = logger;
+        _embeddingTableName = ResolveTableName(_options.PostgresVector.TableName);
     }
 
     public async Task<TeacherUploadContextDto?> GetUploadContextAsync(
@@ -233,6 +239,86 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
 
         await _processingQueue.QueueAsync(document.DocumentId, cancellationToken);
         return new TeacherDocumentUploadResult(true, "Embedding sync queued for processing.", document.DocumentId);
+    }
+
+    public async Task<TeacherDocumentUploadResult> DeleteChapterAsync(
+        string teacherEmail,
+        Guid subjectId,
+        Guid chapterId,
+        CancellationToken cancellationToken = default)
+    {
+        var managesSubject = await GetHeaderSubjectQuery(teacherEmail)
+            .AnyAsync(link => link.SubjectId == subjectId, cancellationToken);
+
+        if (!managesSubject)
+        {
+            return new TeacherDocumentUploadResult(false, "You do not manage the selected subject.", null);
+        }
+
+        var chapter = await _dbContext.Chapters
+            .Include(item => item.Document)
+            .FirstOrDefaultAsync(
+                item => item.ChapterId == chapterId && item.SubjectId == subjectId,
+                cancellationToken);
+
+        if (chapter is null)
+        {
+            return new TeacherDocumentUploadResult(false, "The selected chapter is unavailable.", null);
+        }
+
+        var documentId = chapter.Document?.DocumentId;
+        var fileUrl = chapter.Document?.FileUrl;
+
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        await _dbContext.TestQuestions
+            .Where(question => question.ChapterId == chapterId)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        if (documentId.HasValue)
+        {
+            await DeleteEmbeddingsForDocumentAsync(documentId.Value, cancellationToken);
+
+            await _dbContext.DocumentEmbeddingRuns
+                .Where(run => run.DocumentId == documentId.Value)
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await _dbContext.ProcessingJobs
+                .Where(job => job.DocumentId == documentId.Value)
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await _dbContext.Chunks
+                .Where(chunk => chunk.DocumentId == documentId.Value)
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await _dbContext.Documents
+                .Where(document => document.DocumentId == documentId.Value)
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+
+        await _dbContext.Chapters
+            .Where(item => item.ChapterId == chapterId)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(fileUrl))
+        {
+            try
+            {
+                var absoluteFilePath = GetAbsoluteDocumentPath(fileUrl);
+                if (File.Exists(absoluteFilePath))
+                {
+                    File.Delete(absoluteFilePath);
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(exception, "Chapter {ChapterId} was deleted but its uploaded file could not be removed.", chapterId);
+            }
+        }
+
+        return new TeacherDocumentUploadResult(true, $"Chapter '{chapter.ChapterTitle}' and its related data were deleted.", null);
     }
 
     public async Task<TeacherDocumentProcessingStatusDto?> GetProcessingStatusAsync(
@@ -533,6 +619,39 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
         return Path.IsPathRooted(relativeFilePath)
             ? relativeFilePath
             : Path.Combine(_environment.ContentRootPath, relativeFilePath.Replace('/', Path.DirectorySeparatorChar));
+    }
+
+    private async Task DeleteEmbeddingsForDocumentAsync(
+        Guid documentId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+#pragma warning disable EF1002 // The configured table name is validated before interpolation.
+            await _dbContext.Database.ExecuteSqlRawAsync(
+                $"DELETE FROM {_embeddingTableName} WHERE chunk_id IN (SELECT chunk_id FROM chunks WHERE document_id = @documentId)",
+                [new NpgsqlParameter<Guid>("documentId", documentId)],
+                cancellationToken);
+#pragma warning restore EF1002
+        }
+        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UndefinedTable)
+        {
+            _logger.LogDebug(exception, "Embedding table {EmbeddingTableName} was not present while deleting chapter data.", _embeddingTableName);
+        }
+    }
+
+    private static string ResolveTableName(string? configuredTableName)
+    {
+        var tableName = string.IsNullOrWhiteSpace(configuredTableName)
+            ? "chunk_embeddings"
+            : configuredTableName.Trim();
+
+        if (!tableName.All(character => char.IsLetterOrDigit(character) || character == '_'))
+        {
+            throw new InvalidOperationException("RagIngestion:PostgresVector:TableName must contain only letters, digits, or underscores.");
+        }
+
+        return tableName;
     }
 
     private async Task SaveEmbeddingsForChunksAsync(

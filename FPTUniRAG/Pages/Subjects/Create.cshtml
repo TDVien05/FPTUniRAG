@@ -146,9 +146,9 @@
                             </label>
 
                             <label class="subject-field" id="fixed-chunk-size-field">
-                                <span>Fixed Chunk Size</span>
+                                <span>Fixed Chunk Size (excluding line breaks)</span>
                                 <input asp-for="Input.DefaultFixedChunkSize" type="number" min="1" step="1" />
-                                <small>Stored in the `subjects.default_fixed_chunk_size` column and used only when the subject uses fixed-size chunking.</small>
+                                <small>Default: 800 characters. Spaces count; `\r` and `\n` do not. Used only for new fixed-size uploads.</small>
                                 <span asp-validation-for="Input.DefaultFixedChunkSize" class="accounts-field-error"></span>
                             </label>
 

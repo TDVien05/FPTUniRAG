@@ -22,6 +22,12 @@ public interface ITeacherDocumentWorkflowService
         Guid documentId,
         CancellationToken cancellationToken = default);
 
+    Task<TeacherDocumentUploadResult> DeleteChapterAsync(
+        string teacherEmail,
+        Guid subjectId,
+        Guid chapterId,
+        CancellationToken cancellationToken = default);
+
     Task<TeacherDocumentProcessingStatusDto?> GetProcessingStatusAsync(
         string teacherEmail,
         Guid documentId,

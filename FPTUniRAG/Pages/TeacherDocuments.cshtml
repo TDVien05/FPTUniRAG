@@ -284,6 +284,14 @@
                                                                 </button>
                                                             </form>
                                                         }
+                                                        <form method="post" asp-page-handler="DeleteChapter" onsubmit="return confirm('Delete chapter @document.ChapterTitle and all related document, chunk, embedding, and question data? This cannot be undone.');">
+                                                            <input type="hidden" name="subjectId" value="@item.SubjectId" />
+                                                            <input type="hidden" name="chapterId" value="@document.ChapterId" />
+                                                            <input type="hidden" name="Query" value="@Model.Query" />
+                                                            <button class="flex items-center gap-1 px-3 py-1 border border-rose-300 bg-rose-50 text-rose-800 text-xs font-medium rounded hover:bg-rose-100 transition-all" type="submit">
+                                                                <span class="material-symbols-outlined text-sm">delete</span>Delete Chapter
+                                                            </button>
+                                                        </form>
                                                     </div>
                                                 </td>
                                             </tr>

@@ -14,7 +14,10 @@ public sealed record TeacherUploadContextDto(
 public sealed record TeacherDocumentChunkDto(
     Guid ChunkId,
     int ChunkIndex,
-    string Content);
+    string Content)
+{
+    public int CountedCharacterCount => ChunkCharacterCounter.Count(Content);
+}
 
 public sealed record TeacherDocumentDetailDto(
     Guid DocumentId,

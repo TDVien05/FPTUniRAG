@@ -67,11 +67,11 @@
                                 <dd class="font-semibold text-slate-900">@Model.Document.ChunkingStrategy</dd>
                             </div>
                             <div class="flex items-center justify-between gap-4">
-                                <dt class="text-slate-500">Chunk Size</dt>
+                                <dt class="text-slate-500">Chunk Size (excluding line breaks)</dt>
                                 <dd class="font-semibold text-slate-900">@Model.Document.ChunkSize</dd>
                             </div>
                             <div class="flex items-center justify-between gap-4">
-                                <dt class="text-slate-500">Chunk Overlap</dt>
+                                <dt class="text-slate-500">Chunk Overlap (excluding line breaks)</dt>
                                 <dd class="font-semibold text-slate-900">@Model.Document.ChunkOverlap</dd>
                             </div>
                             <div class="flex items-center justify-between gap-4">
@@ -103,7 +103,7 @@
                             <section class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                 <div class="mb-3 flex items-center justify-between gap-3">
                                     <h3 class="font-semibold text-slate-900">Chunk @chunk.ChunkIndex</h3>
-                                    <span class="text-xs text-slate-500">@chunk.Content.Length characters</span>
+                                    <span class="text-xs text-slate-500">@chunk.CountedCharacterCount characters (line breaks excluded)</span>
                                 </div>
                                 <pre class="whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">@chunk.Content</pre>
                             </section>
