@@ -6,11 +6,38 @@ namespace FPTUniRAG.DataAccessLayer.Repositories.Chat;
 
 public sealed class StudentChatRepository(AppDbContext context) : IStudentChatRepository
 {
-    public async Task<IReadOnlyList<ChatSessionSummaryRecord>> GetSessionsAsync(Guid userId, Guid subjectId, CancellationToken cancellationToken = default) =>
-        await context.Sessions.AsNoTracking().Where(s => s.UserId == userId && s.SubjectId == subjectId)
-            .Select(s => new ChatSessionSummaryRecord(s.SessionId, s.SubjectId!.Value, s.Subject != null ? s.Subject.SubjectCode : "", s.Subject != null ? s.Subject.SubjectName : "", s.StartedAt,
-                s.Messages.Max(m => m.CreatedAt), s.Messages.OrderByDescending(m => m.CreatedAt).Select(m => m.MessageContent).FirstOrDefault()))
-            .OrderByDescending(s => s.LastMessageAt ?? s.StartedAt).ToListAsync(cancellationToken);
+    public async Task<IReadOnlyList<ChatSessionSummaryRecord>> GetSessionsAsync(Guid userId, Guid subjectId, CancellationToken cancellationToken = default)
+    {
+        var sessionRows = await context.Sessions.AsNoTracking()
+            .Where(session => session.UserId == userId && session.SubjectId == subjectId)
+            .Select(session => new
+            {
+                session.SessionId,
+                SubjectId = session.SubjectId!.Value,
+                SubjectCode = session.Subject != null ? session.Subject.SubjectCode : "",
+                SubjectName = session.Subject != null ? session.Subject.SubjectName : "",
+                session.StartedAt,
+                LastMessageAt = session.Messages.Max(message => message.CreatedAt),
+                PreviewText = session.Messages
+                    .OrderByDescending(message => message.CreatedAt)
+                    .ThenByDescending(message => message.MessageId)
+                    .Select(message => message.MessageContent)
+                    .FirstOrDefault()
+            })
+            .OrderByDescending(session => session.LastMessageAt ?? session.StartedAt)
+            .ToListAsync(cancellationToken);
+
+        return sessionRows
+            .Select(session => new ChatSessionSummaryRecord(
+                session.SessionId,
+                session.SubjectId,
+                session.SubjectCode,
+                session.SubjectName,
+                session.StartedAt,
+                session.LastMessageAt,
+                session.PreviewText))
+            .ToList();
+    }
 
     public Task<ChatSessionRecord?> GetSessionAsync(Guid userId, Guid sessionId, CancellationToken cancellationToken = default) =>
         context.Sessions.AsNoTracking().Where(s => s.SessionId == sessionId && s.UserId == userId && s.SubjectId != null)

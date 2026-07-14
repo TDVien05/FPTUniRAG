@@ -18,14 +18,39 @@ public sealed class AdminReportingRepository(AppDbContext context) : IAdminRepor
     {
         var total = await context.Subjects.AsNoTracking().CountAsync(cancellationToken);
         var withDocuments = await context.Subjects.AsNoTracking().CountAsync(subject => subject.Documents.Any(), cancellationToken);
-        var recent = await context.Subjects.AsNoTracking().Select(subject => new RecentSubjectRecord(
-                subject.SubjectId, subject.SubjectCode, subject.SubjectName,
-                subject.TeacherSubjects.Where(link => link.IsHeadOfDepartment).Select(link => link.Teacher.FullName).FirstOrDefault(),
-                subject.Documents.Max(document => document.CreatedAt) ?? subject.CreatedAt,
-                subject.Documents.OrderByDescending(document => document.CreatedAt).ThenByDescending(document => document.DocumentId).Select(document => document.Status).FirstOrDefault(),
-                subject.Documents.Count()))
-            .OrderByDescending(subject => subject.LastUpdatedAt).ThenBy(subject => subject.SubjectCode)
-            .Take(recentSubjectLimit).ToListAsync(cancellationToken);
+        var recentRows = await context.Subjects.AsNoTracking()
+            .Select(subject => new
+            {
+                subject.SubjectId,
+                subject.SubjectCode,
+                subject.SubjectName,
+                HeaderTeacherName = subject.TeacherSubjects
+                    .Where(link => link.IsHeadOfDepartment)
+                    .Select(link => link.Teacher.FullName)
+                    .FirstOrDefault(),
+                LastUpdatedAt = subject.Documents.Max(document => document.CreatedAt) ?? subject.CreatedAt,
+                LatestDocumentStatus = subject.Documents
+                    .OrderByDescending(document => document.CreatedAt)
+                    .ThenByDescending(document => document.DocumentId)
+                    .Select(document => document.Status)
+                    .FirstOrDefault(),
+                DocumentCount = subject.Documents.Count()
+            })
+            .OrderByDescending(subject => subject.LastUpdatedAt)
+            .ThenBy(subject => subject.SubjectCode)
+            .Take(recentSubjectLimit)
+            .ToListAsync(cancellationToken);
+
+        var recent = recentRows
+            .Select(subject => new RecentSubjectRecord(
+                subject.SubjectId,
+                subject.SubjectCode,
+                subject.SubjectName,
+                subject.HeaderTeacherName,
+                subject.LastUpdatedAt,
+                subject.LatestDocumentStatus,
+                subject.DocumentCount))
+            .ToList();
         return new AdminDashboardRecord(total, withDocuments, recent);
     }
 }
