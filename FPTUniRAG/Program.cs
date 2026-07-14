@@ -1,12 +1,29 @@
 using FPTUniRAG.BusinessLayer.Accounts;
+using FPTUniRAG.BusinessLayer.Accounts.Authentication;
+using FPTUniRAG.BusinessLayer.Accounts.Email;
+using FPTUniRAG.BusinessLayer.Accounts.Seeding;
 using FPTUniRAG.BusinessLayer.AdminDashboard;
-using FPTUniRAG.BusinessLayer.Hubs;
+using FPTUniRAG.BusinessLayer.Payments.Stripe;
+using FPTUniRAG.BusinessLayer.Rag.Chat;
+using FPTUniRAG.BusinessLayer.Rag.Chunking;
+using FPTUniRAG.BusinessLayer.Rag.Configuration;
+using FPTUniRAG.BusinessLayer.Rag.Embeddings;
+using FPTUniRAG.BusinessLayer.Rag.Ingestion;
 using FPTUniRAG.BusinessLayer.Subjects;
+using FPTUniRAG.BusinessLayer.Subjects.Realtime;
+using FPTUniRAG.BusinessLayer.Subscriptions;
+using FPTUniRAG.BusinessLayer.Subscriptions.Realtime;
 using FPTUniRAG.DataAccessLayer.Context;
+using FPTUniRAG.DataAccessLayer.Repositories.Accounts;
+using FPTUniRAG.DataAccessLayer.Repositories.Chat;
+using FPTUniRAG.DataAccessLayer.Repositories.Documents;
+using FPTUniRAG.DataAccessLayer.Repositories.Embeddings;
+using FPTUniRAG.DataAccessLayer.Repositories.Payments;
+using FPTUniRAG.DataAccessLayer.Repositories.Reporting;
+using FPTUniRAG.DataAccessLayer.Repositories.Subscriptions;
+using FPTUniRAG.DataAccessLayer.Repositories.Subjects;
 using FPTUniRAG.Endpoints;
 using FPTUniRAG.Hubs;
-using FPTUniRAG.BusinessLayer.Options;
-using FPTUniRAG.BusinessLayer.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
@@ -23,6 +40,15 @@ builder.Logging.AddDebug();
 // Add services to the container.
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddScoped<IAccountRepository, AccountRepository>();
+builder.Services.AddScoped<IStudentChatRepository, StudentChatRepository>();
+builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
+builder.Services.AddScoped<IAdminReportingRepository, AdminReportingRepository>();
+builder.Services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
+builder.Services.AddScoped<IEmbeddingRepository, EmbeddingRepository>();
+builder.Services.AddScoped<IChunkVectorRepository, ChunkVectorRepository>();
+builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 
 builder.Services.AddDataProtection()
     .SetApplicationName("FPTUniRAG")
@@ -32,14 +58,19 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
 builder.Services.Configure<RagIngestionOptions>(builder.Configuration.GetSection("RagIngestion"));
 builder.Services.Configure<StripeOptions>(builder.Configuration.GetSection("Stripe"));
+
 builder.Services.AddScoped<IAccountManagementService, AccountManagementService>();
 builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+builder.Services.AddScoped<IAnalysisService, AnalysisService>();
 builder.Services.AddScoped<ISubjectManagementService, SubjectManagementService>();
 builder.Services.AddScoped<ITeacherHeaderSubjectNotifier, SignalRTeacherHeaderSubjectNotifier>();
 builder.Services.AddScoped<ISubscriptionPlanNotifier, SignalRSubscriptionPlanNotifier>();
 builder.Services.AddScoped<IFreeTokenQuotaService, FreeTokenQuotaService>();
+builder.Services.AddScoped<IStudentPlanService, StudentPlanService>();
+builder.Services.AddScoped<ISubscriptionPlanManagementService, SubscriptionPlanManagementService>();
 builder.Services.AddScoped<ICredentialEmailSender, SmtpCredentialEmailSender>();
 builder.Services.AddSingleton<IPasswordService, Pbkdf2PasswordService>();
+
 builder.Services.AddScoped<ITesseractOcrService, TesseractOcrService>();
 builder.Services.AddScoped<IDocumentTextExtractor, DocumentTextExtractor>();
 builder.Services.AddScoped<IFixedChunkingService, FixedChunkingService>();
@@ -47,6 +78,7 @@ builder.Services.AddScoped<ISemanticChunkingService, SemanticChunkingService>();
 builder.Services.AddScoped<ITeacherDocumentWorkflowService, TeacherDocumentWorkflowService>();
 builder.Services.AddSingleton<IDocumentProcessingQueue, DocumentProcessingQueue>();
 builder.Services.AddHostedService<DocumentProcessingBackgroundService>();
+
 builder.Services.AddHttpClient<IOpenRouterEmbeddingService, OpenRouterEmbeddingService>((serviceProvider, client) =>
 {
     var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RagIngestionOptions>>().Value;
@@ -65,6 +97,7 @@ builder.Services.AddHttpClient<IStripePaymentService, StripePaymentService>((ser
     client.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
     client.Timeout = TimeSpan.FromSeconds(30);
 });
+
 builder.Services.AddScoped<IChunkEmbeddingStore, PostgresChunkEmbeddingStore>();
 builder.Services.AddScoped<IStudentChunkRetrievalService, StudentChunkRetrievalService>();
 builder.Services.AddScoped<IStudentChatService, StudentChatService>();

@@ -1,7 +1,7 @@
+using FPTUniRAG.BusinessLayer.Accounts;
+using FPTUniRAG.BusinessLayer.Accounts.Authentication;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
-using FPTUniRAG.BusinessLayer.Accounts;
-using FPTUniRAG.BusinessLayer.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
