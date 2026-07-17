@@ -191,6 +191,40 @@ app.Use(async (context, next) =>
 });
 
 app.UseAuthentication();
+
+app.Use(async (context, next) =>
+{
+    var mustChangePassword = context.User.HasClaim(
+        AccountClaimTypes.MustChangePassword,
+        bool.TrueString.ToLowerInvariant());
+
+    if (!mustChangePassword)
+    {
+        await next();
+        return;
+    }
+
+    var path = context.Request.Path;
+    var isAllowedPath = path.Equals("/ChangePassword", StringComparison.OrdinalIgnoreCase)
+        || path.Equals(AccountNavigation.LogoutPath, StringComparison.OrdinalIgnoreCase);
+    var isProtectedEndpoint = context.GetEndpoint()?.Metadata.GetOrderedMetadata<IAuthorizeData>()?.Count > 0;
+
+    if (isAllowedPath || !isProtectedEndpoint)
+    {
+        await next();
+        return;
+    }
+
+    if (path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWithSegments("/hubs", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return;
+    }
+
+    context.Response.Redirect("/ChangePassword");
+});
+
 app.UseAuthorization();
 
 app.MapStaticAssets();

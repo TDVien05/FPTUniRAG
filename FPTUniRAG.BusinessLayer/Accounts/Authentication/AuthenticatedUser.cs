@@ -4,4 +4,5 @@ public sealed record AuthenticatedUser(
     Guid UserId,
     string Email,
     string FullName,
-    string Role);
+    string Role,
+    bool MustChangePassword);

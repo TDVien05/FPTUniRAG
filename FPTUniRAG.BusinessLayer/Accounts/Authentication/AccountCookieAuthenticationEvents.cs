@@ -33,7 +33,13 @@ public sealed class AccountCookieAuthenticationEvents : CookieAuthenticationEven
                 return;
             }
 
-            RefreshPrincipal(context, accountState.UserId, accountState.Email, accountState.FullName, accountState.Role);
+            RefreshPrincipal(
+                context,
+                accountState.UserId,
+                accountState.Email,
+                accountState.FullName,
+                accountState.Role,
+                accountState.MustChangePassword);
             await base.ValidatePrincipal(context);
         }
         catch (Exception exception)
@@ -82,7 +88,12 @@ public sealed class AccountCookieAuthenticationEvents : CookieAuthenticationEven
 
         var user = await _accountRepository.FindUserByEmailAsync(email, cancellationToken: cancellationToken);
         return user is null ? null : new CookieAccountState(
-            user.UserId, user.Email, user.FullName ?? user.Email, user.Role ?? "student", user.IsBlocked);
+            user.UserId,
+            user.Email,
+            user.FullName ?? user.Email,
+            user.Role ?? "student",
+            user.IsBlocked,
+            user.MustChangePassword);
     }
 
     private static void RefreshPrincipal(
@@ -90,14 +101,16 @@ public sealed class AccountCookieAuthenticationEvents : CookieAuthenticationEven
         Guid userId,
         string email,
         string fullName,
-        string role)
+        string role,
+        bool mustChangePassword)
     {
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, userId.ToString()),
             new(ClaimTypes.Name, fullName),
             new(ClaimTypes.Email, email),
-            new(ClaimTypes.Role, role.Trim().ToLowerInvariant())
+            new(ClaimTypes.Role, role.Trim().ToLowerInvariant()),
+            new(AccountClaimTypes.MustChangePassword, mustChangePassword.ToString().ToLowerInvariant())
         };
 
         context.ReplacePrincipal(new ClaimsPrincipal(new ClaimsIdentity(
@@ -123,5 +136,6 @@ public sealed class AccountCookieAuthenticationEvents : CookieAuthenticationEven
         string Email,
         string FullName,
         string Role,
-        bool IsBlocked);
+        bool IsBlocked,
+        bool MustChangePassword);
 }

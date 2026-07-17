@@ -1,6 +1,6 @@
 namespace FPTUniRAG.BusinessLayer.Subjects;
 
-public static class SubjectChunkingStrategies
+public static class     SubjectChunkingStrategies
 {
     public const string Fixed = "fixed";
     public const string Semantic = "semantic";

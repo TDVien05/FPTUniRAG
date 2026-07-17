@@ -30,6 +30,11 @@ public class LoginModel : PageModel
 
         if (User.Identity?.IsAuthenticated == true)
         {
+            if (User.HasClaim(AccountClaimTypes.MustChangePassword, bool.TrueString.ToLowerInvariant()))
+            {
+                return RedirectToPage("/ChangePassword");
+            }
+
             return RedirectToPage(AccountNavigation.GetLandingPagePath(User.FindFirstValue(ClaimTypes.Role)));
         }
 
@@ -69,7 +74,8 @@ public class LoginModel : PageModel
             new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
             new(ClaimTypes.Name, user.FullName),
             new(ClaimTypes.Email, user.Email),
-            new(ClaimTypes.Role, user.Role)
+            new(ClaimTypes.Role, user.Role),
+            new(AccountClaimTypes.MustChangePassword, user.MustChangePassword.ToString().ToLowerInvariant())
         };
 
         var principal = new ClaimsPrincipal(new ClaimsIdentity(
@@ -87,7 +93,9 @@ public class LoginModel : PageModel
             principal,
             authenticationProperties);
 
-        return RedirectToPage(AccountNavigation.GetLandingPagePath(user.Role));
+        return RedirectToPage(user.MustChangePassword
+            ? "/ChangePassword"
+            : AccountNavigation.GetLandingPagePath(user.Role));
     }
 
     private void ApplyNoStoreHeaders()

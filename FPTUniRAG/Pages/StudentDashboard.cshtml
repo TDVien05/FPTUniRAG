@@ -133,6 +133,14 @@
                         <h3 class="font-display text-lg font-semibold text-primary">Recent chats</h3>
                         <p class="text-xs text-secondary">Chat history for the selected subject</p>
                     </div>
+                    <button
+                        id="newChatButton"
+                        class="inline-flex items-center gap-1 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15 disabled:cursor-not-allowed disabled:border-outline-variant disabled:bg-surface-container disabled:text-secondary/60"
+                        type="button"
+                        disabled>
+                        <span class="material-symbols-outlined text-base" aria-hidden="true">add_comment</span>
+                        New Chat
+                    </button>
                 </div>
                 <div id="sessionList" class="flex max-h-56 flex-col gap-2 overflow-y-auto pr-1"></div>
             </div>
@@ -257,7 +265,8 @@
             chatForm: document.getElementById("chatForm"),
             composerHint: document.getElementById("composerHint"),
             composerError: document.getElementById("composerError"),
-            sendButton: document.getElementById("sendButton")
+            sendButton: document.getElementById("sendButton"),
+            newChatButton: document.getElementById("newChatButton")
         };
 
         function escapeHtml(value) {
@@ -539,7 +548,34 @@
             });
         }
 
+        function updateNewChatButtonState() {
+            elements.newChatButton.disabled = !state.selectedSubjectId
+                || state.sending
+                || state.loadingSessionDetail;
+        }
+
+        function startNewChat() {
+            if (!state.selectedSubjectId || state.sending || state.loadingSessionDetail) {
+                return;
+            }
+
+            state.sessionId = null;
+            state.messages = [];
+            state.latestSources = [];
+            state.activeAssistantMessage = null;
+            state.activeUserMessage = null;
+            elements.messageInput.value = "";
+            setComposerError("");
+            closeCitationModal();
+            autoResizeTextarea();
+            renderSessions();
+            renderChat();
+            renderSources();
+            elements.messageInput.focus();
+        }
+
         function renderChat() {
+            updateNewChatButtonState();
             const selectedLabel = state.selectedSubjectId
                 ? `${state.selectedSubjectCode} - ${state.selectedSubjectName}`
                 : "";
@@ -954,6 +990,7 @@
         });
 
         elements.messageInput.addEventListener("input", autoResizeTextarea);
+        elements.newChatButton.addEventListener("click", startNewChat);
         elements.citationModalClose.addEventListener("click", closeCitationModal);
         elements.citationModal.addEventListener("click", event => {
             if (event.target === elements.citationModal) {
@@ -1030,6 +1067,7 @@
                 state.sending = false;
                 elements.sendButton.disabled = false;
                 elements.sendButton.innerHTML = `<span class="material-symbols-outlined">send</span>`;
+                updateNewChatButtonState();
             }
         });
 

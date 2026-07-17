@@ -12,7 +12,7 @@ public interface IAccountRepository
     Task<bool> TeacherIdentityExistsAsync(string email, CancellationToken cancellationToken = default);
     Task UpsertSeedUserAsync(User user, CancellationToken cancellationToken = default);
     Task CreateUserAsync(User user, Func<CancellationToken, Task> beforeCommit, CancellationToken cancellationToken = default);
-    Task CreateTeacherAsync(User user, Teacher teacher, Func<CancellationToken, Task> beforeCommit, CancellationToken cancellationToken = default);
+    Task CreateTeacherAsync(User user, Teacher teacher, CancellationToken cancellationToken = default);
     Task SaveUserAsync(User user, CancellationToken cancellationToken = default);
 }
 

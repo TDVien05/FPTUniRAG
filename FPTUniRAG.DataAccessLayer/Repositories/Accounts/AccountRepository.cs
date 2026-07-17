@@ -39,6 +39,7 @@ public sealed class AccountRepository(AppDbContext context) : IAccountRepository
         {
             existing.Email = user.Email; existing.FullName = user.FullName; existing.Role = user.Role;
             existing.StudentCode = user.StudentCode; existing.IsBlocked = user.IsBlocked; existing.PasswordHash = user.PasswordHash;
+            existing.MustChangePassword = user.MustChangePassword;
             existing.PasswordResetTokenHash = null; existing.PasswordResetTokenExpiresAt = null;
         }
         await context.SaveChangesAsync(cancellationToken);
@@ -53,12 +54,11 @@ public sealed class AccountRepository(AppDbContext context) : IAccountRepository
         await transaction.CommitAsync(cancellationToken);
     }
 
-    public async Task CreateTeacherAsync(User user, Teacher teacher, Func<CancellationToken, Task> beforeCommit, CancellationToken cancellationToken = default)
+    public async Task CreateTeacherAsync(User user, Teacher teacher, CancellationToken cancellationToken = default)
     {
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         context.Users.Add(user); context.Teachers.Add(teacher);
         await context.SaveChangesAsync(cancellationToken);
-        await beforeCommit(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
 
