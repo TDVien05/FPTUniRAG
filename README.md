@@ -109,11 +109,9 @@ FPTUniRAG/
 ## Requirements
 
 - Windows, macOS, or Linux
-- .NET SDK 10.0
 - Docker Desktop and Docker Compose
 - Git
-- Optional for document OCR: Tesseract OCR
-- API credentials for OpenRouter and Stripe Sandbox
+- Optional: API credentials for OpenRouter, SMTP, and Stripe Sandbox
 
 ## First-time setup
 
@@ -124,7 +122,19 @@ git clone <repository-url>
 cd FPTUniRAG
 ```
 
-### 2. Start PostgreSQL
+### 2. Start the complete application
+
+```bash
+docker compose up
+```
+
+Docker Compose builds the .NET 10 web image, installs Tesseract OCR, initializes PostgreSQL, seeds the default accounts, and starts the application. Open:
+
+```text
+http://localhost:5056
+```
+
+Run in the background when preferred:
 
 ```bash
 docker compose up -d
@@ -135,74 +145,32 @@ The default services are:
 
 | Service | Address |
 |---|---|
+| FPTUniRAG web | `http://localhost:5056` |
 | PostgreSQL | `localhost:54329` |
-The PostgreSQL container mounts `create_database.sql` on first initialization. The script is executed only when the PostgreSQL volume is created for the first time.
-
-### 3. Create local appsettings
-
-`FPTUniRAG/appsettings.json` is intentionally ignored by Git because it contains local credentials. Create it from the project configuration used by your team, then set at least:
-
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=54329;Database=prn222;Username=postgres;Password=postgres"
-  },
-  "AdminCredentials": {
-    "Email": "admin@fpt.edu.vn",
-    "Password": "Admin@123",
-    "DisplayName": "Admin User"
-  },
-  "StudentCredentials": {
-    "Email": "student@fpt.edu.vn",
-    "Password": "Student@123",
-    "DisplayName": "Default Student",
-    "StudentCode": "STU000001"
-  },
-  "RagIngestion": {
-    "OpenRouter": {
-      "BaseUrl": "https://openrouter.ai/api/v1",
-      "ApiKey": "<openrouter-api-key>",
-      "EmbeddingModel": "google/gemini-embedding-001",
-      "ChatModel": "qwen/qwen3.6-flash",
-      "EmbeddingDimensions": 1536,
-      "MaxCompletionTokens": 800,
-      "Temperature": 0.2
-    }
-  },
-  "Stripe": {
-    "BaseUrl": "https://api.stripe.com/v1",
-    "SecretKey": "<stripe-test-secret-key>",
-    "Currency": "vnd",
-    "PublicBaseUrl": "https://localhost:7268",
-    "SuccessPath": "/payments/stripe/return",
-    "CancelPath": "/StudentPlans"
-  }
-}
-```
-
-Configure SMTP if the application needs to email teacher/student credentials:
-
-```json
-"Smtp": {
-  "Host": "smtp.gmail.com",
-  "Port": 587,
-  "Username": "<smtp-username>",
-  "Password": "<smtp-password>",
-  "FromEmail": "<from-email>",
-  "FromName": "FPT UniRAG",
-  "EnableSsl": true,
-  "TimeoutMilliseconds": 10000,
-  "Security": "StartTls"
-}
-```
-
-Do not commit real OpenRouter, Stripe, SMTP, or database credentials.
-
-### 4. Apply the database schema
 
 `create_database.sql` is the single source of truth for the current PostgreSQL schema. The Docker bootstrap runs it automatically when the PostgreSQL volume is created for the first time.
 
-For an existing local database, apply the consolidated schema manually from PowerShell:
+### 3. Enable optional integrations
+
+The core application starts without external credentials. To enable AI chat/embeddings, credential email, and Stripe checkout, copy the environment template and fill in the required secrets:
+
+```bash
+cp .env.example .env
+docker compose up -d
+```
+
+PowerShell equivalent:
+
+```powershell
+Copy-Item .env.example .env
+docker compose up -d
+```
+
+Never commit the resulting `.env` file. The Docker build also excludes local `appsettings.json`, `.env`, Data Protection keys, and uploaded documents.
+
+### Existing database schema
+
+Docker init scripts only run for a new PostgreSQL volume. For an existing local database, apply the consolidated schema manually from PowerShell:
 
 ```powershell
 Get-Content create_database.sql -Raw | docker exec -i fptunirag-postgres psql -U postgres -d prn222
@@ -211,25 +179,6 @@ Get-Content create_database.sql -Raw | docker exec -i fptunirag-postgres psql -U
 From Bash, use `docker exec -i fptunirag-postgres psql -U postgres -d prn222 < create_database.sql`.
 
 The schema includes subject chunking settings, embedding settings, document embedding runs, processing progress, Stripe subscription IDs, and the student free-quota setting.
-
-### 5. Restore, build, and run
-
-```bash
-dotnet restore FPTUniRAG.slnx
-dotnet build FPTUniRAG.slnx
-dotnet run --project FPTUniRAG/FPTUniRAG.csproj --launch-profile https
-```
-
-Configured development URLs:
-
-- HTTPS: `https://localhost:7268`
-- HTTP: `http://localhost:5056`
-
-The HTTPS development certificate may require trusting the .NET certificate:
-
-```bash
-dotnet dev-certs https --trust
-```
 
 ## Default accounts
 
@@ -240,7 +189,7 @@ On startup, the hosted initialization service creates or updates these local dev
 | Admin | `admin@fpt.edu.vn` | `Admin@123` |
 | Student | `student@fpt.edu.vn` | `Student@123` |
 
-Change these values in local `appsettings.json` before sharing or deploying the application.
+Override these values through `.env` before sharing or deploying the application.
 
 ## Important routes
 
@@ -308,23 +257,27 @@ Verify `RagIngestion:OpenRouter:ApiKey`, model names, embedding dimensions, and 
 ## Development commands
 
 ```bash
-# Build
+# Native .NET build (optional)
 dotnet build FPTUniRAG.slnx
 
-# Run the web app
+# Native .NET run (optional)
 dotnet run --project FPTUniRAG/FPTUniRAG.csproj --launch-profile https
 
-# Start infrastructure
+# Build and start the complete Docker stack
+docker compose up --build
+
+# Start in the background
 docker compose up -d
 
 # Stop infrastructure
 docker compose down
 
-# View infrastructure status
+# View service status
 docker compose ps
 
-# View PostgreSQL logs
-docker logs fptunirag-postgres
+# Follow all logs
+docker compose logs -f
+
 ```
 
 ## Security notes

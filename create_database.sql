@@ -45,8 +45,12 @@ CREATE TABLE IF NOT EXISTS users (
     is_blocked boolean NOT NULL DEFAULT false,
     student_code character varying(50),
     password_reset_token_hash text,
-    password_reset_token_expires_at timestamp without time zone
+    password_reset_token_expires_at timestamp without time zone,
+    must_change_password boolean NOT NULL DEFAULT false
 );
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS must_change_password boolean NOT NULL DEFAULT false;
 
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_key
     ON users (email);

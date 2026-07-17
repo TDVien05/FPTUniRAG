@@ -929,6 +929,9 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(255)
                 .HasColumnName("full_name");
             entity.Property(e => e.IsBlocked).HasColumnName("is_blocked");
+            entity.Property(e => e.MustChangePassword)
+                .HasDefaultValue(false)
+                .HasColumnName("must_change_password");
             entity.Property(e => e.PasswordHash).HasColumnName("password_hash");
             entity.Property(e => e.PasswordResetTokenExpiresAt)
                 .HasColumnType("timestamp without time zone")

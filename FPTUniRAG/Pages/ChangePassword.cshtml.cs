@@ -1,4 +1,5 @@
 using FPTUniRAG.BusinessLayer.Accounts;
+using FPTUniRAG.BusinessLayer.Accounts.Authentication;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
@@ -31,6 +32,10 @@ public class ChangePasswordModel : PageModel
 
     public string Email => User.FindFirstValue(ClaimTypes.Email)?.Trim() ?? string.Empty;
 
+    public bool IsPasswordChangeRequired => User.HasClaim(
+        AccountClaimTypes.MustChangePassword,
+        bool.TrueString.ToLowerInvariant());
+
     public string BackLink => Role switch
     {
         "admin" => "/AdminDashboard",
@@ -58,6 +63,8 @@ public class ChangePasswordModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {
+        var wasPasswordChangeRequired = IsPasswordChangeRequired;
+
         if (!ModelState.IsValid)
         {
             return Page();
@@ -84,7 +91,9 @@ public class ChangePasswordModel : PageModel
 
         await RefreshAuthenticationCookieAsync(cancellationToken);
         SuccessMessage = result.Message;
-        return RedirectToPage();
+        return wasPasswordChangeRequired
+            ? RedirectToPage(AccountNavigation.GetLandingPagePath(Role))
+            : RedirectToPage();
     }
 
     private async Task RefreshAuthenticationCookieAsync(CancellationToken cancellationToken)
@@ -93,6 +102,19 @@ public class ChangePasswordModel : PageModel
         if (!authenticationResult.Succeeded || authenticationResult.Principal is null)
         {
             return;
+        }
+
+        if (authenticationResult.Principal.Identity is ClaimsIdentity identity)
+        {
+            var existingClaim = identity.FindFirst(AccountClaimTypes.MustChangePassword);
+            if (existingClaim is not null)
+            {
+                identity.RemoveClaim(existingClaim);
+            }
+
+            identity.AddClaim(new Claim(
+                AccountClaimTypes.MustChangePassword,
+                bool.FalseString.ToLowerInvariant()));
         }
 
         await HttpContext.SignInAsync(

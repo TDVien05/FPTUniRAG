@@ -66,7 +66,8 @@ public sealed class AccountManagementService : IAccountManagementService
                 user.UserId,
                 user.Email,
                 user.FullName,
-                NormalizeRole(user.Role)));
+                NormalizeRole(user.Role),
+                user.MustChangePassword));
     }
 
     public async Task EnsureAdminAccountAsync(
@@ -98,6 +99,7 @@ public sealed class AccountManagementService : IAccountManagementService
         {
             UserId = Guid.NewGuid(), Email = normalizedEmail, FullName = fullName, Role = role,
             StudentCode = normalizedStudentCode, CreatedAt = CreateDatabaseTimestamp(), IsBlocked = false,
+            MustChangePassword = false,
             PasswordHash = _passwordService.HashPassword(password)
         };
         await _accountRepository.UpsertSeedUserAsync(seedUser, cancellationToken);
@@ -190,7 +192,8 @@ public sealed class AccountManagementService : IAccountManagementService
                     Role = "student",
                     StudentCode = row.StudentCode.Trim(),
                     CreatedAt = CreateDatabaseTimestamp(),
-                    IsBlocked = false
+                    IsBlocked = false,
+                    MustChangePassword = true
                 };
                 user.PasswordHash = _passwordService.HashPassword(password);
 
@@ -240,7 +243,8 @@ public sealed class AccountManagementService : IAccountManagementService
                 Email = teacherEmail,
                 Role = "teacher",
                 CreatedAt = CreateDatabaseTimestamp(),
-                IsBlocked = false
+                IsBlocked = false,
+                MustChangePassword = true
             };
             user.PasswordHash = _passwordService.HashPassword(password);
 
@@ -252,8 +256,14 @@ public sealed class AccountManagementService : IAccountManagementService
                 CreatedAt = CreateDatabaseTimestamp()
             };
 
-            await _accountRepository.CreateTeacherAsync(user, teacher, token =>
-                _credentialEmailSender.SendCredentialsAsync(teacherEmail, fullName, password, "teacher", token), cancellationToken);
+            await _credentialEmailSender.SendCredentialsAsync(
+                teacherEmail,
+                fullName,
+                password,
+                "teacher",
+                cancellationToken);
+
+            await _accountRepository.CreateTeacherAsync(user, teacher, cancellationToken);
             return OperationResult.Success("Teacher account created and credentials emailed.");
         }
         catch (Exception exception)
@@ -328,6 +338,7 @@ public sealed class AccountManagementService : IAccountManagementService
         }
 
         user.PasswordHash = _passwordService.HashPassword(newPassword);
+        user.MustChangePassword = false;
         user.PasswordResetTokenHash = null;
         user.PasswordResetTokenExpiresAt = null;
 

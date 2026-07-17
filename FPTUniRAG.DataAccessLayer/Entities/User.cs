@@ -19,6 +19,8 @@ public partial class User
 
     public bool IsBlocked { get; set; }
 
+    public bool MustChangePassword { get; set; }
+
     public string? StudentCode { get; set; }
 
     public string? PasswordResetTokenHash { get; set; }

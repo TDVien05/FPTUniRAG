@@ -94,7 +94,8 @@ public sealed class SmtpCredentialEmailSender : ICredentialEmailSender
             FromEmail = _options.FromEmail.Trim(),
             FromName = string.IsNullOrWhiteSpace(_options.FromName) ? "FPT UniRAG" : _options.FromName.Trim(),
             EnableSsl = _options.EnableSsl,
-            TimeoutMilliseconds = _options.TimeoutMilliseconds
+            TimeoutMilliseconds = _options.TimeoutMilliseconds,
+            Security = _options.Security.Trim()
         };
 
         if (string.IsNullOrWhiteSpace(normalized.Host)

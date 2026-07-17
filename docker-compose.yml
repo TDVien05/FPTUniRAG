@@ -3,18 +3,67 @@ services:
     image: postgres:17-alpine
     container_name: fptunirag-postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
     ports:
-      - "54329:5432"
+      - "${POSTGRES_PORT:-54329}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./create_database.sql:/docker-entrypoint-initdb.d/01-create_database.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d prn222"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${APP_DATABASE:-prn222}"]
       interval: 5s
       timeout: 5s
       retries: 20
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fptunirag-web
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${APP_DATABASE:-prn222};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      AdminCredentials__Email: ${ADMIN_EMAIL:-admin@fpt.edu.vn}
+      AdminCredentials__Password: ${ADMIN_PASSWORD:-Admin@123}
+      AdminCredentials__DisplayName: ${ADMIN_DISPLAY_NAME:-Admin User}
+      StudentCredentials__Email: ${STUDENT_EMAIL:-student@fpt.edu.vn}
+      StudentCredentials__Password: ${STUDENT_PASSWORD:-Student@123}
+      StudentCredentials__DisplayName: ${STUDENT_DISPLAY_NAME:-Default Student}
+      StudentCredentials__StudentCode: ${STUDENT_CODE:-STU000001}
+      RagIngestion__StorageRoot: /app/App_Data/teacher-uploads
+      RagIngestion__OpenRouter__ApiKey: ${OPENROUTER_API_KEY:-}
+      RagIngestion__OpenRouter__EmbeddingModel: ${OPENROUTER_EMBEDDING_MODEL:-google/gemini-embedding-001}
+      RagIngestion__OpenRouter__ChatModel: ${OPENROUTER_CHAT_MODEL:-qwen/qwen3.6-flash}
+      RagIngestion__Tesseract__Enabled: "true"
+      RagIngestion__Tesseract__ExecutablePath: tesseract
+      RagIngestion__Tesseract__Language: eng
+      Smtp__Host: ${SMTP_HOST:-smtp.gmail.com}
+      Smtp__Port: ${SMTP_PORT:-587}
+      Smtp__Username: ${SMTP_USERNAME:-}
+      Smtp__Password: ${SMTP_PASSWORD:-}
+      Smtp__FromEmail: ${SMTP_FROM_EMAIL:-}
+      Smtp__FromName: ${SMTP_FROM_NAME:-FPT UniRAG}
+      Smtp__EnableSsl: "true"
+      Smtp__Security: ${SMTP_SECURITY:-StartTls}
+      Stripe__SecretKey: ${STRIPE_SECRET_KEY:-}
+      Stripe__Currency: ${STRIPE_CURRENCY:-vnd}
+      Stripe__PublicBaseUrl: http://localhost:${APP_PORT:-5056}
+    ports:
+      - "${APP_PORT:-5056}:8080"
+    volumes:
+      - uploads-data:/app/App_Data/teacher-uploads
+      - data-protection-keys:/app/.keys
+    restart: unless-stopped
+
 volumes:
   postgres-data:
+  uploads-data:
+  data-protection-keys:
