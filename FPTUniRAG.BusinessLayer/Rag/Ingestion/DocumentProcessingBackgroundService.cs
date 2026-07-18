@@ -57,7 +57,18 @@ public sealed class DocumentProcessingBackgroundService : BackgroundService
     {
         while (!cancellationToken.IsCancellationRequested)
         {
-            yield return await _queue.DequeueAsync(cancellationToken);
+            Guid documentId;
+
+            try
+            {
+                documentId = await _queue.DequeueAsync(cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                yield break;
+            }
+
+            yield return documentId;
         }
     }
 }

@@ -63,6 +63,11 @@ services:
       - data-protection-keys:/app/.keys
     restart: unless-stopped
 
+networks:
+  default:
+    enable_ipv4: true
+    enable_ipv6: false
+
 volumes:
   postgres-data:
   uploads-data:

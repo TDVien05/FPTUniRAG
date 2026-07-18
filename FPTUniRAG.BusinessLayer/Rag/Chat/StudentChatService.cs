@@ -176,6 +176,8 @@ public sealed class StudentChatService : IStudentChatService
             return;
         }
 
+        await WriteProgressAsync("validating-request", writeEvent, cancellationToken);
+
         StudentChatSubjectContext? subject;
         try
         {
@@ -248,18 +250,20 @@ public sealed class StudentChatService : IStudentChatService
             return;
         }
 
+        await WriteProgressAsync("searching-materials", writeEvent, cancellationToken);
+
         bool hasUsableContent;
-        IReadOnlyList<StudentRetrievedChunk> retrievedChunks;
+        StudentChunkRetrievalResult retrievalResult;
         try
         {
             hasUsableContent = await _retrievalService.SubjectHasUsableContentAsync(subject.SubjectId, cancellationToken);
             if (!hasUsableContent)
             {
-                await writeEvent("error", new StudentChatErrorDto("This subject does not have usable materials yet. Please choose another subject."), cancellationToken);
+                await writeEvent("error", new StudentChatErrorDto("This subject does not have any completed, embedded materials yet. Please choose another subject or ask your teacher to check document processing."), cancellationToken);
                 return;
             }
 
-            retrievedChunks = await _retrievalService.RetrieveRelevantChunksAsync(
+            retrievalResult = await _retrievalService.RetrieveRelevantChunksAsync(
                 subject.SubjectId,
                 normalizedMessage,
                 RetrievalLimit,
@@ -272,9 +276,13 @@ public sealed class StudentChatService : IStudentChatService
             return;
         }
 
+        var retrievedChunks = retrievalResult.Chunks;
         if (retrievedChunks.Count == 0)
         {
-            await writeEvent("error", new StudentChatErrorDto("This subject does not have usable materials yet. Please choose another subject."), cancellationToken);
+            var message = retrievalResult.UsedLexicalFallback
+                ? "Semantic search is temporarily unavailable, and no matching text was found. Please try again in a moment."
+                : "No relevant material was found for this question. Please try rephrasing it.";
+            await writeEvent("error", new StudentChatErrorDto(message), cancellationToken);
             return;
         }
 
@@ -331,6 +339,8 @@ public sealed class StudentChatService : IStudentChatService
             retrievedChunks,
             normalizedMessage);
 
+        await WriteProgressAsync("generating-answer", writeEvent, cancellationToken);
+
         OpenRouterChatResult completion;
         try
         {
@@ -348,6 +358,8 @@ public sealed class StudentChatService : IStudentChatService
             await writeEvent("error", new StudentChatErrorDto("Unable to generate an answer right now. Please try again in a moment."), cancellationToken);
             return;
         }
+
+        await WriteProgressAsync("finalizing-answer", writeEvent, cancellationToken);
 
         var citations = BuildCitations(completionContext.ReferencedChunks);
         var assistantMessage = new Message
@@ -404,6 +416,12 @@ public sealed class StudentChatService : IStudentChatService
                 citations),
             cancellationToken);
     }
+
+    private static Task WriteProgressAsync(
+        string stage,
+        Func<string, object, CancellationToken, Task> writeEvent,
+        CancellationToken cancellationToken) =>
+        writeEvent("processing-progress", new StudentChatProgressDto(stage), cancellationToken);
 
     private static async Task StreamCompletedAssistantResponseAsync(
         string content,

@@ -76,6 +76,9 @@ public sealed record StudentChatSessionStartedDto(
     Guid SessionId,
     Guid SubjectId);
 
+public sealed record StudentChatProgressDto(
+    string Stage);
+
 public sealed record StudentChatAssistantDeltaDto(
     string Delta);
 

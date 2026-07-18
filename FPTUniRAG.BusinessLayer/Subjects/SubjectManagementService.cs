@@ -24,7 +24,12 @@ public sealed class SubjectManagementService(ISubjectRepository repository, ITea
             var documents = l.Subject.Documents.OrderBy(d => d.Chapter.ChapterOrder).ThenBy(d => d.CreatedAt).ToList();
             var latest = documents.OrderByDescending(d => d.CreatedAt).FirstOrDefault();
             return new TeacherDocumentManagementItemDto(l.SubjectId, l.Subject.SubjectCode, l.Subject.SubjectName, documents.Count, latest?.CreatedAt, latest?.DocumentId,
-                latest?.Title, latest?.Status, documents.Select(d => new TeacherSubjectDocumentDto(d.DocumentId, d.ChapterId, d.Chapter.ChapterTitle, d.Title, d.Status ?? "unknown", d.Chunks.Count, d.CreatedAt)).ToList());
+                latest?.Title, latest?.Status, documents.Select(d =>
+                {
+                    var latestJob = d.ProcessingJobs.OrderByDescending(job => job.StartedAt ?? DateTime.MinValue).FirstOrDefault();
+                    return new TeacherSubjectDocumentDto(d.DocumentId, d.ChapterId, d.Chapter.ChapterTitle, d.Title,
+                        d.Status ?? "unknown", latestJob?.ErrorMessage, d.Chunks.Count, d.CreatedAt);
+                }).ToList());
         }).ToList();
 
     public async Task<IReadOnlyList<SubjectHeaderAssignmentListItemDto>> GetSubjectsForHeaderAssignmentAsync(CancellationToken cancellationToken = default) =>

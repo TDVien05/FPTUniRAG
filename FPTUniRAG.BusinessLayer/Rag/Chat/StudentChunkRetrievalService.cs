@@ -37,7 +37,7 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
             _tableName, subjectId, embeddingConfiguration.Model, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<StudentRetrievedChunk>> RetrieveRelevantChunksAsync(
+    public async Task<StudentChunkRetrievalResult> RetrieveRelevantChunksAsync(
         Guid subjectId,
         string query,
         int limit,
@@ -46,7 +46,7 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
         var normalizedQuery = query.Trim();
         if (string.IsNullOrWhiteSpace(normalizedQuery) || limit <= 0)
         {
-            return [];
+            return new StudentChunkRetrievalResult([], false);
         }
 
         float[]? queryEmbedding = null;
@@ -64,7 +64,7 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
         var queryTerms = Tokenize(normalizedQuery);
         if (!useVectorSearch && queryTerms.Count == 0)
         {
-            return [];
+            return new StudentChunkRetrievalResult([], true);
         }
 
         var repositoryRows = await _vectorRepository.GetSubjectChunksAsync(
@@ -73,7 +73,7 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
             row.ChunkId, row.Embedding, row.Content, row.ChunkIndex, row.DocumentId,
             row.DocumentTitle, row.SubjectCode, row.SubjectName, row.ChapterTitle)).ToList();
 
-        return rows
+        var chunks = rows
             .Select(row => new StudentRetrievedChunk(
                 row.ChunkId,
                 row.Content,
@@ -92,6 +92,8 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
             .ThenBy(item => item.ChunkIndex)
             .Take(limit)
             .ToList();
+
+        return new StudentChunkRetrievalResult(chunks, !useVectorSearch);
     }
 
     private static string ResolveTableName(string? configuredTableName)
