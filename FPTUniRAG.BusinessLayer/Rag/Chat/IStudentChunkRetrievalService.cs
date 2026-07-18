@@ -6,9 +6,13 @@ public interface IStudentChunkRetrievalService
         Guid subjectId,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<StudentRetrievedChunk>> RetrieveRelevantChunksAsync(
+    Task<StudentChunkRetrievalResult> RetrieveRelevantChunksAsync(
         Guid subjectId,
         string query,
         int limit,
         CancellationToken cancellationToken = default);
 }
+
+public sealed record StudentChunkRetrievalResult(
+    IReadOnlyList<StudentRetrievedChunk> Chunks,
+    bool UsedLexicalFallback);

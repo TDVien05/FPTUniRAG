@@ -30,7 +30,14 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
-var dataProtectionKeyDirectory = Path.Combine(builder.Environment.ContentRootPath, ".keys");
+var contentRoot = builder.Environment.ContentRootPath;
+var solutionRoot = File.Exists(Path.Combine(contentRoot, "FPTUniRAG.slnx"))
+    ? contentRoot
+    : Directory.GetParent(contentRoot) is { } parent
+        && File.Exists(Path.Combine(parent.FullName, "FPTUniRAG.slnx"))
+            ? parent.FullName
+            : contentRoot;
+var dataProtectionKeyDirectory = Path.Combine(solutionRoot, ".keys");
 Directory.CreateDirectory(dataProtectionKeyDirectory);
 
 builder.Logging.ClearProviders();
@@ -53,6 +60,11 @@ builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddDataProtection()
     .SetApplicationName("FPTUniRAG")
     .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyDirectory));
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.Name = ".FPTUniRAG.Antiforgery";
+    options.Cookie.SameSite = SameSiteMode.Lax;
+});
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
@@ -110,6 +122,8 @@ builder.Services.AddSignalR();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
+        options.Cookie.Name = ".FPTUniRAG.Authentication";
+        options.Cookie.SameSite = SameSiteMode.Lax;
         options.LoginPath = AccountNavigation.LoginPath;
         options.AccessDeniedPath = AccountNavigation.LoginPath;
         options.ExpireTimeSpan = TimeSpan.FromDays(7);

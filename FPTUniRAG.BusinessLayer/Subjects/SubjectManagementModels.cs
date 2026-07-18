@@ -76,6 +76,7 @@ public sealed record TeacherSubjectDocumentDto(
     string ChapterTitle,
     string DocumentTitle,
     string Status,
+    string? ProcessingError,
     int ChunkCount,
     DateTime? CreatedAt);
 

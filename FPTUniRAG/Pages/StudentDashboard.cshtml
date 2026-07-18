@@ -636,13 +636,19 @@
                     ? "bg-red-50 border border-red-100"
                     : "bg-surface-container-low";
 
+                const progressMarkup = message.isStreaming && !message.messageContent && message.progressStage
+                    ? renderProcessingProgress(message.progressStage)
+                    : null;
+                const assistantContent = progressMarkup
+                    ?? `${renderAssistantMarkdown(message.messageContent || (message.isStreaming ? "Thinking..." : ""), message.citations || [])}${message.isStreaming && message.messageContent ? "<span class=\"ml-1 inline-block h-5 w-0.5 animate-pulse bg-primary align-middle\"></span>" : ""}`;
+
                 return `
                     <div class="flex gap-3">
                         <div class="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
                             <span class="material-symbols-outlined text-[18px]">bolt</span>
                         </div>
                         <div class="assistant-message max-w-[82%] min-w-0 rounded-3xl px-6 py-5 shadow-sm ${cardClasses}" data-message-key="${escapeAttribute(message.messageId || message.clientId || "")}">
-                            <div class="assistant-markdown break-words text-base leading-7 text-on-surface-variant">${renderAssistantMarkdown(message.messageContent || (message.isStreaming ? "Thinking..." : ""), message.citations || [])}${message.isStreaming ? "<span class=\"ml-1 inline-block h-5 w-0.5 animate-pulse bg-primary align-middle\"></span>" : ""}</div>
+                            <div class="assistant-markdown break-words text-base leading-7 text-on-surface-variant">${assistantContent}</div>
                             ${citationTags ? `<div class="mt-4 flex flex-wrap gap-2">${citationTags}</div>` : ""}
                         </div>
                     </div>`;
@@ -650,6 +656,40 @@
 
             bindCitationTriggers(elements.chatMessages);
             bindAssistantCitationTriggers(elements.chatMessages);
+        }
+
+        const processingStages = [
+            { key: "validating-request", label: "Checking your request" },
+            { key: "searching-materials", label: "Searching course materials" },
+            { key: "generating-answer", label: "Generating the answer" },
+            { key: "finalizing-answer", label: "Finalizing the response" }
+        ];
+
+        function renderProcessingProgress(activeStage) {
+            const activeIndex = processingStages.findIndex(stage => stage.key === activeStage);
+            if (activeIndex < 0) {
+                return renderAssistantMarkdown("Thinking...", []);
+            }
+
+            return `
+                <div class="space-y-3" role="status" aria-live="polite" aria-label="Chat response progress">
+                    ${processingStages.map((stage, index) => {
+                        const isComplete = index < activeIndex;
+                        const isActive = index === activeIndex;
+                        const icon = isComplete
+                            ? `<span class="material-symbols-outlined text-[18px] text-green-600">check_circle</span>`
+                            : isActive
+                                ? `<span class="material-symbols-outlined animate-spin text-[18px] text-primary">progress_activity</span>`
+                                : `<span class="h-[18px] w-[18px] rounded-full border border-outline-variant"></span>`;
+                        const textClass = isActive
+                            ? "font-semibold text-on-surface"
+                            : isComplete
+                                ? "text-secondary"
+                                : "text-secondary/60";
+
+                        return `<div class="flex items-center gap-3">${icon}<span class="text-sm ${textClass}">${stage.label}</span></div>`;
+                    }).join("")}
+                </div>`;
         }
 
         function renderSources() {
@@ -898,7 +938,15 @@
                 return;
             }
 
+            if (eventName === "processing-progress" && assistantPlaceholder) {
+                assistantPlaceholder.progressStage = payload.stage || null;
+                renderChat();
+                scrollChatToBottom();
+                return;
+            }
+
             if (eventName === "assistant-delta" && assistantPlaceholder) {
+                assistantPlaceholder.progressStage = null;
                 appendAssistantDelta(payload.delta || "");
                 return;
             }
@@ -909,6 +957,7 @@
                 assistantPlaceholder.createdAt = payload.createdAt;
                 assistantPlaceholder.citations = Array.isArray(payload.citations) ? payload.citations : [];
                 assistantPlaceholder.isStreaming = false;
+                assistantPlaceholder.progressStage = null;
                 state.latestSources = assistantPlaceholder.citations;
                 upsertSessionSummary(state.sessionId, assistantPlaceholder.messageContent, payload.createdAt);
                 state.activeAssistantMessage = null;
@@ -922,6 +971,7 @@
                 if (assistantPlaceholder) {
                     assistantPlaceholder.isStreaming = false;
                     assistantPlaceholder.isError = true;
+                    assistantPlaceholder.progressStage = null;
                     if (!assistantPlaceholder.messageContent.trim()) {
                         assistantPlaceholder.messageContent = payload.message || "Unable to generate an answer right now.";
                     } else {
@@ -1039,7 +1089,8 @@
                 createdAt: null,
                 citations: [],
                 isStreaming: true,
-                isError: false
+                isError: false,
+                progressStage: null
             };
 
             state.latestSources = [];
