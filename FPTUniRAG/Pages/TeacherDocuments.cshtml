@@ -267,6 +267,10 @@
                                                 </td>
                                                 <td class="px-6 py-4 text-sm text-secondary">
                                                     <span class="uppercase tracking-wide text-primary">@document.Status</span>
+                                                    @if (!string.IsNullOrWhiteSpace(document.ProcessingError))
+                                                    {
+                                                        <span class="mt-1 block max-w-sm text-xs normal-case text-rose-700">@document.ProcessingError</span>
+                                                    }
                                                 </td>
                                                 <td class="px-6 py-4 text-sm text-secondary">@(document.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")</td>
                                                 <td class="px-6 py-4 text-right">
