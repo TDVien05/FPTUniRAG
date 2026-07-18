@@ -144,7 +144,29 @@
                             </div>
                         </div>
 
-                        <form class="accounts-form" method="post" enctype="multipart/form-data" asp-page-handler="ImportStudents">
+                        @{
+                            var importInFlight = Model.ImportJobId.HasValue
+                                && Model.ImportResult is null
+                                && string.IsNullOrWhiteSpace(Model.ErrorMessage);
+                        }
+
+                        @if (importInFlight)
+                        {
+                            <section id="import-progress" class="accounts-progress-box" aria-live="polite">
+                                <div class="accounts-progress-header">
+                                    <div>
+                                        <p class="accounts-progress-stage" id="import-progress-stage">Queued</p>
+                                        <p class="accounts-progress-message" id="import-progress-message">Import has been queued.</p>
+                                    </div>
+                                    <span class="accounts-progress-value" id="import-progress-value">0%</span>
+                                </div>
+                                <div class="accounts-progress-track">
+                                    <div id="import-progress-bar" class="accounts-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+                                </div>
+                            </section>
+                        }
+
+                        <form class="accounts-form @(importInFlight ? "is-busy" : "")" id="student-import-form" method="post" enctype="multipart/form-data" asp-page-handler="ImportStudents">
                             <label class="subject-field">
                                 <span>Upload sheet file</span>
                                 <div class="accounts-upload-box">
@@ -212,7 +234,20 @@
                             </span>
                         </div>
 
-                        <form class="accounts-form" method="post" asp-page-handler="CreateTeacher">
+                        <section id="teacher-progress" class="accounts-progress-box" style="display: none;" aria-live="polite">
+                            <div class="accounts-progress-header">
+                                <div>
+                                    <p class="accounts-progress-stage" id="teacher-progress-stage">Validating</p>
+                                    <p class="accounts-progress-message" id="teacher-progress-message">Checking teacher email…</p>
+                                </div>
+                                <span class="accounts-progress-value">Working…</span>
+                            </div>
+                            <div class="accounts-progress-track">
+                                <div class="accounts-progress-bar is-indeterminate"></div>
+                            </div>
+                        </section>
+
+                        <form class="accounts-form" id="teacher-create-form" method="post" asp-page-handler="CreateTeacher">
                             <label class="subject-field">
                                 <span>Teacher email</span>
                                 <input asp-for="TeacherEmail" type="email" placeholder="teacher@fpt.edu.vn" autocomplete="off" />
@@ -304,5 +339,91 @@
     </main>
 
     <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        (() => {
+            const teacherForm = document.getElementById("teacher-create-form");
+            const teacherProgress = document.getElementById("teacher-progress");
+            const teacherStageEl = document.getElementById("teacher-progress-stage");
+            const teacherMessageEl = document.getElementById("teacher-progress-message");
+            const teacherStages = [
+                { stage: "Validating", message: "Checking teacher email…" },
+                { stage: "Creating account", message: "Creating the teacher account…" },
+                { stage: "Sending credentials", message: "Emailing login credentials…" }
+            ];
+
+            if (teacherForm) {
+                teacherForm.addEventListener("submit", () => {
+                    if (typeof teacherForm.checkValidity === "function" && !teacherForm.checkValidity()) {
+                        return;
+                    }
+
+                    const submitButton = teacherForm.querySelector("button[type=submit]");
+                    if (submitButton) {
+                        submitButton.disabled = true;
+                    }
+
+                    teacherProgress.style.display = "block";
+                    let stepIndex = 0;
+                    teacherStageEl.textContent = teacherStages[0].stage;
+                    teacherMessageEl.textContent = teacherStages[0].message;
+                    window.setInterval(() => {
+                        stepIndex = Math.min(stepIndex + 1, teacherStages.length - 1);
+                        teacherStageEl.textContent = teacherStages[stepIndex].stage;
+                        teacherMessageEl.textContent = teacherStages[stepIndex].message;
+                    }, 900);
+                });
+            }
+        })();
+    </script>
+
+    @if (importInFlight)
+    {
+        <script>
+            (() => {
+                const jobId = "@Model.ImportJobId!.Value";
+                const stageEl = document.getElementById("import-progress-stage");
+                const messageEl = document.getElementById("import-progress-message");
+                const valueEl = document.getElementById("import-progress-value");
+                const barEl = document.getElementById("import-progress-bar");
+
+                async function pollStatus() {
+                    try {
+                        const response = await fetch(`/Accounts?handler=ImportStatus&jobId=${encodeURIComponent(jobId)}`, { credentials: "same-origin" });
+                        if (!response.ok) {
+                            throw new Error("Unable to read import status.");
+                        }
+
+                        const status = await response.json();
+                        const percent = Math.max(0, Math.min(100, Number(status.progressPercent || 0)));
+                        barEl.style.width = `${percent}%`;
+                        barEl.setAttribute("aria-valuenow", percent);
+                        valueEl.textContent = `${percent}%`;
+                        stageEl.textContent = status.isCompleted ? "Completed" : (status.isFailed ? "Failed" : "Importing");
+                        messageEl.textContent = status.isFailed
+                            ? (status.errorMessage || "Import failed.")
+                            : `Processed ${status.processedRows} of ${status.totalRows} row(s).`;
+
+                        if (status.isCompleted || status.isFailed) {
+                            if (status.isFailed) {
+                                barEl.classList.add("is-failed");
+                            }
+                            window.setTimeout(() => {
+                                window.location.href = `/Accounts?importJobId=${encodeURIComponent(jobId)}`;
+                            }, 600);
+                            return;
+                        }
+
+                        window.setTimeout(pollStatus, 1200);
+                    } catch (error) {
+                        messageEl.textContent = error.message || "Unable to read import status. Retrying…";
+                        window.setTimeout(pollStatus, 2000);
+                    }
+                }
+
+                pollStatus();
+            })();
+        </script>
+    }
 </body>
 </html>

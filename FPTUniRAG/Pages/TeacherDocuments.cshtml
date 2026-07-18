@@ -282,13 +282,14 @@
                                                         {
                                                             <form method="post" asp-page-handler="Retry">
                                                                 <input type="hidden" name="documentId" value="@document.DocumentId" />
+                                                                <input type="hidden" name="subjectId" value="@item.SubjectId" />
                                                                 <input type="hidden" name="Query" value="@Model.Query" />
                                                                 <button class="flex items-center gap-1 px-3 py-1 border border-amber-300 bg-amber-50 text-amber-900 text-xs font-medium rounded hover:bg-amber-100 transition-all" type="submit">
                                                                     <span class="material-symbols-outlined text-sm">refresh</span>Retry Sync
                                                                 </button>
                                                             </form>
                                                         }
-                                                        <form method="post" asp-page-handler="DeleteChapter" onsubmit="return confirm('Delete chapter @document.ChapterTitle and all related document, chunk, embedding, and question data? This cannot be undone.');">
+                                                        <form class="delete-chapter-form" method="post" asp-page-handler="DeleteChapter" data-chapter-title="@document.ChapterTitle">
                                                             <input type="hidden" name="subjectId" value="@item.SubjectId" />
                                                             <input type="hidden" name="chapterId" value="@document.ChapterId" />
                                                             <input type="hidden" name="Query" value="@Model.Query" />
@@ -329,5 +330,63 @@
             <span class="text-[10px] font-medium">Password</span>
         </a>
     </nav>
+
+    <div id="delete-progress-overlay" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 px-4" aria-live="polite">
+        <div class="w-full max-w-sm rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-xl">
+            <p class="font-headline-lg text-base font-bold text-on-surface">Deleting chapter</p>
+            <p class="mt-1 text-sm text-secondary" id="delete-progress-stage">Removing quiz questions…</p>
+            <div class="mt-4 h-3 overflow-hidden rounded-full bg-surface-container-high">
+                <div id="delete-progress-bar" class="h-full w-0 rounded-full bg-rose-600 transition-all duration-500" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+            </div>
+            <p class="mt-2 text-right text-xs font-semibold text-secondary" id="delete-progress-value">0%</p>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            const overlay = document.getElementById("delete-progress-overlay");
+            const stageEl = document.getElementById("delete-progress-stage");
+            const barEl = document.getElementById("delete-progress-bar");
+            const valueEl = document.getElementById("delete-progress-value");
+            const stages = [
+                { percent: 15, label: "Removing quiz questions…" },
+                { percent: 30, label: "Removing chunk embeddings…" },
+                { percent: 45, label: "Removing embedding run records…" },
+                { percent: 60, label: "Removing processing jobs…" },
+                { percent: 80, label: "Removing chunks and document…" },
+                { percent: 95, label: "Removing chapter and uploaded file…" }
+            ];
+
+            document.querySelectorAll(".delete-chapter-form").forEach((form) => {
+                form.addEventListener("submit", (event) => {
+                    const chapterTitle = form.dataset.chapterTitle || "this chapter";
+                    if (!window.confirm(`Delete chapter ${chapterTitle} and all related document, chunk, embedding, and question data? This cannot be undone.`)) {
+                        event.preventDefault();
+                        return;
+                    }
+
+                    const submitButton = form.querySelector("button[type=submit]");
+                    if (submitButton) {
+                        submitButton.disabled = true;
+                    }
+
+                    overlay.classList.remove("hidden");
+                    let stepIndex = 0;
+                    const applyStep = () => {
+                        const step = stages[stepIndex];
+                        stageEl.textContent = step.label;
+                        barEl.style.width = `${step.percent}%`;
+                        barEl.setAttribute("aria-valuenow", step.percent);
+                        valueEl.textContent = `${step.percent}%`;
+                    };
+                    applyStep();
+                    window.setInterval(() => {
+                        stepIndex = Math.min(stepIndex + 1, stages.length - 1);
+                        applyStep();
+                    }, 450);
+                });
+            });
+        })();
+    </script>
 </body>
 </html>

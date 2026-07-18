@@ -66,7 +66,7 @@ public class TeacherDocumentsModel : PageModel
         DocumentsBySubject = items;
     }
 
-    public async Task<IActionResult> OnPostRetryAsync(Guid documentId, CancellationToken cancellationToken)
+    public async Task<IActionResult> OnPostRetryAsync(Guid documentId, Guid subjectId, CancellationToken cancellationToken)
     {
         var teacherEmail = User.FindFirstValue(ClaimTypes.Email);
         if (string.IsNullOrWhiteSpace(teacherEmail))
@@ -79,16 +79,13 @@ public class TeacherDocumentsModel : PageModel
             documentId,
             cancellationToken);
 
-        if (result.Succeeded)
-        {
-            SuccessMessage = result.Message;
-        }
-        else
+        if (!result.Succeeded)
         {
             ErrorMessage = result.Message;
+            return RedirectToPage(new { Query });
         }
 
-        return RedirectToPage(new { Query });
+        return RedirectToPage("/TeacherUpload", new { subjectId, processingDocumentId = documentId });
     }
 
     public async Task<IActionResult> OnPostDeleteChapterAsync(

@@ -49,7 +49,9 @@ public sealed record TeacherDocumentProcessingStatusDto(
     string Stage,
     string? ErrorMessage,
     bool IsCompleted,
-    bool IsFailed);
+    bool IsFailed,
+    int? QueuePosition,
+    int QueueDepth);
 
 public sealed class TeacherDocumentUploadCommand
 {

@@ -28,6 +28,7 @@ public interface IAccountManagementService
     Task<ImportStudentsResult> ImportStudentsAsync(
         Stream fileStream,
         string fileName,
+        IProgress<StudentImportProgress>? progress = null,
         CancellationToken cancellationToken = default);
 
     Task<OperationResult> CreateTeacherAsync(

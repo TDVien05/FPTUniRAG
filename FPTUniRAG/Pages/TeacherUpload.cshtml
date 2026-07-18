@@ -177,7 +177,15 @@
                     progressBar.setAttribute("aria-valuenow", percent);
                     progressValue.textContent = `${percent}%`;
                     progressStage.textContent = stageLabels[stage] || stage;
-                    progressMessage.textContent = status.errorMessage || (status.isCompleted ? "Document is ready to view." : "Processing document...");
+
+                    if (stage === "queued" && typeof status.queuePosition === "number") {
+                        const aheadCount = Math.max(0, status.queuePosition - 1);
+                        progressMessage.textContent = aheadCount === 0
+                            ? "You're next in line. Processing will begin shortly."
+                            : `${aheadCount} document${aheadCount === 1 ? "" : "s"} ahead of you in the queue (${status.queueDepth} waiting total).`;
+                    } else {
+                        progressMessage.textContent = status.errorMessage || (status.isCompleted ? "Document is ready to view." : "Processing document...");
+                    }
 
                     if (status.isCompleted) {
                         progressLink.href = `/TeacherDocuments/Details?documentId=${encodeURIComponent(documentId)}`;

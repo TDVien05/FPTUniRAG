@@ -1,6 +1,7 @@
 using FPTUniRAG.BusinessLayer.Accounts;
 using FPTUniRAG.BusinessLayer.Accounts.Authentication;
 using FPTUniRAG.BusinessLayer.Accounts.Email;
+using FPTUniRAG.BusinessLayer.Accounts.Importing;
 using FPTUniRAG.BusinessLayer.Accounts.Seeding;
 using FPTUniRAG.BusinessLayer.AdminDashboard;
 using FPTUniRAG.BusinessLayer.Payments.Stripe;
@@ -72,6 +73,7 @@ builder.Services.Configure<RagIngestionOptions>(builder.Configuration.GetSection
 builder.Services.Configure<StripeOptions>(builder.Configuration.GetSection("Stripe"));
 
 builder.Services.AddScoped<IAccountManagementService, AccountManagementService>();
+builder.Services.AddSingleton<IStudentImportJobTracker, StudentImportJobTracker>();
 builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 builder.Services.AddScoped<IAnalysisService, AnalysisService>();
 builder.Services.AddScoped<ISubjectManagementService, SubjectManagementService>();

@@ -21,7 +21,11 @@ public sealed class DocumentTextExtractor : IDocumentTextExtractor
         _tesseractOcrService = tesseractOcrService;
     }
 
-    public async Task<string> ExtractTextAsync(Stream stream, string fileName, CancellationToken cancellationToken = default)
+    public async Task<string> ExtractTextAsync(
+        Stream stream,
+        string fileName,
+        Func<int, int, CancellationToken, Task>? onPageExtracted = null,
+        CancellationToken cancellationToken = default)
     {
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
         stream.Position = 0;
@@ -30,7 +34,7 @@ public sealed class DocumentTextExtractor : IDocumentTextExtractor
         {
             ".txt" or ".md" => await ReadPlainTextAsync(stream, cancellationToken),
             ".docx" => await ReadDocxAsync(stream, cancellationToken),
-            ".pdf" => await ReadPdfAsync(stream, cancellationToken),
+            ".pdf" => await ReadPdfAsync(stream, onPageExtracted, cancellationToken),
             _ => throw new InvalidOperationException($"Unsupported file type '{extension}'.")
         };
     }
@@ -67,7 +71,10 @@ public sealed class DocumentTextExtractor : IDocumentTextExtractor
         return NormalizeWhitespace(string.Join(Environment.NewLine + Environment.NewLine, paragraphs));
     }
 
-    private async Task<string> ReadPdfAsync(Stream stream, CancellationToken cancellationToken)
+    private async Task<string> ReadPdfAsync(
+        Stream stream,
+        Func<int, int, CancellationToken, Task>? onPageExtracted,
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -79,10 +86,11 @@ public sealed class DocumentTextExtractor : IDocumentTextExtractor
         }
 
         var extractedPages = new List<string>();
-        foreach (var page in pages)
+        for (var pageIndex = 0; pageIndex < pages.Count; pageIndex++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            var page = pages[pageIndex];
             var pageText = NormalizeWhitespace(page.Text);
             var imageOcrText = await TryExtractTextFromPageImagesAsync(page, pageText, cancellationToken);
 
@@ -90,6 +98,11 @@ public sealed class DocumentTextExtractor : IDocumentTextExtractor
             if (!string.IsNullOrWhiteSpace(mergedText))
             {
                 extractedPages.Add(mergedText);
+            }
+
+            if (onPageExtracted is not null)
+            {
+                await onPageExtracted(pageIndex + 1, pages.Count, cancellationToken);
             }
         }
 

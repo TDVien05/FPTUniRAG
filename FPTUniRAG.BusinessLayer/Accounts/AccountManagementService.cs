@@ -146,65 +146,77 @@ public sealed class AccountManagementService : IAccountManagementService
     public async Task<ImportStudentsResult> ImportStudentsAsync(
         Stream fileStream,
         string fileName,
+        IProgress<StudentImportProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         var rows = await StudentImportFileParser.ParseAsync(fileStream, fileName, cancellationToken);
         var results = new List<ImportStudentsRowResult>();
         var seenEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var seenStudentCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var processedRows = 0;
+
+        progress?.Report(new StudentImportProgress(0, rows.Count));
 
         foreach (var row in rows)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (!IsValidImportRow(row, out var validationError))
-            {
-                results.Add(new ImportStudentsRowResult(row.RowNumber, row.StudentCode, row.Email, false, validationError));
-                continue;
-            }
-
-            if (!seenEmails.Add(row.Email))
-            {
-                results.Add(new ImportStudentsRowResult(row.RowNumber, row.StudentCode, row.Email, false, "Duplicate email in the uploaded file."));
-                continue;
-            }
-
-            if (!seenStudentCodes.Add(row.StudentCode))
-            {
-                results.Add(new ImportStudentsRowResult(row.RowNumber, row.StudentCode, row.Email, false, "Duplicate MSSV in the uploaded file."));
-                continue;
-            }
-
-            if (await _accountRepository.StudentIdentityExistsAsync(row.Email, row.StudentCode, cancellationToken))
-            {
-                results.Add(new ImportStudentsRowResult(row.RowNumber, row.StudentCode, row.Email, false, "Skipped because the email or MSSV already exists."));
-                continue;
-            }
-
-            var password = GeneratePassword();
             try
             {
-                var user = new User
+                if (!IsValidImportRow(row, out var validationError))
                 {
-                    UserId = Guid.NewGuid(),
-                    FullName = row.FullName.Trim(),
-                    Email = row.Email.Trim(),
-                    Role = "student",
-                    StudentCode = row.StudentCode.Trim(),
-                    CreatedAt = CreateDatabaseTimestamp(),
-                    IsBlocked = false,
-                    MustChangePassword = true
-                };
-                user.PasswordHash = _passwordService.HashPassword(password);
+                    results.Add(new ImportStudentsRowResult(row.RowNumber, row.StudentCode, row.Email, false, validationError));
+                    continue;
+                }
 
-                await _accountRepository.CreateUserAsync(user, token =>
-                    _credentialEmailSender.SendCredentialsAsync(user.Email, user.FullName, password, "student", token), cancellationToken);
-                results.Add(new ImportStudentsRowResult(row.RowNumber, row.StudentCode, row.Email, true, "Student account created and credentials emailed."));
+                if (!seenEmails.Add(row.Email))
+                {
+                    results.Add(new ImportStudentsRowResult(row.RowNumber, row.StudentCode, row.Email, false, "Duplicate email in the uploaded file."));
+                    continue;
+                }
+
+                if (!seenStudentCodes.Add(row.StudentCode))
+                {
+                    results.Add(new ImportStudentsRowResult(row.RowNumber, row.StudentCode, row.Email, false, "Duplicate MSSV in the uploaded file."));
+                    continue;
+                }
+
+                if (await _accountRepository.StudentIdentityExistsAsync(row.Email, row.StudentCode, cancellationToken))
+                {
+                    results.Add(new ImportStudentsRowResult(row.RowNumber, row.StudentCode, row.Email, false, "Skipped because the email or MSSV already exists."));
+                    continue;
+                }
+
+                var password = GeneratePassword();
+                try
+                {
+                    var user = new User
+                    {
+                        UserId = Guid.NewGuid(),
+                        FullName = row.FullName.Trim(),
+                        Email = row.Email.Trim(),
+                        Role = "student",
+                        StudentCode = row.StudentCode.Trim(),
+                        CreatedAt = CreateDatabaseTimestamp(),
+                        IsBlocked = false,
+                        MustChangePassword = true
+                    };
+                    user.PasswordHash = _passwordService.HashPassword(password);
+
+                    await _accountRepository.CreateUserAsync(user, token =>
+                        _credentialEmailSender.SendCredentialsAsync(user.Email, user.FullName, password, "student", token), cancellationToken);
+                    results.Add(new ImportStudentsRowResult(row.RowNumber, row.StudentCode, row.Email, true, "Student account created and credentials emailed."));
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogWarning(exception, "Failed to import student account for {Email}", row.Email);
+                    results.Add(new ImportStudentsRowResult(row.RowNumber, row.StudentCode, row.Email, false, $"Failed to create account: {GetDetailedErrorMessage(exception)}"));
+                }
             }
-            catch (Exception exception)
+            finally
             {
-                _logger.LogWarning(exception, "Failed to import student account for {Email}", row.Email);
-                results.Add(new ImportStudentsRowResult(row.RowNumber, row.StudentCode, row.Email, false, $"Failed to create account: {GetDetailedErrorMessage(exception)}"));
+                processedRows++;
+                progress?.Report(new StudentImportProgress(processedRows, rows.Count));
             }
         }
 

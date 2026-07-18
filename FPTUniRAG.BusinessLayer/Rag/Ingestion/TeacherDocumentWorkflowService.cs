@@ -249,10 +249,20 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
     {
         var document = await _documentRepository.GetManagedDocumentAsync(teacherEmail, documentId, cancellationToken);
         var job = document?.ProcessingJobs.OrderByDescending(item => item.StartedAt).FirstOrDefault();
-        return document is null || job is null ? null : new TeacherDocumentProcessingStatusDto(document.DocumentId,
+
+        if (document is null || job is null)
+        {
+            return null;
+        }
+
+        var isQueued = job.JobStatus == "queued";
+        var queuePosition = isQueued ? _processingQueue.GetQueuePosition(document.DocumentId) : null;
+
+        return new TeacherDocumentProcessingStatusDto(document.DocumentId,
             job.JobStatus ?? document.Status ?? "unknown", job.ProgressPercent,
             job.ProcessingStage ?? job.JobStatus ?? document.Status ?? "unknown", job.ErrorMessage,
-            job.JobStatus == "completed", job.JobStatus == "failed");
+            job.JobStatus == "completed", job.JobStatus == "failed",
+            queuePosition, _processingQueue.QueueDepth);
     }
 
     public async Task ProcessDocumentAsync(Guid documentId, CancellationToken cancellationToken = default)
@@ -300,6 +310,13 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
                     content = await _documentTextExtractor.ExtractTextAsync(
                         stream,
                         Path.GetFileName(filePath),
+                        async (processedPages, totalPages, token) =>
+                        {
+                            var percent = totalPages <= 0
+                                ? 15
+                                : Math.Clamp(15 + processedPages * 20 / totalPages, 15, 34);
+                            await UpdateProgressAsync(document, job, percent, "extracting", token);
+                        },
                         cancellationToken);
                 }
 

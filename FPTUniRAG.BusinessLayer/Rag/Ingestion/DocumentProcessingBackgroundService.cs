@@ -38,6 +38,10 @@ public sealed class DocumentProcessingBackgroundService : BackgroundService
             {
                 _logger.LogError(exception, "Document processing failed for {DocumentId}", documentId);
             }
+            finally
+            {
+                _queue.MarkCompleted(documentId);
+            }
         }
     }
 
