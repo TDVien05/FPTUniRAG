@@ -172,8 +172,8 @@
                                 <div class="accounts-upload-box">
                                     <span class="material-symbols-outlined" aria-hidden="true">description</span>
                                     <div>
-                                        <strong>Select spreadsheet file</strong>
-                                        <small>Columns must follow: MSSV, Name, Email</small>
+                                        <strong id="student-sheet-name">Select spreadsheet file</strong>
+                                        <small id="student-sheet-hint">Columns must follow: MSSV, Name, Email</small>
                                     </div>
                                     <input asp-for="StudentSheet" accept=".xlsx,.csv" />
                                 </div>
@@ -374,6 +374,45 @@
                     }, 900);
                 });
             }
+        })();
+    </script>
+
+    <script>
+        (() => {
+            const fileInput = document.getElementById("StudentSheet");
+            const nameEl = document.getElementById("student-sheet-name");
+            const hintEl = document.getElementById("student-sheet-hint");
+            const uploadBox = fileInput?.closest(".accounts-upload-box");
+            if (!fileInput || !nameEl || !hintEl) {
+                return;
+            }
+
+            const defaultName = nameEl.textContent;
+            const defaultHint = hintEl.textContent;
+
+            function formatSize(bytes) {
+                if (bytes < 1024) {
+                    return `${bytes} B`;
+                }
+                if (bytes < 1024 * 1024) {
+                    return `${(bytes / 1024).toFixed(1)} KB`;
+                }
+                return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+            }
+
+            fileInput.addEventListener("change", () => {
+                const file = fileInput.files && fileInput.files[0];
+                if (!file) {
+                    nameEl.textContent = defaultName;
+                    hintEl.textContent = defaultHint;
+                    uploadBox?.classList.remove("has-file");
+                    return;
+                }
+
+                nameEl.textContent = file.name;
+                hintEl.textContent = `Ready to import · ${formatSize(file.size)}`;
+                uploadBox?.classList.add("has-file");
+            });
         })();
     </script>
 

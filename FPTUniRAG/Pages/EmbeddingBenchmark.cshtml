@@ -62,12 +62,12 @@
                                     <th>Model</th>
                                     <th>Documents</th>
                                     <th>Chunks</th>
-                                    <th>Vectors</th>
                                     <th>Dimensions</th>
-                                    <th>Completion</th>
-                                    <th>Document size</th>
-                                    <th>Avg. time</th>
-                                    <th>Last embedded</th>
+                                    <th>Embedding Time</th>
+                                    <th>Throughput (chunks/sec)</th>
+                                    <th>Storage Usage</th>
+                                    <th>Success Rate</th>
+                                    <th>Last Embedded</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -83,11 +83,11 @@
                                     {
                                         <td>@row.DocumentCount.ToString("N0")</td>
                                         <td>@row.ChunkCount.ToString("N0")</td>
-                                        <td>@row.VectorCount.ToString("N0")</td>
                                         <td>@row.Dimensions.ToString("N0")</td>
-                                        <td>@row.CompletionRate.ToString("0.##", CultureInfo.InvariantCulture)%</td>
-                                        <td>@FormatBytes(row.DocumentSizeBytes)</td>
-                                        <td>@(row.AverageDurationMs is null ? "—" : $"{row.AverageDurationMs.Value / 1000:0.##} s")</td>
+                                        <td>@FormatDuration(row.EmbeddingTimeMs)</td>
+                                        <td>@(row.ChunksPerSecond is null ? "—" : row.ChunksPerSecond.Value.ToString("0.##", CultureInfo.InvariantCulture))</td>
+                                        <td>~@FormatBytes(row.StorageBytes)</td>
+                                        <td>@row.SuccessRate.ToString("0.##", CultureInfo.InvariantCulture)%</td>
                                         <td>@(row.LatestEmbeddedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
                                     }
                                 </tr>
@@ -96,7 +96,10 @@
                         </table>
                     </div>
                 </section>
-                <p class="text-secondary" style="margin-top: 16px;">Retries and re-embeddings are retained in history; totals use the latest successful run per document and model.</p>
+                <p class="text-secondary" style="margin-top: 16px;">
+                    Retries and re-embeddings are retained in history; documents, chunks, embedding time and throughput use the latest successful run per document and model.
+                    Success rate covers every run attempted with the model. Storage usage is an estimate (vectors × dimensions × 4 bytes) and excludes index and row overhead.
+                </p>
             </div>
         </section>
     </main>
@@ -104,6 +107,14 @@
 </html>
 
 @functions {
+    private static string FormatDuration(double? milliseconds)
+    {
+        if (milliseconds is null) return "—";
+        if (milliseconds < 1000) return $"{milliseconds.Value:0} ms";
+        if (milliseconds < 60_000) return $"{milliseconds.Value / 1000:0.##} s";
+        return $"{milliseconds.Value / 60_000:0.##} min";
+    }
+
     private static string FormatBytes(long bytes)
     {
         if (bytes < 1024) return $"{bytes:N0} B";

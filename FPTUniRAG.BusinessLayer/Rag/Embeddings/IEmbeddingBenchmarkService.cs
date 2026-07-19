@@ -7,13 +7,12 @@ public interface IEmbeddingBenchmarkService
 
 public sealed record EmbeddingBenchmarkRow(
     string Model,
-    int Dimensions,
     int DocumentCount,
     int ChunkCount,
-    int VectorCount,
-    decimal CompletionRate,
-    long DocumentSizeBytes,
-    double? AverageDurationMs,
-    double? LatestDurationMs,
+    int Dimensions,
+    double? EmbeddingTimeMs,
+    double? ChunksPerSecond,
+    long StorageBytes,
+    decimal SuccessRate,
     DateTime? LatestEmbeddedAt,
     bool HasData);

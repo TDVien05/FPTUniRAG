@@ -2121,6 +2121,16 @@ body.admin-dashboard-page {
   background: #f0f3ff;
 }
 
+.accounts-upload-box.has-file {
+  border-style: solid;
+  border-color: rgba(25, 135, 84, 0.45);
+  background: #edfdf4;
+}
+
+.accounts-upload-box.has-file .material-symbols-outlined {
+  color: #198754;
+}
+
 .accounts-upload-box .material-symbols-outlined {
   color: var(--admin-primary);
   font-size: 24px;
@@ -2129,6 +2139,7 @@ body.admin-dashboard-page {
 .accounts-upload-box strong {
   display: block;
   margin-bottom: 4px;
+  overflow-wrap: anywhere;
   color: var(--admin-text);
   font-size: 14px;
 }
