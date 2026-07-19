@@ -2628,3 +2628,215 @@ body.admin-dashboard-page {
     grid-template-columns: 1fr;
   }
 }
+
+/* Chat benchmark charts */
+.chatviz-card {
+  margin-top: 24px;
+}
+
+.chatviz-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.chatviz-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #111c2d;
+}
+
+.chatviz-subtitle {
+  font-size: 12px;
+  color: var(--admin-muted);
+  margin-top: 2px;
+}
+
+.chatviz-legend {
+  display: flex;
+  gap: 16px;
+  margin: 4px 0 18px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--admin-muted);
+}
+
+.chatviz-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chatviz-legend-swatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.chatviz-body {
+  display: flex;
+  gap: 10px;
+}
+
+.chatviz-yaxis {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: space-between;
+  height: 220px;
+  padding-bottom: 1px;
+  font-size: 11px;
+  color: var(--admin-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 44px;
+}
+
+.chatviz-plot-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.chatviz-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.chatviz-plot {
+  position: relative;
+  height: 220px;
+}
+
+.chatviz-gridlines {
+  position: absolute;
+  inset: 0;
+}
+
+.chatviz-gridlines span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e1e0d9;
+}
+
+.chatviz-groups {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+  height: 100%;
+  padding: 0 8px;
+  min-width: min-content;
+  border-bottom: 1px solid #c3c2b7;
+}
+
+.chatviz-group {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 100%;
+}
+
+.chatviz-bar {
+  width: 20px;
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  transition: filter 120ms ease;
+  border: none;
+  padding: 0;
+  display: block;
+}
+
+.chatviz-bar:hover,
+.chatviz-bar:focus-visible {
+  filter: brightness(1.1);
+  outline: 2px solid rgba(11, 11, 11, 0.35);
+  outline-offset: 2px;
+}
+
+.chatviz-bar-prompt {
+  background: #2a78d6;
+}
+
+.chatviz-bar-completion {
+  background: #008300;
+}
+
+.chatviz-bar-single {
+  background: #2a78d6;
+  width: 26px;
+}
+
+.chatviz-xaxis {
+  display: flex;
+  gap: 22px;
+  padding: 8px 8px 0;
+  min-width: min-content;
+}
+
+.chatviz-group-labels {
+  display: flex;
+  gap: 2px;
+}
+
+.chatviz-xlabel {
+  width: 20px;
+  font-size: 11px;
+  color: var(--admin-muted);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chatviz-xlabel-single {
+  width: 26px;
+}
+
+.chatviz-xlabel-group {
+  width: 42px;
+  max-width: 90px;
+}
+
+.chatviz-tooltip {
+  position: fixed;
+  z-index: 80;
+  pointer-events: none;
+  background: #111c2d;
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 8px 10px;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
+  opacity: 0;
+  transform: translate(-50%, calc(-100% - 10px));
+  transition: opacity 120ms ease;
+  white-space: nowrap;
+}
+
+.chatviz-tooltip.is-visible {
+  opacity: 1;
+}
+
+.chatviz-tooltip strong {
+  font-weight: 800;
+}
+
+.chatviz-empty {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--admin-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .chatviz-yaxis {
+    min-width: 36px;
+  }
+}

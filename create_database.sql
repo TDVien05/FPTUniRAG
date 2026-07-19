@@ -111,24 +111,6 @@ CREATE INDEX IF NOT EXISTS idx_student_subscriptions_plan
 CREATE INDEX IF NOT EXISTS idx_student_subscriptions_status
     ON student_subscriptions (subscription_status);
 
-CREATE TABLE IF NOT EXISTS momo_payment_transactions (
-    momo_payment_transaction_id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id uuid NOT NULL,
-    plan_id uuid NOT NULL,
-    order_id character varying(100) NOT NULL,
-    request_id character varying(100) NOT NULL,
-    amount numeric(12, 2) NOT NULL,
-    payment_status character varying(50) NOT NULL,
-    pay_url text,
-    result_code bigint,
-    provider_message text,
-    provider_transaction_id bigint,
-    raw_request_json jsonb,
-    raw_response_json jsonb,
-    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    confirmed_at timestamp without time zone
-);
-
 CREATE TABLE IF NOT EXISTS polar_checkout_transactions (
     polar_checkout_transaction_id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id uuid NOT NULL,
@@ -153,18 +135,6 @@ CREATE INDEX IF NOT EXISTS idx_polar_checkout_transactions_user
 CREATE INDEX IF NOT EXISTS idx_polar_checkout_transactions_plan
     ON polar_checkout_transactions (plan_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS momo_payment_transactions_order_id_key
-    ON momo_payment_transactions (order_id);
-
-CREATE UNIQUE INDEX IF NOT EXISTS momo_payment_transactions_request_id_key
-    ON momo_payment_transactions (request_id);
-
-CREATE INDEX IF NOT EXISTS idx_momo_payment_transactions_user
-    ON momo_payment_transactions (user_id);
-
-CREATE INDEX IF NOT EXISTS idx_momo_payment_transactions_plan
-    ON momo_payment_transactions (plan_id);
-
 CREATE UNIQUE INDEX IF NOT EXISTS student_subscriptions_one_active_plan_per_user
     ON student_subscriptions (user_id)
     WHERE subscription_status = 'active';
@@ -182,6 +152,7 @@ CREATE TABLE IF NOT EXISTS token_usage_logs (
     completion_tokens bigint NOT NULL DEFAULT 0,
     total_tokens bigint NOT NULL DEFAULT 0,
     request_count integer NOT NULL DEFAULT 1,
+    response_time_ms integer,
     used_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     metadata_json jsonb,
     CONSTRAINT ck_token_usage_logs_non_negative CHECK (
@@ -189,6 +160,7 @@ CREATE TABLE IF NOT EXISTS token_usage_logs (
         AND completion_tokens >= 0
         AND total_tokens >= 0
         AND request_count >= 0
+        AND (response_time_ms IS NULL OR response_time_ms >= 0)
     ),
     CONSTRAINT ck_token_usage_logs_total_matches CHECK (
         total_tokens = prompt_tokens + completion_tokens
@@ -206,6 +178,9 @@ CREATE INDEX IF NOT EXISTS idx_token_usage_logs_session
 
 CREATE INDEX IF NOT EXISTS idx_token_usage_logs_message
     ON token_usage_logs (message_id);
+
+ALTER TABLE token_usage_logs
+    ADD COLUMN IF NOT EXISTS response_time_ms integer;
 
 CREATE TABLE IF NOT EXISTS teachers (
     teacher_id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -541,20 +516,6 @@ ALTER TABLE student_subscriptions
     DROP CONSTRAINT IF EXISTS fk_student_subscription_plan;
 ALTER TABLE student_subscriptions
     ADD CONSTRAINT fk_student_subscription_plan
-    FOREIGN KEY (plan_id)
-    REFERENCES subscription_plans(plan_id);
-
-ALTER TABLE momo_payment_transactions
-    DROP CONSTRAINT IF EXISTS fk_momo_payment_transaction_user;
-ALTER TABLE momo_payment_transactions
-    ADD CONSTRAINT fk_momo_payment_transaction_user
-    FOREIGN KEY (user_id)
-    REFERENCES users(user_id);
-
-ALTER TABLE momo_payment_transactions
-    DROP CONSTRAINT IF EXISTS fk_momo_payment_transaction_plan;
-ALTER TABLE momo_payment_transactions
-    ADD CONSTRAINT fk_momo_payment_transaction_plan
     FOREIGN KEY (plan_id)
     REFERENCES subscription_plans(plan_id);
 

@@ -39,8 +39,6 @@ public partial class SubscriptionPlan
 
     public virtual ICollection<StripeCheckoutTransaction> StripeCheckoutTransactions { get; set; } = new List<StripeCheckoutTransaction>();
 
-    public virtual ICollection<MomoPaymentTransaction> MomoPaymentTransactions { get; set; } = new List<MomoPaymentTransaction>();
-
     public virtual ICollection<StudentSubscription> StudentSubscriptions { get; set; } = new List<StudentSubscription>();
 
     public virtual ICollection<TokenUsageLog> TokenUsageLogs { get; set; } = new List<TokenUsageLog>();

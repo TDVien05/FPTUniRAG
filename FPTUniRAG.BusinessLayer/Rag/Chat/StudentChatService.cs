@@ -1,5 +1,6 @@
 using FPTUniRAG.BusinessLayer.Rag.Configuration;
 using FPTUniRAG.BusinessLayer.Subscriptions;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using FPTUniRAG.DataAccessLayer.Repositories.Chat;
@@ -342,6 +343,7 @@ public sealed class StudentChatService : IStudentChatService
         await WriteProgressAsync("generating-answer", writeEvent, cancellationToken);
 
         OpenRouterChatResult completion;
+        var completionStopwatch = Stopwatch.StartNew();
         try
         {
             completion = await _chatCompletionService.StreamCompletionAsync(
@@ -357,6 +359,10 @@ public sealed class StudentChatService : IStudentChatService
             _logger.LogError(exception, "Failed to generate chat completion for subject {SubjectId} and student chat user {UserId}", subject.SubjectId, userId);
             await writeEvent("error", new StudentChatErrorDto("Unable to generate an answer right now. Please try again in a moment."), cancellationToken);
             return;
+        }
+        finally
+        {
+            completionStopwatch.Stop();
         }
 
         await WriteProgressAsync("finalizing-answer", writeEvent, cancellationToken);
@@ -389,6 +395,7 @@ public sealed class StudentChatService : IStudentChatService
                 TotalTokens = completion.TotalTokens,
                 RequestCount = 1,
                 UsedAt = CreateDatabaseTimestamp(),
+                ResponseTimeMs = (int)Math.Min(completionStopwatch.ElapsedMilliseconds, int.MaxValue),
                 MetadataJson = JsonSerializer.Serialize(new
                 {
                     subject.SubjectId,

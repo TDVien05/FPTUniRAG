@@ -1,0 +1,414 @@
+@page "/ChatBenchmark"
+@model FPTUniRAG.Pages.ChatBenchmarkModel
+@using System.Globalization
+@{
+    Layout = null;
+    ViewData["Title"] = "Chat Model Benchmark - FPT UniRAG";
+
+    var responseRows = Model.ModelRows.Where(row => row.AverageResponseTimeMs.HasValue).ToList();
+    var chronologicalSessions = Model.SessionRows.OrderBy(row => row.LastUsedAt).ToList();
+
+    var modelTokenAxisMax = NiceMax(Model.ModelRows.Count == 0
+        ? 0
+        : Model.ModelRows.Max(row => Math.Max(row.PromptTokens, row.CompletionTokens)));
+    var responseAxisMax = NiceMax(responseRows.Count == 0
+        ? 0
+        : responseRows.Max(row => row.AverageResponseTimeMs!.Value / 1000d));
+    var sessionTokenAxisMax = NiceMax(chronologicalSessions.Count == 0
+        ? 0
+        : chronologicalSessions.Max(row => Math.Max(row.PromptTokens, row.CompletionTokens)));
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=block" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="admin-dashboard-page accounts-page">
+    <main class="admin-shell" aria-label="Chat model benchmark">
+        @await Html.PartialAsync("_AdminNavigation")
+
+        <section class="accounts-main">
+            <div class="accounts-canvas">
+                <header class="accounts-header">
+                    <div>
+                        <p class="accounts-eyebrow">Chat operations</p>
+                        <h1>Chat Model Benchmark</h1>
+                        <p>Performance summary from real student chat requests — by model, and by individual session.</p>
+                    </div>
+                </header>
+
+                <!-- Chart 1: prompt vs completion tokens by model -->
+                <section class="accounts-card chatviz-card" aria-labelledby="chatviz-model-tokens-title">
+                    <div class="chatviz-header">
+                        <div>
+                            <h2 class="chatviz-title" id="chatviz-model-tokens-title">Prompt vs. completion tokens by model</h2>
+                            <p class="chatviz-subtitle">Total tokens across every logged student chat request, grouped by model.</p>
+                        </div>
+                    </div>
+
+                    @if (Model.ModelRows.Count == 0)
+                    {
+                        <p class="chatviz-empty">No student chat requests have been logged yet.</p>
+                    }
+                    else
+                    {
+                        <div class="chatviz-legend">
+                            <span class="chatviz-legend-item"><span class="chatviz-legend-swatch" style="background:#2a78d6;"></span>Prompt tokens</span>
+                            <span class="chatviz-legend-item"><span class="chatviz-legend-swatch" style="background:#008300;"></span>Completion tokens</span>
+                        </div>
+                        <div class="chatviz-body">
+                            <div class="chatviz-yaxis" aria-hidden="true">
+                                @foreach (var tick in AxisTicks(modelTokenAxisMax))
+                                {
+                                    <span>@tick</span>
+                                }
+                            </div>
+                            <div class="chatviz-plot-wrap">
+                                <div class="chatviz-scroll">
+                                    <div class="chatviz-plot">
+                                        <div class="chatviz-gridlines" aria-hidden="true">
+                                            <span style="bottom:0%"></span>
+                                            <span style="bottom:25%"></span>
+                                            <span style="bottom:50%"></span>
+                                            <span style="bottom:75%"></span>
+                                            <span style="bottom:100%"></span>
+                                        </div>
+                                        <div class="chatviz-groups">
+                                            @foreach (var row in Model.ModelRows)
+                                            {
+                                                var promptPct = BarHeightPercent(row.PromptTokens, modelTokenAxisMax);
+                                                var completionPct = BarHeightPercent(row.CompletionTokens, modelTokenAxisMax);
+                                                <div class="chatviz-group">
+                                                    <button type="button" class="chatviz-bar chatviz-bar-prompt" style="height:@promptPct%"
+                                                            data-tooltip="@($"{row.Model} — Prompt tokens: {row.PromptTokens:N0}")"
+                                                            aria-label="@($"{row.Model} prompt tokens: {row.PromptTokens:N0}")"></button>
+                                                    <button type="button" class="chatviz-bar chatviz-bar-completion" style="height:@completionPct%"
+                                                            data-tooltip="@($"{row.Model} — Completion tokens: {row.CompletionTokens:N0}")"
+                                                            aria-label="@($"{row.Model} completion tokens: {row.CompletionTokens:N0}")"></button>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="chatviz-xaxis">
+                                        @foreach (var row in Model.ModelRows)
+                                        {
+                                            <span class="chatviz-xlabel chatviz-xlabel-group" title="@row.Model">@row.Model</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </section>
+
+                <!-- Chart 2: average response time by model -->
+                <section class="accounts-card chatviz-card" aria-labelledby="chatviz-response-time-title">
+                    <div class="chatviz-header">
+                        <div>
+                            <h2 class="chatviz-title" id="chatviz-response-time-title">Average response time by model</h2>
+                            <p class="chatviz-subtitle">Seconds from request to completed answer, averaged per model.</p>
+                        </div>
+                    </div>
+
+                    @if (responseRows.Count == 0)
+                    {
+                        <p class="chatviz-empty">No response-time data yet — only requests logged after response-time tracking shipped have it.</p>
+                    }
+                    else
+                    {
+                        <div class="chatviz-body">
+                            <div class="chatviz-yaxis" aria-hidden="true">
+                                @foreach (var tick in AxisTicks(responseAxisMax))
+                                {
+                                    <span>@tick s</span>
+                                }
+                            </div>
+                            <div class="chatviz-plot-wrap">
+                                <div class="chatviz-scroll">
+                                    <div class="chatviz-plot">
+                                        <div class="chatviz-gridlines" aria-hidden="true">
+                                            <span style="bottom:0%"></span>
+                                            <span style="bottom:25%"></span>
+                                            <span style="bottom:50%"></span>
+                                            <span style="bottom:75%"></span>
+                                            <span style="bottom:100%"></span>
+                                        </div>
+                                        <div class="chatviz-groups">
+                                            @foreach (var row in responseRows)
+                                            {
+                                                var seconds = row.AverageResponseTimeMs!.Value / 1000d;
+                                                var pct = BarHeightPercent(seconds, responseAxisMax);
+                                                <div class="chatviz-group">
+                                                    <button type="button" class="chatviz-bar chatviz-bar-single" style="height:@pct%"
+                                                            data-tooltip="@($"{row.Model} — Avg. response time: {seconds:0.##} s")"
+                                                            aria-label="@($"{row.Model} average response time: {seconds:0.##} seconds")"></button>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="chatviz-xaxis">
+                                        @foreach (var row in responseRows)
+                                        {
+                                            <span class="chatviz-xlabel chatviz-xlabel-single" title="@row.Model">@row.Model</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </section>
+
+                <!-- Chart 3: input vs output tokens per session -->
+                <section class="accounts-card chatviz-card" aria-labelledby="chatviz-session-tokens-title">
+                    <div class="chatviz-header">
+                        <div>
+                            <h2 class="chatviz-title" id="chatviz-session-tokens-title">Input vs. output tokens per session</h2>
+                            <p class="chatviz-subtitle">Most recent @chronologicalSessions.Count session(s) with chat activity, oldest to newest.</p>
+                        </div>
+                    </div>
+
+                    @if (chronologicalSessions.Count == 0)
+                    {
+                        <p class="chatviz-empty">No chat sessions have been logged yet.</p>
+                    }
+                    else
+                    {
+                        <div class="chatviz-legend">
+                            <span class="chatviz-legend-item"><span class="chatviz-legend-swatch" style="background:#2a78d6;"></span>Input (prompt) tokens</span>
+                            <span class="chatviz-legend-item"><span class="chatviz-legend-swatch" style="background:#008300;"></span>Output (completion) tokens</span>
+                        </div>
+                        <div class="chatviz-body">
+                            <div class="chatviz-yaxis" aria-hidden="true">
+                                @foreach (var tick in AxisTicks(sessionTokenAxisMax))
+                                {
+                                    <span>@tick</span>
+                                }
+                            </div>
+                            <div class="chatviz-plot-wrap">
+                                <div class="chatviz-scroll">
+                                    <div class="chatviz-plot">
+                                        <div class="chatviz-gridlines" aria-hidden="true">
+                                            <span style="bottom:0%"></span>
+                                            <span style="bottom:25%"></span>
+                                            <span style="bottom:50%"></span>
+                                            <span style="bottom:75%"></span>
+                                            <span style="bottom:100%"></span>
+                                        </div>
+                                        <div class="chatviz-groups">
+                                            @foreach (var row in chronologicalSessions)
+                                            {
+                                                var inputPct = BarHeightPercent(row.PromptTokens, sessionTokenAxisMax);
+                                                var outputPct = BarHeightPercent(row.CompletionTokens, sessionTokenAxisMax);
+                                                <div class="chatviz-group">
+                                                    <button type="button" class="chatviz-bar chatviz-bar-prompt" style="height:@inputPct%"
+                                                            data-tooltip="@($"{row.SessionLabel} — Input tokens: {row.PromptTokens:N0}")"
+                                                            aria-label="@($"{row.SessionLabel} input tokens: {row.PromptTokens:N0}")"></button>
+                                                    <button type="button" class="chatviz-bar chatviz-bar-completion" style="height:@outputPct%"
+                                                            data-tooltip="@($"{row.SessionLabel} — Output tokens: {row.CompletionTokens:N0}")"
+                                                            aria-label="@($"{row.SessionLabel} output tokens: {row.CompletionTokens:N0}")"></button>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="chatviz-xaxis">
+                                        @foreach (var row in chronologicalSessions)
+                                        {
+                                            <span class="chatviz-xlabel chatviz-xlabel-group" title="@row.SessionLabel">@row.SessionLabel</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </section>
+
+                <!-- Exact per-session numbers -->
+                <section class="accounts-card accounts-table-card" aria-labelledby="chatviz-session-table-title">
+                    <div class="accounts-card-header">
+                        <div>
+                            <p class="accounts-eyebrow">Per-session detail</p>
+                            <h2 id="chatviz-session-table-title">Input / output tokens by session</h2>
+                            <p>Exact figures behind the chart above — most recent session first.</p>
+                        </div>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Session</th>
+                                    <th>Model</th>
+                                    <th>Input tokens</th>
+                                    <th>Output tokens</th>
+                                    <th>Total tokens</th>
+                                    <th>Requests</th>
+                                    <th>Last used</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @if (Model.SessionRows.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="7"><span class="text-secondary">No chat sessions have been logged yet.</span></td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var row in Model.SessionRows)
+                                {
+                                    <tr>
+                                        <td><strong>@row.SessionLabel</strong></td>
+                                        <td>@(row.Model ?? "—")</td>
+                                        <td>@row.PromptTokens.ToString("N0")</td>
+                                        <td>@row.CompletionTokens.ToString("N0")</td>
+                                        <td>@row.TotalTokens.ToString("N0")</td>
+                                        <td>@row.RequestCount.ToString("N0")</td>
+                                        <td>@row.LastUsedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                    </tr>
+                                }
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Aggregate per-model numbers -->
+                <section class="accounts-card accounts-table-card" aria-labelledby="chatviz-model-table-title">
+                    <div class="accounts-card-header">
+                        <div>
+                            <p class="accounts-eyebrow">Model detail</p>
+                            <h2 id="chatviz-model-table-title">Model comparison</h2>
+                            <p>Metrics are based on every logged student chat completion for each model.</p>
+                        </div>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Model</th>
+                                    <th>Requests</th>
+                                    <th>Total tokens</th>
+                                    <th>Avg. prompt tokens</th>
+                                    <th>Avg. completion tokens</th>
+                                    <th>Avg. response time</th>
+                                    <th>Last used</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @if (Model.ModelRows.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="7"><span class="text-secondary">No student chat requests have been logged yet.</span></td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var row in Model.ModelRows)
+                                {
+                                    <tr>
+                                        <td><strong>@row.Model</strong></td>
+                                        <td>@row.RequestCount.ToString("N0")</td>
+                                        <td>@row.TotalTokens.ToString("N0")</td>
+                                        <td>@row.AveragePromptTokens.ToString("N0", CultureInfo.InvariantCulture)</td>
+                                        <td>@row.AverageCompletionTokens.ToString("N0", CultureInfo.InvariantCulture)</td>
+                                        <td>@(row.AverageResponseTimeMs is null ? "—" : $"{row.AverageResponseTimeMs.Value / 1000:0.##} s")</td>
+                                        <td>@(row.LastUsedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
+                                    </tr>
+                                }
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <p class="text-secondary" style="margin-top: 16px;">All figures reflect real usage history, not a controlled side-by-side test — a model only appears once at least one student chat request has used it.</p>
+            </div>
+        </section>
+    </main>
+
+    <div id="chatviz-tooltip" class="chatviz-tooltip" role="tooltip"></div>
+
+    <script>
+        (() => {
+            const tooltip = document.getElementById("chatviz-tooltip");
+            if (!tooltip) {
+                return;
+            }
+
+            const showTooltip = (bar, event) => {
+                const text = bar.dataset.tooltip;
+                if (!text) {
+                    return;
+                }
+                tooltip.textContent = text;
+                const point = event instanceof PointerEvent ? event : null;
+                const rect = bar.getBoundingClientRect();
+                const x = point ? point.clientX : rect.left + rect.width / 2;
+                const y = point ? point.clientY : rect.top;
+                tooltip.style.left = `${x}px`;
+                tooltip.style.top = `${y}px`;
+                tooltip.classList.add("is-visible");
+            };
+
+            const hideTooltip = () => {
+                tooltip.classList.remove("is-visible");
+            };
+
+            document.querySelectorAll(".chatviz-bar").forEach((bar) => {
+                bar.addEventListener("pointerenter", (event) => showTooltip(bar, event));
+                bar.addEventListener("pointermove", (event) => showTooltip(bar, event));
+                bar.addEventListener("pointerleave", hideTooltip);
+                bar.addEventListener("focus", (event) => showTooltip(bar, event));
+                bar.addEventListener("blur", hideTooltip);
+            });
+        })();
+    </script>
+</body>
+</html>
+
+@functions {
+    private static double NiceMax(double rawMax)
+    {
+        if (rawMax <= 0)
+        {
+            return 1;
+        }
+
+        var magnitude = Math.Pow(10, Math.Floor(Math.Log10(rawMax)));
+        var normalized = rawMax / magnitude;
+        var niceNormalized = normalized switch
+        {
+            <= 1 => 1,
+            <= 2 => 2,
+            <= 2.5 => 2.5,
+            <= 5 => 5,
+            _ => 10
+        };
+        return niceNormalized * magnitude;
+    }
+
+    private static IEnumerable<string> AxisTicks(double axisMax)
+    {
+        for (var step = 0; step <= 4; step++)
+        {
+            yield return (axisMax * step / 4).ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
+        }
+    }
+
+    private static string BarHeightPercent(double value, double axisMax)
+    {
+        if (axisMax <= 0)
+        {
+            return "0";
+        }
+
+        var percent = Math.Clamp(value / axisMax * 100, 0, 100);
+        return percent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    }
+}

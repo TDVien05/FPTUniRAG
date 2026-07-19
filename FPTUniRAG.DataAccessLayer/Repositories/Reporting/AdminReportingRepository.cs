@@ -7,11 +7,13 @@ public sealed class AdminReportingRepository(AppDbContext context) : IAdminRepor
 {
     public async Task<AnalysisDataRecord> GetAnalysisDataAsync(DateTime now, DateTime start, DateTime end, CancellationToken cancellationToken = default)
     {
-        var plans = await context.SubscriptionPlans.AsNoTracking().OrderBy(p => p.MonthlyPrice).ThenBy(p => p.PlanName).Select(p => new AnalysisPlanRecord(p.PlanId, p.PlanName, p.MonthlyPrice)).ToListAsync(cancellationToken);
         var subscriptions = await context.StudentSubscriptions.AsNoTracking().Where(s => s.SubscriptionStatus == "active" && (s.ExpiresAt == null || s.ExpiresAt > now)).Select(s => new AnalysisSubscriptionRecord(s.UserId, s.PlanId)).ToListAsync(cancellationToken);
-        var payments = await context.StripeCheckoutTransactions.AsNoTracking().Where(t => t.PaymentStatus == "paid" && (t.ConfirmedAt ?? t.CreatedAt) >= start && (t.ConfirmedAt ?? t.CreatedAt) < end).Select(t => new AnalysisPaymentRecord(t.UserId, t.PlanId, t.Amount)).ToListAsync(cancellationToken);
+        var payments = await context.StripeCheckoutTransactions.AsNoTracking().Where(t => t.PaymentStatus == "paid" && (t.ConfirmedAt ?? t.CreatedAt) >= start && (t.ConfirmedAt ?? t.CreatedAt) < end)
+            .OrderByDescending(t => t.ConfirmedAt ?? t.CreatedAt)
+            .Select(t => new AnalysisPaymentRecord(t.UserId, t.PlanId, t.Amount, t.User.FullName, t.User.Email, t.Plan.PlanName, t.ConfirmedAt ?? t.CreatedAt))
+            .ToListAsync(cancellationToken);
         var usage = await context.TokenUsageLogs.AsNoTracking().Where(u => u.UsedAt >= start && u.UsedAt < end).Select(u => new AnalysisTokenRecord(u.UsedAt, u.TotalTokens)).ToListAsync(cancellationToken);
-        return new AnalysisDataRecord(plans, subscriptions, payments, usage);
+        return new AnalysisDataRecord(subscriptions, payments, usage);
     }
 
     public async Task<AdminDashboardRecord> GetDashboardAsync(int recentSubjectLimit, CancellationToken cancellationToken = default)

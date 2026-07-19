@@ -55,8 +55,8 @@ FPTUniRAG (Presentation: Razor Pages, minimal API endpoints, SignalR hubs, Progr
         -> FPTUniRAG.DataAccessLayer (AppDbContext, entities, repositories)
 ```
 
-- **Presentation (`FPTUniRAG/`)**: Razor Pages under `Pages/` (role-authorized via policies configured in `Program.cs`, e.g. `AdminOnly`, `TeacherOrAdmin`, `StudentOrAdmin`), minimal API groups under `Endpoints/` (`AdminAccountApiEndpoints`, `TeacherSubjectApiEndpoints`, `StudentChatApiEndpoints`, `MomoPaymentEndpoints`), and SignalR hubs under `Hubs/`. All DI registration, middleware, and page authorization conventions live in `Program.cs` — check there first when tracing how a route or service is wired up.
-- **Business layer (`FPTUniRAG.BusinessLayer/`)**: organized by domain — `Accounts/` (auth, cookie events, email, seeding, import), `AdminDashboard/`, `Subjects/` (+ `Realtime/` SignalR notifiers), `Subscriptions/` (+ `Realtime/`), `Payments/Stripe/` and `Payments/Momo/`, and `Rag/` (the core RAG pipeline, see below). `Common/OperationResult.cs` is a shared result type used across services.
+- **Presentation (`FPTUniRAG/`)**: Razor Pages under `Pages/` (role-authorized via policies configured in `Program.cs`, e.g. `AdminOnly`, `TeacherOrAdmin`, `StudentOrAdmin`), minimal API groups under `Endpoints/` (`AdminAccountApiEndpoints`, `TeacherSubjectApiEndpoints`, `StudentChatApiEndpoints`), and SignalR hubs under `Hubs/`. All DI registration, middleware, and page authorization conventions live in `Program.cs` — check there first when tracing how a route or service is wired up.
+- **Business layer (`FPTUniRAG.BusinessLayer/`)**: organized by domain — `Accounts/` (auth, cookie events, email, seeding, import), `AdminDashboard/`, `Subjects/` (+ `Realtime/` SignalR notifiers), `Subscriptions/` (+ `Realtime/`), `Payments/Stripe/`, and `Rag/` (the core RAG pipeline, see below). `Common/OperationResult.cs` is a shared result type used across services.
 - **Data access layer (`FPTUniRAG.DataAccessLayer/`)**: `Context/AppDbContext.cs`, POCO `Entities/`, and repositories under `Repositories/<Domain>/` following an `I<Name>Repository` / `<Name>Repository` interface pattern, injected as `Scoped` services in `Program.cs`.
 
 ### RAG pipeline (`FPTUniRAG.BusinessLayer/Rag/`)
@@ -78,7 +78,7 @@ Three hubs, each paired with a notifier interface in the business layer: `Teache
 
 ### Payments
 
-Stripe Sandbox is the active integration (`Payments/Stripe/`, `IStripePaymentService`), wired into DI and used for subscription checkout. `Payments/Momo/` exists alongside it with a full service and endpoint file (`MomoPaymentEndpoints.cs`) but is **not registered in `Program.cs`** (no DI registration, hub, or endpoint mapping call) — treat it as in-progress/inactive unless you're the one wiring it up.
+Stripe Sandbox is the active integration (`Payments/Stripe/`, `IStripePaymentService`), wired into DI and used for subscription checkout.
 
 ### Quotas
 

@@ -29,6 +29,8 @@ public partial class TokenUsageLog
 
     public int RequestCount { get; set; }
 
+    public int? ResponseTimeMs { get; set; }
+
     public DateTime UsedAt { get; set; }
 
     public string? MetadataJson { get; set; }

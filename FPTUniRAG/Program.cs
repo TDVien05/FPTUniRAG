@@ -115,6 +115,7 @@ builder.Services.AddHttpClient<IStripePaymentService, StripePaymentService>((ser
 builder.Services.AddScoped<IChunkEmbeddingStore, PostgresChunkEmbeddingStore>();
 builder.Services.AddScoped<IStudentChunkRetrievalService, StudentChunkRetrievalService>();
 builder.Services.AddScoped<IStudentChatService, StudentChatService>();
+builder.Services.AddScoped<IChatBenchmarkService, ChatBenchmarkService>();
 builder.Services.AddScoped<IEmbeddingConfigurationService, EmbeddingConfigurationService>();
 builder.Services.AddScoped<IEmbeddingBenchmarkService, EmbeddingBenchmarkService>();
 builder.Services.AddScoped<AccountCookieAuthenticationEvents>();

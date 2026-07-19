@@ -1,3 +1,5 @@
+using FPTUniRAG.BusinessLayer.Subscriptions;
+
 namespace FPTUniRAG.BusinessLayer.AdminDashboard;
 
 public interface IAnalysisService
@@ -6,6 +8,7 @@ public interface IAnalysisService
 }
 
 public sealed record AnalysisDashboardDto(string Period, string PeriodLabel, int ActiveSubscriberCount, int PaidPurchaseCount,
-    decimal PaidRevenue, IReadOnlyList<PlanAnalyticsDto> Plans, IReadOnlyList<TokenUsageTrendDto> TokenUsageTrend);
-public sealed record PlanAnalyticsDto(string PlanName, decimal MonthlyPrice, int ActiveStudentCount, int PaidPurchaseCount, decimal PaidRevenue);
+    decimal PaidRevenue, IReadOnlyList<PlanPurchaseDto> Purchases, IReadOnlyList<TokenUsageTrendDto> TokenUsageTrend,
+    IReadOnlyList<ManagedSubscriptionPlanDto> PlanOverview);
+public sealed record PlanPurchaseDto(string StudentName, string StudentEmail, string PlanName, decimal Amount, DateTime PurchasedAt);
 public sealed record TokenUsageTrendDto(string Label, long TotalTokens, decimal Percentage);

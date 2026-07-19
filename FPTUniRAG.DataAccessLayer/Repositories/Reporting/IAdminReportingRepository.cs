@@ -8,8 +8,7 @@ public interface IAdminReportingRepository
 
 public sealed record AdminDashboardRecord(int TotalSubjects, int SubjectsWithDocuments, IReadOnlyList<RecentSubjectRecord> RecentSubjects);
 public sealed record RecentSubjectRecord(Guid SubjectId, string SubjectCode, string SubjectName, string? HeaderTeacherName, DateTime? LastUpdatedAt, string? LatestDocumentStatus, int DocumentCount);
-public sealed record AnalysisDataRecord(IReadOnlyList<AnalysisPlanRecord> Plans, IReadOnlyList<AnalysisSubscriptionRecord> ActiveSubscriptions, IReadOnlyList<AnalysisPaymentRecord> PaidTransactions, IReadOnlyList<AnalysisTokenRecord> TokenUsage);
-public sealed record AnalysisPlanRecord(Guid PlanId, string PlanName, decimal MonthlyPrice);
+public sealed record AnalysisDataRecord(IReadOnlyList<AnalysisSubscriptionRecord> ActiveSubscriptions, IReadOnlyList<AnalysisPaymentRecord> PaidTransactions, IReadOnlyList<AnalysisTokenRecord> TokenUsage);
 public sealed record AnalysisSubscriptionRecord(Guid UserId, Guid PlanId);
-public sealed record AnalysisPaymentRecord(Guid UserId, Guid PlanId, decimal Amount);
+public sealed record AnalysisPaymentRecord(Guid UserId, Guid PlanId, decimal Amount, string StudentName, string StudentEmail, string PlanName, DateTime PurchasedAt);
 public sealed record AnalysisTokenRecord(DateTime UsedAt, long TotalTokens);

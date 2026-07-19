@@ -9,21 +9,6 @@ public sealed class PaymentRepository(AppDbContext context) : IPaymentRepository
     public Task<SubscriptionPlan?> GetActivePlanAsync(string planCode, CancellationToken cancellationToken = default) =>
         context.SubscriptionPlans.FirstOrDefaultAsync(p => p.IsActive && p.PlanCode == planCode, cancellationToken);
     public Task SavePlanAsync(SubscriptionPlan plan, CancellationToken cancellationToken = default) => SaveAsync(cancellationToken);
-    public async Task AddMomoTransactionAsync(MomoPaymentTransaction transaction, CancellationToken cancellationToken = default) { context.MomoPaymentTransactions.Add(transaction); await SaveAsync(cancellationToken); }
-    public Task SaveMomoTransactionAsync(MomoPaymentTransaction transaction, CancellationToken cancellationToken = default) => SaveAsync(cancellationToken);
-    public Task<MomoPaymentTransaction?> FindMomoTransactionAsync(string orderId, string requestId, CancellationToken cancellationToken = default) =>
-        context.MomoPaymentTransactions.Include(t => t.Plan).SingleOrDefaultAsync(t => t.OrderId == orderId && t.RequestId == requestId, cancellationToken);
-
-    public async Task ActivateMomoSubscriptionAsync(MomoPaymentTransaction transaction, DateTime now, CancellationToken cancellationToken = default)
-    {
-        await using var dbTransaction = await context.Database.BeginTransactionAsync(cancellationToken);
-        var active = await context.StudentSubscriptions.Where(s => s.UserId == transaction.UserId && s.SubscriptionStatus == "active").ToListAsync(cancellationToken);
-        foreach (var item in active) { item.SubscriptionStatus = "replaced"; item.CanceledAt = now; item.ExpiresAt ??= now; item.Notes = $"Replaced by MoMo payment order {transaction.OrderId}."; }
-        context.StudentSubscriptions.Add(new StudentSubscription { UserId = transaction.UserId, PlanId = transaction.PlanId, SubscriptionStatus = "active", StartedAt = now, PurchasedAt = now, ExpiresAt = now.AddMonths(1), AutoRenew = false, Notes = $"Activated from MoMo sandbox payment order {transaction.OrderId}." });
-        transaction.PaymentStatus = "paid"; transaction.ConfirmedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
-        await SaveAsync(cancellationToken); await dbTransaction.CommitAsync(cancellationToken);
-    }
-
     public async Task AddStripeTransactionAsync(StripeCheckoutTransaction transaction, CancellationToken cancellationToken = default) { context.StripeCheckoutTransactions.Add(transaction); await SaveAsync(cancellationToken); }
     public Task SaveStripeTransactionAsync(StripeCheckoutTransaction transaction, CancellationToken cancellationToken = default) => SaveAsync(cancellationToken);
     public Task<StripeCheckoutTransaction?> FindStripeTransactionAsync(string checkoutId, CancellationToken cancellationToken = default) =>

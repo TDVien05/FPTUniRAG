@@ -31,8 +31,6 @@ public partial class User
 
     public virtual ICollection<Document> Documents { get; set; } = new List<Document>();
 
-    public virtual ICollection<MomoPaymentTransaction> MomoPaymentTransactions { get; set; } = new List<MomoPaymentTransaction>();
-
     public virtual ICollection<StripeCheckoutTransaction> StripeCheckoutTransactions { get; set; } = new List<StripeCheckoutTransaction>();
 
     public virtual ICollection<Session> Sessions { get; set; } = new List<Session>();

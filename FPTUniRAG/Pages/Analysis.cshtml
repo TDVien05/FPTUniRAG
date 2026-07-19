@@ -244,7 +244,7 @@
                 <div class="p-6 border-b border-outline-variant/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h2 class="font-headline-md text-headline-md text-on-surface">Subscription Purchases by Plan</h2>
-                        <p class="text-secondary font-body-sm text-body-sm">Track active students, successful purchases, and paid revenue for @Model.SelectedPeriodLabel.ToLowerInvariant().</p>
+                        <p class="text-secondary font-body-sm text-body-sm">Who bought which plan for @Model.SelectedPeriodLabel.ToLowerInvariant().</p>
                     </div>
                     <div class="flex items-center gap-3">
                         <div class="relative">
@@ -262,30 +262,30 @@
                     <table class="w-full text-left border-collapse">
                         <thead class="bg-surface-container-low/50 border-b border-outline-variant/10">
                             <tr class="text-secondary font-label-sm text-label-sm uppercase tracking-wider">
+                                <th class="px-6 py-4 font-medium">Student</th>
+                                <th class="px-6 py-4 font-medium">Email</th>
                                 <th class="px-6 py-4 font-medium">Subscription Plan</th>
-                                <th class="px-6 py-4 font-medium">Price</th>
-                                <th class="px-6 py-4 font-medium">Active Students</th>
-                                <th class="px-6 py-4 font-medium">Paid Purchases</th>
-                                <th class="px-6 py-4 font-medium">Revenue</th>
+                                <th class="px-6 py-4 font-medium">Amount</th>
+                                <th class="px-6 py-4 font-medium">Purchased At</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-outline-variant/10">
-                            @if (Model.PlanAnalytics.Count == 0)
+                            @if (Model.Purchases.Count == 0)
                             {
                                 <tr>
-                                    <td class="px-6 py-8 text-secondary text-sm" colspan="5">No subscription plans have been configured.</td>
+                                    <td class="px-6 py-8 text-secondary text-sm" colspan="5">No subscription purchases in @Model.SelectedPeriodLabel.ToLowerInvariant().</td>
                                 </tr>
                             }
                             else
                             {
-                                @foreach (var plan in Model.PlanAnalytics)
+                                @foreach (var purchase in Model.Purchases)
                                 {
                                     <tr class="hover:bg-surface-container-low/30 transition-all">
-                                        <td class="px-6 py-4 font-medium text-on-surface">@plan.PlanName</td>
-                                        <td class="px-6 py-4 text-secondary">@plan.MonthlyPrice.ToString("N0") VND</td>
-                                        <td class="px-6 py-4 text-on-surface">@plan.ActiveStudentCount.ToString("N0")</td>
-                                        <td class="px-6 py-4 text-on-surface">@plan.PaidPurchaseCount.ToString("N0")</td>
-                                        <td class="px-6 py-4 text-on-surface">@plan.PaidRevenue.ToString("N0") VND</td>
+                                        <td class="px-6 py-4 font-medium text-on-surface">@purchase.StudentName</td>
+                                        <td class="px-6 py-4 text-secondary">@purchase.StudentEmail</td>
+                                        <td class="px-6 py-4 text-on-surface">@purchase.PlanName</td>
+                                        <td class="px-6 py-4 text-on-surface">@purchase.Amount.ToString("N0") VND</td>
+                                        <td class="px-6 py-4 text-secondary">@purchase.PurchasedAt.ToString("dd MMM yyyy HH:mm")</td>
                                     </tr>
                                 }
                             }
@@ -294,7 +294,69 @@
                 </div>
 
                 <div class="p-4 border-t border-outline-variant/10 flex justify-center">
-                    <span class="text-secondary font-label-sm text-label-sm">Purchase and revenue data is calculated from successful Stripe Sandbox payments in the selected period.</span>
+                    <span class="text-secondary font-label-sm text-label-sm">Purchase data is calculated from successful Stripe Sandbox payments in the selected period.</span>
+                </div>
+            </section>
+
+            <section class="mb-10 bg-white rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm">
+                <div class="p-6 border-b border-outline-variant/10">
+                    <h2 class="font-headline-md text-headline-md text-on-surface">Subscription Plans Overview</h2>
+                    <p class="text-secondary font-body-sm text-body-sm">General information about the currently configured plans.</p>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-surface-container-low/50 border-b border-outline-variant/10">
+                            <tr class="text-secondary font-label-sm text-label-sm uppercase tracking-wider">
+                                <th class="px-6 py-4 font-medium">Plan</th>
+                                <th class="px-6 py-4 font-medium">Description</th>
+                                <th class="px-6 py-4 font-medium">Price</th>
+                                <th class="px-6 py-4 font-medium">Monthly Tokens</th>
+                                <th class="px-6 py-4 font-medium">Features</th>
+                                <th class="px-6 py-4 font-medium">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-outline-variant/10">
+                            @if (Model.PlanOverview.Count == 0)
+                            {
+                                <tr>
+                                    <td class="px-6 py-8 text-secondary text-sm" colspan="6">No subscription plans have been configured.</td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var plan in Model.PlanOverview)
+                                {
+                                    <tr class="hover:bg-surface-container-low/30 transition-all">
+                                        <td class="px-6 py-4 font-medium text-on-surface">@plan.PlanName <span class="text-secondary font-normal">(@plan.PlanCode)</span></td>
+                                        <td class="px-6 py-4 text-secondary">@(string.IsNullOrWhiteSpace(plan.Description) ? "—" : plan.Description)</td>
+                                        <td class="px-6 py-4 text-on-surface">@plan.MonthlyPrice.ToString("N0") VND</td>
+                                        <td class="px-6 py-4 text-on-surface">@plan.MonthlyTokenLimit.ToString("N0")</td>
+                                        <td class="px-6 py-4 text-secondary text-label-sm">
+                                            @{
+                                                var features = new List<string>();
+                                                if (plan.HasAdvancedModels) { features.Add("Advanced Models"); }
+                                                if (plan.HasPrioritySupport) { features.Add("Priority Support"); }
+                                                if (plan.HasFileUpload) { features.Add("File Upload"); }
+                                                if (plan.HasHistoryExport) { features.Add("History Export"); }
+                                            }
+                                            @(features.Count == 0 ? "—" : string.Join(", ", features))
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            @if (plan.IsActive)
+                                            {
+                                                <span class="px-2 py-1 rounded-full text-[11px] font-bold bg-primary/10 text-primary">Active</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="px-2 py-1 rounded-full text-[11px] font-bold bg-secondary/10 text-secondary">Hidden</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
                 </div>
             </section>
         </div>

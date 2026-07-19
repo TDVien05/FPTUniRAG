@@ -28,8 +28,6 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Message> Messages { get; set; }
 
-    public virtual DbSet<MomoPaymentTransaction> MomoPaymentTransactions { get; set; }
-
     public virtual DbSet<StripeCheckoutTransaction> StripeCheckoutTransactions { get; set; }
 
     public virtual DbSet<ProcessingJob> ProcessingJobs { get; set; }
@@ -306,66 +304,6 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(e => e.DocumentId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("fk_document_embedding_runs_document");
-        });
-
-        modelBuilder.Entity<MomoPaymentTransaction>(entity =>
-        {
-            entity.HasKey(e => e.MomoPaymentTransactionId).HasName("momo_payment_transactions_pkey");
-
-            entity.ToTable("momo_payment_transactions");
-
-            entity.HasIndex(e => e.OrderId, "momo_payment_transactions_order_id_key").IsUnique();
-
-            entity.HasIndex(e => e.RequestId, "momo_payment_transactions_request_id_key").IsUnique();
-
-            entity.HasIndex(e => e.UserId, "idx_momo_payment_transactions_user");
-
-            entity.HasIndex(e => e.PlanId, "idx_momo_payment_transactions_plan");
-
-            entity.Property(e => e.MomoPaymentTransactionId)
-                .HasDefaultValueSql("uuid_generate_v4()")
-                .HasColumnName("momo_payment_transaction_id");
-            entity.Property(e => e.Amount)
-                .HasPrecision(12, 2)
-                .HasColumnName("amount");
-            entity.Property(e => e.ConfirmedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("confirmed_at");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("created_at");
-            entity.Property(e => e.OrderId)
-                .HasMaxLength(100)
-                .HasColumnName("order_id");
-            entity.Property(e => e.PayUrl).HasColumnName("pay_url");
-            entity.Property(e => e.PaymentStatus)
-                .HasMaxLength(50)
-                .HasColumnName("payment_status");
-            entity.Property(e => e.PlanId).HasColumnName("plan_id");
-            entity.Property(e => e.ProviderMessage).HasColumnName("provider_message");
-            entity.Property(e => e.ProviderTransactionId).HasColumnName("provider_transaction_id");
-            entity.Property(e => e.RawRequestJson)
-                .HasColumnType("jsonb")
-                .HasColumnName("raw_request_json");
-            entity.Property(e => e.RawResponseJson)
-                .HasColumnType("jsonb")
-                .HasColumnName("raw_response_json");
-            entity.Property(e => e.RequestId)
-                .HasMaxLength(100)
-                .HasColumnName("request_id");
-            entity.Property(e => e.ResultCode).HasColumnName("result_code");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
-
-            entity.HasOne(d => d.Plan).WithMany(p => p.MomoPaymentTransactions)
-                .HasForeignKey(d => d.PlanId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_momo_payment_transaction_plan");
-
-            entity.HasOne(d => d.User).WithMany(p => p.MomoPaymentTransactions)
-                .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_momo_payment_transaction_user");
         });
 
         modelBuilder.Entity<StripeCheckoutTransaction>(entity =>
@@ -875,6 +813,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.RequestCount)
                 .HasDefaultValue(1)
                 .HasColumnName("request_count");
+            entity.Property(e => e.ResponseTimeMs).HasColumnName("response_time_ms");
             entity.Property(e => e.SessionId).HasColumnName("session_id");
             entity.Property(e => e.TotalTokens).HasColumnName("total_tokens");
             entity.Property(e => e.UsedAt)
