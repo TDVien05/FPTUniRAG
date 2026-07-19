@@ -385,6 +385,97 @@ CREATE INDEX IF NOT EXISTS IX_benchmark_results_benchmark_run_id
 CREATE INDEX IF NOT EXISTS IX_benchmark_results_question_id
     ON benchmark_results (question_id);
 
+-- Admin-managed registry of OpenRouter chat models. Exactly one row may be
+-- selected; the partial unique index below enforces that at the database level.
+CREATE TABLE IF NOT EXISTS chat_models (
+    chat_model_id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    model_name character varying(150) NOT NULL,
+    display_name character varying(200),
+    context_length integer,
+    is_selected boolean NOT NULL DEFAULT false,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by uuid,
+    CONSTRAINT ux_chat_models_model_name UNIQUE (model_name),
+    CONSTRAINT fk_chat_models_created_by
+        FOREIGN KEY (created_by)
+        REFERENCES users(user_id)
+        ON DELETE SET NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_chat_models_selected
+    ON chat_models (is_selected)
+    WHERE is_selected;
+
+-- Benchmark prompts are ad hoc: the admin types one per run, so it is stored as a
+-- snapshot on the result row rather than in a saved prompt set.
+DROP TABLE IF EXISTS chat_benchmark_prompts CASCADE;
+
+-- One row per model per benchmark execution.
+CREATE TABLE IF NOT EXISTS chat_benchmark_runs (
+    chat_benchmark_run_id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    batch_id uuid,
+    model_name character varying(150) NOT NULL,
+    subject_id uuid,
+    prompt_count integer NOT NULL DEFAULT 0,
+    completed_count integer NOT NULL DEFAULT 0,
+    success_count integer NOT NULL DEFAULT 0,
+    status character varying(30) NOT NULL DEFAULT 'queued',
+    started_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at timestamp without time zone,
+    error_message text,
+    executed_by uuid,
+    CONSTRAINT fk_chat_benchmark_runs_subject
+        FOREIGN KEY (subject_id)
+        REFERENCES subjects(subject_id)
+        ON DELETE SET NULL,
+    CONSTRAINT fk_chat_benchmark_runs_executed_by
+        FOREIGN KEY (executed_by)
+        REFERENCES users(user_id)
+        ON DELETE SET NULL
+);
+
+-- One benchmark press = one batch_id shared by every model in it, so the page can
+-- show exactly the run the admin just started instead of all history.
+ALTER TABLE chat_benchmark_runs
+    ADD COLUMN IF NOT EXISTS batch_id uuid;
+
+CREATE INDEX IF NOT EXISTS idx_chat_benchmark_runs_batch
+    ON chat_benchmark_runs (batch_id);
+
+CREATE INDEX IF NOT EXISTS idx_chat_benchmark_runs_model
+    ON chat_benchmark_runs (model_name);
+
+CREATE INDEX IF NOT EXISTS idx_chat_benchmark_runs_started_at
+    ON chat_benchmark_runs (started_at DESC);
+
+-- One row per prompt per run. Failed attempts are stored with is_success = false
+-- so success rate reflects reality, unlike token_usage_logs which only ever
+-- receives successful completions.
+CREATE TABLE IF NOT EXISTS chat_benchmark_results (
+    result_id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    chat_benchmark_run_id uuid NOT NULL,
+    prompt_text text NOT NULL,
+    answer_text text,
+    retrieved_chunk_count integer NOT NULL DEFAULT 0,
+    prompt_tokens bigint NOT NULL DEFAULT 0,
+    completion_tokens bigint NOT NULL DEFAULT 0,
+    total_tokens bigint NOT NULL DEFAULT 0,
+    response_time_ms integer,
+    is_success boolean NOT NULL DEFAULT false,
+    error_message text,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_chat_benchmark_results_run
+        FOREIGN KEY (chat_benchmark_run_id)
+        REFERENCES chat_benchmark_runs(chat_benchmark_run_id)
+        ON DELETE CASCADE
+);
+
+ALTER TABLE chat_benchmark_results
+    DROP COLUMN IF EXISTS prompt_id;
+
+CREATE INDEX IF NOT EXISTS idx_chat_benchmark_results_run
+    ON chat_benchmark_results (chat_benchmark_run_id);
+
 INSERT INTO subscription_plans (
     plan_code,
     plan_name,

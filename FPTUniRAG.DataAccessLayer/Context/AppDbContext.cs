@@ -18,6 +18,12 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Chapter> Chapters { get; set; }
 
+    public virtual DbSet<ChatBenchmarkResult> ChatBenchmarkResults { get; set; }
+
+    public virtual DbSet<ChatBenchmarkRun> ChatBenchmarkRuns { get; set; }
+
+    public virtual DbSet<ChatModel> ChatModels { get; set; }
+
     public virtual DbSet<Chunk> Chunks { get; set; }
 
     public virtual DbSet<Document> Documents { get; set; }
@@ -63,6 +69,94 @@ public partial class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasPostgresExtension("uuid-ossp");
+
+        modelBuilder.Entity<ChatModel>(entity =>
+        {
+            entity.HasKey(e => e.ChatModelId).HasName("chat_models_pkey");
+            entity.ToTable("chat_models");
+            entity.HasIndex(e => e.ModelName, "ux_chat_models_model_name").IsUnique();
+            entity.Property(e => e.ChatModelId)
+                .HasDefaultValueSql("uuid_generate_v4()")
+                .HasColumnName("chat_model_id");
+            entity.Property(e => e.ModelName)
+                .HasMaxLength(150)
+                .HasColumnName("model_name");
+            entity.Property(e => e.DisplayName)
+                .HasMaxLength(200)
+                .HasColumnName("display_name");
+            entity.Property(e => e.ContextLength).HasColumnName("context_length");
+            entity.Property(e => e.IsSelected).HasColumnName("is_selected");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+        });
+
+        modelBuilder.Entity<ChatBenchmarkRun>(entity =>
+        {
+            entity.HasKey(e => e.ChatBenchmarkRunId).HasName("chat_benchmark_runs_pkey");
+            entity.ToTable("chat_benchmark_runs");
+            entity.HasIndex(e => e.ModelName, "idx_chat_benchmark_runs_model");
+            entity.HasIndex(e => e.BatchId, "idx_chat_benchmark_runs_batch");
+            entity.Property(e => e.ChatBenchmarkRunId)
+                .HasDefaultValueSql("uuid_generate_v4()")
+                .HasColumnName("chat_benchmark_run_id");
+            entity.Property(e => e.BatchId).HasColumnName("batch_id");
+            entity.Property(e => e.ModelName)
+                .HasMaxLength(150)
+                .HasColumnName("model_name");
+            entity.Property(e => e.SubjectId).HasColumnName("subject_id");
+            entity.Property(e => e.PromptCount).HasColumnName("prompt_count");
+            entity.Property(e => e.CompletedCount).HasColumnName("completed_count");
+            entity.Property(e => e.SuccessCount).HasColumnName("success_count");
+            entity.Property(e => e.Status)
+                .HasMaxLength(30)
+                .HasColumnName("status");
+            entity.Property(e => e.StartedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("started_at");
+            entity.Property(e => e.CompletedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("completed_at");
+            entity.Property(e => e.ErrorMessage).HasColumnName("error_message");
+            entity.Property(e => e.ExecutedBy).HasColumnName("executed_by");
+
+            entity.HasOne(e => e.Subject).WithMany()
+                .HasForeignKey(e => e.SubjectId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_chat_benchmark_runs_subject");
+        });
+
+        modelBuilder.Entity<ChatBenchmarkResult>(entity =>
+        {
+            entity.HasKey(e => e.ResultId).HasName("chat_benchmark_results_pkey");
+            entity.ToTable("chat_benchmark_results");
+            entity.HasIndex(e => e.ChatBenchmarkRunId, "idx_chat_benchmark_results_run");
+            entity.Property(e => e.ResultId)
+                .HasDefaultValueSql("uuid_generate_v4()")
+                .HasColumnName("result_id");
+            entity.Property(e => e.ChatBenchmarkRunId).HasColumnName("chat_benchmark_run_id");
+            entity.Property(e => e.PromptText).HasColumnName("prompt_text");
+            entity.Property(e => e.AnswerText).HasColumnName("answer_text");
+            entity.Property(e => e.RetrievedChunkCount).HasColumnName("retrieved_chunk_count");
+            entity.Property(e => e.PromptTokens).HasColumnName("prompt_tokens");
+            entity.Property(e => e.CompletionTokens).HasColumnName("completion_tokens");
+            entity.Property(e => e.TotalTokens).HasColumnName("total_tokens");
+            entity.Property(e => e.ResponseTimeMs).HasColumnName("response_time_ms");
+            entity.Property(e => e.IsSuccess).HasColumnName("is_success");
+            entity.Property(e => e.ErrorMessage).HasColumnName("error_message");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+
+            entity.HasOne(e => e.Run).WithMany(e => e.Results)
+                .HasForeignKey(e => e.ChatBenchmarkRunId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_chat_benchmark_results_run");
+        });
 
         modelBuilder.Entity<BenchmarkResult>(entity =>
         {

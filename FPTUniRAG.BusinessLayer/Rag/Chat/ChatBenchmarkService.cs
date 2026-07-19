@@ -1,3 +1,4 @@
+using FPTUniRAG.BusinessLayer.Rag.Chat.Benchmarking;
 using FPTUniRAG.DataAccessLayer.Repositories.Chat;
 
 namespace FPTUniRAG.BusinessLayer.Rag.Chat;
@@ -8,11 +9,22 @@ public sealed class ChatBenchmarkService : IChatBenchmarkService
     private const int MaxSessionRows = 12;
 
     private readonly IStudentChatRepository _chatRepository;
+    private readonly IChatBenchmarkRepository _benchmarkRepository;
 
-    public ChatBenchmarkService(IStudentChatRepository chatRepository)
+    public ChatBenchmarkService(IStudentChatRepository chatRepository, IChatBenchmarkRepository benchmarkRepository)
     {
         _chatRepository = chatRepository;
+        _benchmarkRepository = benchmarkRepository;
     }
+
+    public async Task<IReadOnlyList<ChatBenchmarkRunSummary>> GetBatchSummariesAsync(Guid? batchId, CancellationToken cancellationToken = default)
+    {
+        var runs = await _benchmarkRepository.GetBatchAsync(batchId, cancellationToken);
+        return runs.Select(ChatBenchmarkAggregation.Summarize).ToArray();
+    }
+
+    public async Task<IReadOnlyList<ChatBenchmarkBatchRecord>> GetRecentBatchesAsync(int limit, CancellationToken cancellationToken = default) =>
+        await _benchmarkRepository.GetRecentBatchesAsync(limit, cancellationToken);
 
     public async Task<ChatBenchmarkSummary> GetSummaryAsync(CancellationToken cancellationToken = default)
     {

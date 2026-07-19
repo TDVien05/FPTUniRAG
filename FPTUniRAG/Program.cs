@@ -6,6 +6,8 @@ using FPTUniRAG.BusinessLayer.Accounts.Seeding;
 using FPTUniRAG.BusinessLayer.AdminDashboard;
 using FPTUniRAG.BusinessLayer.Payments.Stripe;
 using FPTUniRAG.BusinessLayer.Rag.Chat;
+using FPTUniRAG.BusinessLayer.Rag.Chat.Benchmarking;
+using FPTUniRAG.BusinessLayer.Rag.Chat.Models;
 using FPTUniRAG.BusinessLayer.Rag.Chunking;
 using FPTUniRAG.BusinessLayer.Rag.Configuration;
 using FPTUniRAG.BusinessLayer.Rag.Embeddings;
@@ -50,6 +52,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<IStudentChatRepository, StudentChatRepository>();
+builder.Services.AddScoped<IChatModelRepository, ChatModelRepository>();
+builder.Services.AddScoped<IChatBenchmarkRepository, ChatBenchmarkRepository>();
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 builder.Services.AddScoped<IAdminReportingRepository, AdminReportingRepository>();
 builder.Services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
@@ -105,6 +109,12 @@ builder.Services.AddHttpClient<IOpenRouterChatCompletionService, OpenRouterChatC
     client.BaseAddress = new Uri(options.OpenRouter.BaseUrl.TrimEnd('/') + "/");
     client.Timeout = TimeSpan.FromMinutes(2);
 });
+builder.Services.AddHttpClient<IOpenRouterModelCatalogService, OpenRouterModelCatalogService>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RagIngestionOptions>>().Value;
+    client.BaseAddress = new Uri(options.OpenRouter.BaseUrl.TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 builder.Services.AddHttpClient<IStripePaymentService, StripePaymentService>((serviceProvider, client) =>
 {
     var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<StripeOptions>>().Value;
@@ -116,6 +126,8 @@ builder.Services.AddScoped<IChunkEmbeddingStore, PostgresChunkEmbeddingStore>();
 builder.Services.AddScoped<IStudentChunkRetrievalService, StudentChunkRetrievalService>();
 builder.Services.AddScoped<IStudentChatService, StudentChatService>();
 builder.Services.AddScoped<IChatBenchmarkService, ChatBenchmarkService>();
+builder.Services.AddScoped<IChatModelConfigurationService, ChatModelConfigurationService>();
+builder.Services.AddScoped<IChatBenchmarkRunner, ChatBenchmarkRunner>();
 builder.Services.AddScoped<IEmbeddingConfigurationService, EmbeddingConfigurationService>();
 builder.Services.AddScoped<IEmbeddingBenchmarkService, EmbeddingBenchmarkService>();
 builder.Services.AddScoped<AccountCookieAuthenticationEvents>();
@@ -160,6 +172,7 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AuthorizePage("/EmbeddingSettings", "AdminOnly");
     options.Conventions.AuthorizePage("/FreeQuotaSettings", "AdminOnly");
     options.Conventions.AuthorizePage("/EmbeddingBenchmark", "AdminOnly");
+    options.Conventions.AuthorizePage("/ChatModels", "AdminOnly");
 });
 
 var app = builder.Build();

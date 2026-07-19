@@ -1,0 +1,176 @@
+@page "/ChatModels"
+@model FPTUniRAG.Pages.ChatModelsModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Chat Models - FPT UniRAG";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=block" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="admin-dashboard-page accounts-page">
+    <main class="admin-shell" aria-label="Chat models">
+        @await Html.PartialAsync("_AdminNavigation")
+
+        <section class="accounts-main">
+            <div class="accounts-canvas">
+                <nav class="subject-breadcrumbs" aria-label="Breadcrumb">
+                    <a href="/AdminDashboard">Dashboard</a>
+                    <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                    <strong>Chat Models</strong>
+                </nav>
+
+                <header class="accounts-header">
+                    <div>
+                        <p class="accounts-eyebrow">System configuration</p>
+                        <h1>Chat Models</h1>
+                        <p>Register OpenRouter models and choose the one that answers student chat questions.</p>
+                    </div>
+                </header>
+
+                @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-success" role="status">@Model.SuccessMessage</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-error" role="alert">@Model.ErrorMessage</div>
+                }
+
+                @{
+                    var activeModelName = Model.ActiveModel?.ModelName;
+                }
+
+                <section class="accounts-card">
+                    <div class="accounts-card-header">
+                        <div>
+                            <p class="accounts-eyebrow">Active model</p>
+                            <h2>@(string.IsNullOrWhiteSpace(activeModelName) ? "None configured" : activeModelName)</h2>
+                            <p>
+                                @if (Model.ActiveModel?.IsFromDatabase == true)
+                                {
+                                    <text>Selected by an admin below. Student chat uses this model.</text>
+                                }
+                                else if (!string.IsNullOrWhiteSpace(activeModelName))
+                                {
+                                    <text>Falling back to <code>RagIngestion:OpenRouter:ChatModel</code> from configuration — no model has been selected yet.</text>
+                                }
+                                else
+                                {
+                                    <text>Chat cannot answer until a model is added and selected, or configured in appsettings.</text>
+                                }
+                            </p>
+                        </div>
+                        <span class="accounts-card-icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">smart_toy</span>
+                        </span>
+                    </div>
+                </section>
+
+                <section class="accounts-card">
+                    <div class="accounts-card-header">
+                        <div>
+                            <h2>Add a model</h2>
+                            <p>Enter the exact OpenRouter slug. It is verified against OpenRouter before it is saved.</p>
+                        </div>
+                    </div>
+
+                    <form method="post" asp-page-handler="Add" class="accounts-form">
+                        <label class="subject-field">
+                            <span>OpenRouter model slug</span>
+                            <input class="accounts-select" asp-for="ModelSlug" placeholder="openai/gpt-4o-mini" autocomplete="off" />
+                            <small class="text-secondary">Find slugs at openrouter.ai/models — for example <code>openai/gpt-4o-mini</code> or <code>anthropic/claude-3.5-haiku</code>.</small>
+                        </label>
+                        <footer class="subject-form-actions accounts-actions">
+                            <button class="subject-submit-button" type="submit">
+                                Add model
+                                <span class="material-symbols-outlined" aria-hidden="true">add</span>
+                            </button>
+                        </footer>
+                    </form>
+                </section>
+
+                <section class="accounts-card accounts-table-card">
+                    <div class="accounts-card-header">
+                        <div>
+                            <p class="accounts-eyebrow">Registered models</p>
+                            <h2>Choose the model for chat</h2>
+                            <p>Selecting a model takes effect on the next student message. Removing the active model falls back to configuration.</p>
+                        </div>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Model</th>
+                                    <th>Name</th>
+                                    <th>Context length</th>
+                                    <th>Added</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @if (Model.Models.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="6"><span class="text-secondary">No models registered yet. Add one above.</span></td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var entry in Model.Models)
+                                {
+                                    <tr>
+                                        <td><strong>@entry.ModelName</strong></td>
+                                        <td>@(entry.DisplayName ?? "—")</td>
+                                        <td>@(entry.ContextLength is null ? "—" : entry.ContextLength.Value.ToString("N0"))</td>
+                                        <td>@entry.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td>
+                                            @if (entry.IsSelected)
+                                            {
+                                                <span class="admin-badge success">Active</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="admin-badge draft">Idle</span>
+                                            }
+                                        </td>
+                                        <td class="admin-user-actions">
+                                            @if (!entry.IsSelected)
+                                            {
+                                                <form method="post" asp-page-handler="Select">
+                                                    <input type="hidden" name="chatModelId" value="@entry.ChatModelId" />
+                                                    <button class="admin-success-button" type="submit">Use for chat</button>
+                                                </form>
+                                            }
+                                            <form method="post" asp-page-handler="Remove"
+                                                  onsubmit="return confirm('Remove @entry.ModelName from the registry?');">
+                                                <input type="hidden" name="chatModelId" value="@entry.ChatModelId" />
+                                                <button class="admin-danger-button" type="submit">Remove</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <p class="text-secondary" style="margin-top: 16px;">
+                    Compare models before switching on the <a href="/ChatBenchmark">Chat Benchmark</a> page — it replays the same prompts through the real RAG pipeline against each model.
+                </p>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

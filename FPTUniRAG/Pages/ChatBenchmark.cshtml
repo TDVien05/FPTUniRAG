@@ -17,6 +17,14 @@
     var sessionTokenAxisMax = NiceMax(chronologicalSessions.Count == 0
         ? 0
         : chronologicalSessions.Max(row => Math.Max(row.PromptTokens, row.CompletionTokens)));
+
+    // Summary strip + "fastest model" emphasis for the comparison table.
+    var latencyRuns = Model.RunSummaries.Where(run => run.P50LatencyMs.HasValue).ToList();
+    double? bestP50 = latencyRuns.Count == 0 ? null : latencyRuns.Min(run => run.P50LatencyMs!.Value);
+    var totalAttempts = Model.RunSummaries.Sum(run => run.CompletedCount);
+    var totalSuccesses = Model.RunSummaries.Sum(run => run.SuccessCount);
+    var overallSuccessRate = totalAttempts == 0 ? (decimal?)null : decimal.Round(totalSuccesses * 100m / totalAttempts, 1);
+    DateTime? lastRunAt = Model.RunSummaries.Count == 0 ? null : Model.RunSummaries.Max(run => run.StartedAt);
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -40,7 +48,320 @@
                     <div>
                         <p class="accounts-eyebrow">Chat operations</p>
                         <h1>Chat Model Benchmark</h1>
-                        <p>Performance summary from real student chat requests — by model, and by individual session.</p>
+                        <p>Replay one prompt set through the real RAG pipeline against each model, then compare the results side by side.</p>
+                    </div>
+                </header>
+
+                @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-success" role="status">@Model.SuccessMessage</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-error" role="alert">@Model.ErrorMessage</div>
+                }
+
+                <!-- Dense KPI strip: the four numbers that decide whether a run is worth starting -->
+                <section class="benchmark-stats" aria-label="Benchmark overview">
+                    <article class="benchmark-stat">
+                        <p class="benchmark-stat-label">Runs recorded</p>
+                        <p class="benchmark-stat-value">@Model.RunSummaries.Count</p>
+                        <p class="benchmark-stat-meta">One per model per benchmark</p>
+                    </article>
+                    <article class="benchmark-stat">
+                        <p class="benchmark-stat-label">Models registered</p>
+                        <p class="benchmark-stat-value">@Model.AvailableModels.Count</p>
+                        <p class="benchmark-stat-meta"><a href="/ChatModels">Manage models</a></p>
+                    </article>
+                    <article class="benchmark-stat">
+                        <p class="benchmark-stat-label">Fastest p50</p>
+                        <p class="benchmark-stat-value">@FormatMs(bestP50)</p>
+                        <p class="benchmark-stat-meta">Across recorded runs</p>
+                    </article>
+                    <article class="benchmark-stat @(overallSuccessRate is < 100m ? "is-warning" : string.Empty)">
+                        <p class="benchmark-stat-label">Success rate</p>
+                        <p class="benchmark-stat-value">@(overallSuccessRate is null ? "—" : $"{overallSuccessRate.Value.ToString("0.#", CultureInfo.InvariantCulture)}%")</p>
+                        <p class="benchmark-stat-meta">
+                            @(lastRunAt is null ? "No runs yet" : $"Last run {lastRunAt.Value:yyyy-MM-dd HH:mm}")
+                        </p>
+                    </article>
+                </section>
+
+                @{
+                    var hasModels = Model.AvailableModels.Count > 0;
+                }
+
+                <!-- Write a prompt, pick a subject, run it. Nothing is saved between runs. -->
+                <section class="accounts-card benchmark-setup-card" aria-labelledby="benchmark-run-title">
+                    <div class="accounts-card-header">
+                        <div>
+                            <p class="accounts-eyebrow">Controlled benchmark</p>
+                            <h2 id="benchmark-run-title">Run a benchmark</h2>
+                            <p>Write one prompt and choose a subject. Every selected model answers it with the exact same retrieved context, so the results are comparable.</p>
+                        </div>
+                        <span class="accounts-card-icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">play_circle</span>
+                        </span>
+                    </div>
+
+                    <div class="benchmark-setup-section">
+                        @if (!hasModels)
+                        {
+                            <div class="benchmark-empty benchmark-empty-inline">
+                                <span class="material-symbols-outlined" aria-hidden="true">smart_toy</span>
+                                <p><strong>No chat models registered yet.</strong></p>
+                                <p>Add one on <a href="/ChatModels">Chat Models</a> first.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <form method="post" asp-page-handler="Run" class="accounts-form" id="benchmark-run-form">
+                                <label class="subject-field">
+                                    <span>Prompt</span>
+                                    <textarea class="accounts-select" asp-for="PromptText" rows="3" required
+                                              placeholder="Explain the difference between process and thread with an example."></textarea>
+                                </label>
+
+                                <label class="subject-field benchmark-subject-field">
+                                    <span>Subject to retrieve against</span>
+                                    <span class="benchmark-subject-select">
+                                        <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+                                        <select asp-for="RunSubjectId" required>
+                                            <option value="">Choose a subject…</option>
+                                            @foreach (var subject in Model.Subjects)
+                                            {
+                                                <option value="@subject.SubjectId">@subject.SubjectCode — @subject.SubjectName</option>
+                                            }
+                                        </select>
+                                        <span class="material-symbols-outlined benchmark-select-chevron" aria-hidden="true">expand_more</span>
+                                    </span>
+                                    <small class="text-secondary">The subject must already have embedded documents.</small>
+                                </label>
+
+                                <fieldset class="subject-field">
+                                    <legend>Models to compare</legend>
+                                    <div class="benchmark-model-choices">
+                                        @foreach (var entry in Model.AvailableModels)
+                                        {
+                                            <label class="benchmark-model-choice">
+                                                <input type="checkbox" name="SelectedModels" value="@entry.ModelName" checked="@entry.IsSelected" />
+                                                <span>@entry.ModelName @(entry.IsSelected ? "(active)" : string.Empty)</span>
+                                            </label>
+                                        }
+                                    </div>
+                                </fieldset>
+
+                                <!-- Cost is the one thing worth interrupting for: these are paid calls. -->
+                                <p class="benchmark-cost-callout" id="benchmark-cost-hint" role="status">
+                                    <span class="material-symbols-outlined" aria-hidden="true">payments</span>
+                                    <span>
+                                        This will send <strong id="benchmark-request-count">0</strong> paid OpenRouter request(s)
+                                        — one per model you tick.
+                                    </span>
+                                </p>
+
+                                <footer class="subject-form-actions accounts-actions">
+                                    <button class="subject-submit-button" type="submit" id="benchmark-run-button">
+                                        Run benchmark
+                                        <span class="material-symbols-outlined" aria-hidden="true">play_arrow</span>
+                                    </button>
+                                </footer>
+                            </form>
+                        }
+                    </div>
+                </section>
+
+                <!-- Controlled benchmark: results -->
+                <section class="accounts-card accounts-table-card" aria-labelledby="benchmark-results-title">
+                    <div class="accounts-card-header">
+                        <div>
+                            <p class="accounts-eyebrow">Controlled benchmark</p>
+                            <h2 id="benchmark-results-title">Model comparison</h2>
+                            <p>
+                                @if (Model.SelectedBatch is not null)
+                                {
+                                    <text>Showing the benchmark from @Model.SelectedBatch.StartedAt.ToString("yyyy-MM-dd HH:mm")</text>
+                                    @if (!string.IsNullOrWhiteSpace(Model.SelectedBatch.SubjectCode))
+                                    {
+                                        <text> · @Model.SelectedBatch.SubjectCode</text>
+                                    }
+                                    <text>. Latency percentiles come from successful calls only; success rate counts every attempt.</text>
+                                }
+                                else
+                                {
+                                    <text>Latency percentiles come from successful calls only; success rate counts every attempt, including failures.</text>
+                                }
+                            </p>
+                        </div>
+                    </div>
+
+                    @if (Model.Batches.Count > 1)
+                    {
+                        <form method="get" class="benchmark-history" id="benchmark-history-form">
+                            <label class="subject-field benchmark-subject-field">
+                                <span>Compare a previous run</span>
+                                <span class="benchmark-subject-select">
+                                    <span class="material-symbols-outlined" aria-hidden="true">history</span>
+                                    <select name="batchId" onchange="this.form.submit()" aria-label="Choose which benchmark to display">
+                                        @foreach (var batch in Model.Batches)
+                                        {
+                                            var label = $"{batch.StartedAt:yyyy-MM-dd HH:mm} · {batch.ModelCount} model(s)"
+                                                + (string.IsNullOrWhiteSpace(batch.SubjectCode) ? string.Empty : $" · {batch.SubjectCode}")
+                                                + (string.IsNullOrWhiteSpace(batch.PromptText) ? string.Empty : $" · {Preview(batch.PromptText)}");
+                                            <option value="@batch.BatchId" selected="@(Model.SelectedBatch?.BatchId == batch.BatchId)">@label</option>
+                                        }
+                                    </select>
+                                    <span class="material-symbols-outlined benchmark-select-chevron" aria-hidden="true">expand_more</span>
+                                </span>
+                            </label>
+                            @if (!Model.IsViewingLatestBatch)
+                            {
+                                <a class="benchmark-link-button" href="/ChatBenchmark">
+                                    <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+                                    <span>Back to latest</span>
+                                </a>
+                            }
+                            <noscript><button class="admin-ghost-button" type="submit">Show</button></noscript>
+                        </form>
+                    }
+                    <div class="admin-table-wrap benchmark-table-wrap">
+                        <table class="admin-table benchmark-compare-table" id="benchmark-runs-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Model</th>
+                                    <th scope="col">Subject</th>
+                                    <th scope="col">Progress</th>
+                                    <th scope="col" class="is-numeric">Success</th>
+                                    <th scope="col" class="is-numeric">p50</th>
+                                    <th scope="col" class="is-numeric">p95</th>
+                                    <th scope="col" class="is-numeric">Avg. tokens</th>
+                                    <th scope="col" class="is-numeric">Avg. chunks</th>
+                                    <th scope="col">Started</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @if (Model.RunSummaries.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="9">
+                                        <div class="benchmark-empty">
+                                            <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>
+                                            <p><strong>No benchmark has been run yet.</strong></p>
+                                            <p>Write a prompt above, pick a subject and at least one model, then run it.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var run in Model.RunSummaries)
+                                {
+                                    var isFastest = bestP50 is not null && run.P50LatencyMs == bestP50;
+                                    <tr class="@(isFastest ? "is-best" : string.Empty)">
+                                        <td>
+                                            <strong class="benchmark-model-name">
+                                                @run.ModelName
+                                                @if (isFastest)
+                                                {
+                                                    <span class="benchmark-tag" title="Lowest median latency in this list">Fastest</span>
+                                                }
+                                            </strong>
+                                        </td>
+                                        <td>@(run.SubjectCode ?? "—")</td>
+                                        <td>
+                                            <span class="benchmark-status benchmark-status-@run.Status">
+                                                <span class="benchmark-status-dot" aria-hidden="true"></span>@run.Status
+                                            </span>
+                                            <span class="benchmark-progress" role="progressbar"
+                                                  aria-valuemin="0" aria-valuemax="100" aria-valuenow="@run.ProgressPercent"
+                                                  aria-label="@run.CompletedCount of @run.PromptCount prompts completed">
+                                                <span class="benchmark-progress-fill" style="width:@run.ProgressPercent%"></span>
+                                            </span>
+                                            <span class="benchmark-progress-label">@run.CompletedCount / @run.PromptCount prompts</span>
+                                        </td>
+                                        <td class="is-numeric @(run.SuccessRate < 100m ? "is-alert" : string.Empty)">
+                                            @run.SuccessRate.ToString("0.##", CultureInfo.InvariantCulture)%
+                                        </td>
+                                        <td class="is-numeric">@FormatMs(run.P50LatencyMs)</td>
+                                        <td class="is-numeric">@FormatMs(run.P95LatencyMs)</td>
+                                        <td class="is-numeric">@(run.AverageTotalTokens is null ? "—" : run.AverageTotalTokens.Value.ToString("N0", CultureInfo.InvariantCulture))</td>
+                                        <td class="is-numeric">@(run.AverageRetrievedChunks is null ? "—" : run.AverageRetrievedChunks.Value.ToString("0.#", CultureInfo.InvariantCulture))</td>
+                                        <td>@run.StartedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                    </tr>
+                                    @if (!string.IsNullOrWhiteSpace(run.ErrorMessage))
+                                    {
+                                        <tr class="benchmark-error-row">
+                                            <td colspan="9">
+                                                <span class="material-symbols-outlined" aria-hidden="true">error</span>
+                                                <span>@run.ErrorMessage</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                @{
+                    // Answers are shown for every recorded run, newest first — no drill-down.
+                    var answerRuns = Model.RunSummaries.Where(run => run.Results.Count > 0).ToList();
+                }
+                @if (answerRuns.Count > 0)
+                {
+                    <section class="accounts-card" id="run-answers" aria-labelledby="benchmark-answers-title">
+                        <div class="accounts-card-header">
+                            <div>
+                                <p class="accounts-eyebrow">Controlled benchmark</p>
+                                <h2 id="benchmark-answers-title">Answers</h2>
+                                <p>What each model actually replied. Read them side by side to judge quality yourself.</p>
+                            </div>
+                            <span class="accounts-card-icon" aria-hidden="true">
+                                <span class="material-symbols-outlined">chat_bubble</span>
+                            </span>
+                        </div>
+
+                        <div class="benchmark-answer-grid">
+                            @foreach (var run in answerRuns)
+                            {
+                                foreach (var result in run.Results)
+                                {
+                                    <article class="benchmark-answer-card @(result.IsSuccess ? string.Empty : "is-failed")">
+                                        <header class="benchmark-answer-head">
+                                            <strong>@run.ModelName</strong>
+                                            <span class="admin-badge @(result.IsSuccess ? "success" : "danger")">@(result.IsSuccess ? "OK" : "Failed")</span>
+                                        </header>
+                                        <p class="benchmark-answer-prompt">
+                                            <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                                            @result.PromptText
+                                        </p>
+                                        @if (result.IsSuccess)
+                                        {
+                                            <p class="benchmark-answer">@result.AnswerText</p>
+                                        }
+                                        else
+                                        {
+                                            <p class="benchmark-answer is-error">@result.ErrorMessage</p>
+                                        }
+                                        <footer class="benchmark-answer-meta">
+                                            <span>@FormatMs(result.ResponseTimeMs)</span>
+                                            <span>@result.TotalTokens.ToString("N0") tokens</span>
+                                            <span>@result.RetrievedChunkCount chunks</span>
+                                            <span>@run.StartedAt.ToString("yyyy-MM-dd HH:mm")</span>
+                                        </footer>
+                                    </article>
+                                }
+                            }
+                        </div>
+                    </section>
+                }
+
+                <header class="accounts-header" style="margin-top: 32px;">
+                    <div>
+                        <p class="accounts-eyebrow">Observational</p>
+                        <h2>Production usage</h2>
+                        <p>What students actually sent. Not a controlled comparison — each model saw different questions, so read these alongside the request counts.</p>
                     </div>
                 </header>
 
@@ -99,7 +420,7 @@
                                     <div class="chatviz-xaxis">
                                         @foreach (var row in Model.ModelRows)
                                         {
-                                            <span class="chatviz-xlabel chatviz-xlabel-group" title="@row.Model">@row.Model</span>
+                                            <span class="chatviz-xlabel chatviz-xlabel-group" title="@row.Model">@row.Model (@row.RequestCount.ToString("N0") req)</span>
                                         }
                                     </div>
                                 </div>
@@ -156,7 +477,7 @@
                                     <div class="chatviz-xaxis">
                                         @foreach (var row in responseRows)
                                         {
-                                            <span class="chatviz-xlabel chatviz-xlabel-single" title="@row.Model">@row.Model</span>
+                                            <span class="chatviz-xlabel chatviz-xlabel-single" title="@row.Model">@row.Model (@row.RequestCount.ToString("N0") req)</span>
                                         }
                                     </div>
                                 </div>
@@ -335,6 +656,104 @@
     <div id="chatviz-tooltip" class="chatviz-tooltip" role="tooltip"></div>
 
     <script>
+        // Keeps the "this will send N paid requests" warning honest as models are ticked.
+        (() => {
+            const form = document.getElementById("benchmark-run-form");
+            const hint = document.getElementById("benchmark-cost-hint");
+            const counter = document.getElementById("benchmark-request-count");
+            if (!form || !hint || !counter) {
+                return;
+            }
+
+            const checkboxes = form.querySelectorAll('input[name="SelectedModels"]');
+
+            // One prompt per run, so the request count is simply the models ticked.
+            const update = () => {
+                let selected = 0;
+                checkboxes.forEach((box) => { if (box.checked) { selected += 1; } });
+                counter.textContent = selected.toLocaleString();
+            };
+
+            checkboxes.forEach((box) => box.addEventListener("change", update));
+            update();
+
+            form.addEventListener("submit", (event) => {
+                const total = Number(counter.textContent.replace(/[^0-9]/g, ""));
+                if (total === 0) {
+                    event.preventDefault();
+                    window.alert("Select at least one model to benchmark.");
+                    return;
+                }
+                if (!window.confirm(`This will send ${total} paid OpenRouter request(s). Continue?`)) {
+                    event.preventDefault();
+                    return;
+                }
+
+                // Runs are queued server-side; without this the button looks inert
+                // for the whole round trip and invites a second submit.
+                const button = document.getElementById("benchmark-run-button");
+                if (button) {
+                    button.disabled = true;
+                    button.classList.add("is-busy");
+                    button.firstChild.textContent = "Starting… ";
+                }
+            });
+        })();
+    </script>
+
+    @if (Model.HasRunInFlight)
+    {
+        <script>
+            // Runs execute in the background and record progress in the database, so the
+            // page simply polls until every run reports finished, then reloads once.
+            (() => {
+                async function pollRuns() {
+                    try {
+                        const response = await fetch("/ChatBenchmark?handler=RunStatus", { credentials: "same-origin" });
+                        if (!response.ok) {
+                            throw new Error("status unavailable");
+                        }
+
+                        const runs = await response.json();
+                        if (runs.every((run) => run.isFinished)) {
+                            window.location.reload();
+                            return;
+                        }
+
+                        document.querySelectorAll("#benchmark-runs-table tbody tr").forEach((row) => {
+                            const label = row.querySelector("td:first-child strong");
+                            if (!label) {
+                                return;
+                            }
+                            const match = runs.find((run) => run.model === label.textContent.trim());
+                            if (!match) {
+                                return;
+                            }
+                            const progressCell = row.querySelector("td:nth-child(3)");
+                            if (progressCell) {
+                                progressCell.innerHTML =
+                                    `<span class="benchmark-status benchmark-status-${match.status}">` +
+                                    `<span class="benchmark-status-dot" aria-hidden="true"></span>${match.status}</span>` +
+                                    `<span class="benchmark-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" ` +
+                                    `aria-valuenow="${match.progressPercent}" ` +
+                                    `aria-label="${match.completedCount} of ${match.promptCount} prompts completed">` +
+                                    `<span class="benchmark-progress-fill" style="width:${match.progressPercent}%"></span></span>` +
+                                    `<span class="benchmark-progress-label">${match.completedCount} / ${match.promptCount} prompts</span>`;
+                            }
+                        });
+
+                        window.setTimeout(pollRuns, 2000);
+                    } catch {
+                        window.setTimeout(pollRuns, 4000);
+                    }
+                }
+
+                pollRuns();
+            })();
+        </script>
+    }
+
+    <script>
         (() => {
             const tooltip = document.getElementById("chatviz-tooltip");
             if (!tooltip) {
@@ -373,6 +792,21 @@
 </html>
 
 @functions {
+    private static string Preview(string text)
+    {
+        var single = text.Replace('\n', ' ').Replace('\r', ' ').Trim();
+        return single.Length <= 48 ? single : single[..48] + "…";
+    }
+
+    private static string FormatMs(double? milliseconds)
+    {
+        if (milliseconds is null) return "—";
+        if (milliseconds < 1000) return $"{milliseconds.Value:0} ms";
+        return $"{milliseconds.Value / 1000:0.##} s";
+    }
+
+    private static string FormatMs(int? milliseconds) => FormatMs(milliseconds.HasValue ? milliseconds.Value : (double?)null);
+
     private static double NiceMax(double rawMax)
     {
         if (rawMax <= 0)

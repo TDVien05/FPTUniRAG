@@ -32,6 +32,7 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
     public async Task<OpenRouterChatResult> StreamCompletionAsync(
         IReadOnlyList<OpenRouterChatMessage> messages,
         Func<string, CancellationToken, Task> onDelta,
+        string? model = null,
         CancellationToken cancellationToken = default)
     {
         if (messages.Count == 0)
@@ -39,7 +40,8 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
             throw new InvalidOperationException("OpenRouter chat request requires at least one message.");
         }
 
-        ValidateConfiguration();
+        var requestedModel = ResolveModel(model);
+        ValidateConfiguration(requestedModel);
 
         var streamedTextBuilder = new StringBuilder();
         OpenRouterChatCompletionResponse? finalStreamPayload = null;
@@ -49,7 +51,7 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
         var sawDoneMarker = false;
         var sawTerminalChoice = false;
 
-        using var request = CreateChatRequest(messages, stream: true);
+        using var request = CreateChatRequest(messages, requestedModel, stream: true);
         using var response = await _httpClient.SendAsync(
             request,
             HttpCompletionOption.ResponseHeadersRead,
@@ -159,7 +161,7 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
         var fallbackUsed = false;
         var canonicalFinishReason = streamedFinishReason;
         var usage = finalStreamPayload?.Usage;
-        string modelName = finalStreamPayload?.Model?.Trim() ?? _options.OpenRouter.ChatModel;
+        string modelName = finalStreamPayload?.Model?.Trim() ?? requestedModel;
 
         if (ShouldFallback(
             canonicalText,
@@ -179,7 +181,7 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
                 sawTerminalChoice,
                 deserializeFailureCount);
 
-            var fallbackResult = await CompleteNonStreamingAsync(messages, cancellationToken);
+            var fallbackResult = await CompleteNonStreamingAsync(messages, requestedModel, cancellationToken);
             canonicalText = fallbackResult.Content.Trim();
             canonicalFinishReason = fallbackResult.FinishReason;
             usage = fallbackResult.Usage;
@@ -193,6 +195,7 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
                 messages,
                 canonicalText,
                 modelName,
+                requestedModel,
                 canonicalFinishReason,
                 usage,
                 cancellationToken);
@@ -234,6 +237,7 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
         IReadOnlyList<OpenRouterChatMessage> messages,
         string initialContent,
         string initialModelName,
+        string requestedModel,
         string? initialFinishReason,
         OpenRouterChatCompletionUsage? initialUsage,
         CancellationToken cancellationToken)
@@ -261,7 +265,7 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
                 ])
                 .ToList();
 
-            var continuation = await CompleteNonStreamingAsync(continuationMessages, cancellationToken);
+            var continuation = await CompleteNonStreamingAsync(continuationMessages, requestedModel, cancellationToken);
             modelName = continuation.ModelName;
             finishReason = continuation.FinishReason;
             promptTokens += continuation.Usage?.PromptTokens ?? 0;
@@ -335,9 +339,10 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
 
     private async Task<OpenRouterNonStreamingResult> CompleteNonStreamingAsync(
         IReadOnlyList<OpenRouterChatMessage> messages,
+        string requestedModel,
         CancellationToken cancellationToken)
     {
-        using var request = CreateChatRequest(messages, stream: false);
+        using var request = CreateChatRequest(messages, requestedModel, stream: false);
         using var response = await _httpClient.SendAsync(request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -359,21 +364,25 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
         }
 
         return new OpenRouterNonStreamingResult(
-            payload?.Model?.Trim() ?? _options.OpenRouter.ChatModel,
+            payload?.Model?.Trim() ?? requestedModel,
             content,
             choice?.FinishReason,
             payload?.Usage);
     }
 
+    private string ResolveModel(string? model) =>
+        string.IsNullOrWhiteSpace(model) ? _options.OpenRouter.ChatModel : model.Trim();
+
     private HttpRequestMessage CreateChatRequest(
         IReadOnlyList<OpenRouterChatMessage> messages,
+        string requestedModel,
         bool stream)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
         {
             Content = System.Net.Http.Json.JsonContent.Create(
                 new OpenRouterChatCompletionRequest(
-                    _options.OpenRouter.ChatModel,
+                    requestedModel,
                     messages.Select(message => new OpenRouterChatCompletionRequestMessage(message.Role, message.Content)).ToList(),
                     _options.OpenRouter.MaxCompletionTokens,
                     _options.OpenRouter.Temperature,
@@ -385,16 +394,19 @@ public sealed class OpenRouterChatCompletionService : IOpenRouterChatCompletionS
         return request;
     }
 
-    private void ValidateConfiguration()
+    private void ValidateConfiguration(string requestedModel)
     {
         if (string.IsNullOrWhiteSpace(_options.OpenRouter.ApiKey))
         {
             throw new InvalidOperationException("RagIngestion:OpenRouter:ApiKey is missing in appsettings.json.");
         }
 
-        if (string.IsNullOrWhiteSpace(_options.OpenRouter.ChatModel))
+        // An explicit model (admin selection or benchmark target) satisfies this on its
+        // own — the configured value is only needed when nothing was passed in.
+        if (string.IsNullOrWhiteSpace(requestedModel))
         {
-            throw new InvalidOperationException("RagIngestion:OpenRouter:ChatModel is missing in appsettings.json.");
+            throw new InvalidOperationException(
+                "No chat model is configured. Select one at /ChatModels or set RagIngestion:OpenRouter:ChatModel.");
         }
     }
 

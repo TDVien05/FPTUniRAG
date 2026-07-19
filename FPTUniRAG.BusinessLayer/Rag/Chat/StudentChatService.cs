@@ -1,3 +1,4 @@
+using FPTUniRAG.BusinessLayer.Rag.Chat.Models;
 using FPTUniRAG.BusinessLayer.Rag.Configuration;
 using FPTUniRAG.BusinessLayer.Subscriptions;
 using System.Diagnostics;
@@ -27,6 +28,7 @@ public sealed class StudentChatService : IStudentChatService
     private readonly IOpenRouterChatCompletionService _chatCompletionService;
     private readonly ILogger<StudentChatService> _logger;
     private readonly IFreeTokenQuotaService _freeTokenQuotaService;
+    private readonly IChatModelConfigurationService _chatModelConfigurationService;
     private readonly string _embeddingTableName;
 
     public StudentChatService(
@@ -36,7 +38,8 @@ public sealed class StudentChatService : IStudentChatService
         IOpenRouterChatCompletionService chatCompletionService,
         IOptions<RagIngestionOptions> options,
         ILogger<StudentChatService> logger,
-        IFreeTokenQuotaService freeTokenQuotaService)
+        IFreeTokenQuotaService freeTokenQuotaService,
+        IChatModelConfigurationService chatModelConfigurationService)
     {
         _chatRepository = chatRepository;
         _vectorRepository = vectorRepository;
@@ -44,6 +47,7 @@ public sealed class StudentChatService : IStudentChatService
         _chatCompletionService = chatCompletionService;
         _logger = logger;
         _freeTokenQuotaService = freeTokenQuotaService;
+        _chatModelConfigurationService = chatModelConfigurationService;
         _embeddingTableName = ResolveTableName(options.Value.PostgresVector.TableName);
     }
 
@@ -342,6 +346,8 @@ public sealed class StudentChatService : IStudentChatService
 
         await WriteProgressAsync("generating-answer", writeEvent, cancellationToken);
 
+        var activeModel = await _chatModelConfigurationService.GetActiveModelAsync(cancellationToken);
+
         OpenRouterChatResult completion;
         var completionStopwatch = Stopwatch.StartNew();
         try
@@ -352,6 +358,7 @@ public sealed class StudentChatService : IStudentChatService
                 {
                     return Task.CompletedTask;
                 },
+                activeModel.ModelName,
                 cancellationToken);
         }
         catch (Exception exception)
@@ -460,7 +467,11 @@ public sealed class StudentChatService : IStudentChatService
         return (await _vectorRepository.GetUsableSubjectIdsAsync(_embeddingTableName, cancellationToken)).ToHashSet();
     }
 
-    private static StudentChatPromptContext BuildCompletionMessages(
+    /// <summary>
+    /// Shared with the chat benchmark runner so benchmarked prompts are byte-identical
+    /// to the ones students actually send.
+    /// </summary>
+    internal static StudentChatPromptContext BuildCompletionMessages(
         string subjectCode,
         string subjectName,
         IReadOnlyList<Message> previousMessages,
@@ -565,7 +576,7 @@ public sealed class StudentChatService : IStudentChatService
             .ToList();
     }
 
-    private sealed record StudentChatPromptContext(
+    internal sealed record StudentChatPromptContext(
         IReadOnlyList<OpenRouterChatMessage> Messages,
         IReadOnlyList<StudentRetrievedChunk> ReferencedChunks);
 
