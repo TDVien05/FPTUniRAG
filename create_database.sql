@@ -12,6 +12,7 @@ WHERE NOT EXISTS (
 \connect prn222;
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE IF NOT EXISTS embedding_settings (
     setting_id smallint PRIMARY KEY DEFAULT 1,

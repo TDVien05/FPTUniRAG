@@ -87,6 +87,9 @@ Desktop.ini
 FPTUniRAG.Tests/
 !FPTUniRAG.Tests/
 FPTUniRAG.Tests/*
+!FPTUniRAG.Tests/Architecture/
+FPTUniRAG.Tests/Architecture/*
+!FPTUniRAG.Tests/Architecture/LayerDependencyTests.cs
 !FPTUniRAG.Tests/AdminDashboard/
 FPTUniRAG.Tests/AdminDashboard/*
 !FPTUniRAG.Tests/AdminDashboard/StudentChatReportServiceTests.cs

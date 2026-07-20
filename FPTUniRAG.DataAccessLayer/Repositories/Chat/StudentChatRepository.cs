@@ -78,9 +78,11 @@ public sealed class StudentChatRepository(AppDbContext context) : IStudentChatRe
     public async Task SaveAssistantResponseAsync(Message message, TokenUsageLog usage, CancellationToken cancellationToken = default)
     { context.Messages.Add(message); context.TokenUsageLogs.Add(usage); await context.SaveChangesAsync(cancellationToken); }
 
-    public async Task<IReadOnlyList<string>> GetCitationJsonAsync(Guid sessionId, CancellationToken cancellationToken = default) =>
-        await context.Messages.AsNoTracking().Where(m => m.SessionId == sessionId && m.SenderRole == "assistant" && m.CitationsJson != null)
-            .OrderByDescending(m => m.CreatedAt).Select(m => m.CitationsJson!).ToListAsync(cancellationToken);
+    public Task<string?> GetMessageCitationsJsonAsync(Guid userId, Guid sessionId, Guid messageId, CancellationToken cancellationToken = default) =>
+        context.Messages.AsNoTracking()
+            .Where(m => m.MessageId == messageId && m.SessionId == sessionId && m.SenderRole == "assistant" && m.Session.UserId == userId)
+            .Select(m => m.CitationsJson)
+            .FirstOrDefaultAsync(cancellationToken);
 
     public async Task<ChatQuotaRecord> GetQuotaAsync(Guid userId, CancellationToken cancellationToken = default)
     {

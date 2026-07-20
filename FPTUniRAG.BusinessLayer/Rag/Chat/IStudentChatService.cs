@@ -20,6 +20,7 @@ public interface IStudentChatService
     Task<StudentChatCitationDetailDto?> GetCitationDetailAsync(
         Guid userId,
         Guid sessionId,
+        Guid messageId,
         Guid documentId,
         int chunkIndex,
         CancellationToken cancellationToken = default);

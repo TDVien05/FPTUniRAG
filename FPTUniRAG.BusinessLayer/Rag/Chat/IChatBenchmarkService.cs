@@ -5,17 +5,33 @@ namespace FPTUniRAG.BusinessLayer.Rag.Chat;
 
 public interface IChatBenchmarkService
 {
+    Task<IReadOnlyList<ChatBenchmarkSubject>> GetSubjectsAsync(
+        int limit,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Observational production usage, grouped by model and by session.</summary>
     Task<ChatBenchmarkSummary> GetSummaryAsync(CancellationToken cancellationToken = default);
 
     /// <summary>One benchmark press — one row per model. Defaults to the most recent.</summary>
     Task<IReadOnlyList<ChatBenchmarkRunSummary>> GetBatchSummariesAsync(Guid? batchId, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<ChatBenchmarkBatchRecord>> GetRecentBatchesAsync(int limit, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ChatBenchmarkBatch>> GetRecentBatchesAsync(int limit, CancellationToken cancellationToken = default);
 
     /// <summary>Operational health for recent fully-finished benchmark batches, oldest first.</summary>
     Task<IReadOnlyList<ChatBenchmarkHealthPoint>> GetHealthTrendAsync(int limit, CancellationToken cancellationToken = default);
 }
+
+public sealed record ChatBenchmarkSubject(
+    Guid SubjectId,
+    string SubjectCode,
+    string SubjectName);
+
+public sealed record ChatBenchmarkBatch(
+    Guid BatchId,
+    DateTime StartedAt,
+    string? SubjectCode,
+    string? PromptText,
+    int ModelCount);
 
 public sealed record ChatBenchmarkHealthPoint(
     Guid BatchId,

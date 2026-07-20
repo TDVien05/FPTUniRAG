@@ -14,7 +14,7 @@ public interface IStudentChatRepository
     Task<Session?> FindOwnedSessionAsync(Guid userId, Guid sessionId, CancellationToken cancellationToken = default);
     Task SaveUserMessageAsync(Session? newSession, Message message, CancellationToken cancellationToken = default);
     Task SaveAssistantResponseAsync(Message message, TokenUsageLog usage, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<string>> GetCitationJsonAsync(Guid sessionId, CancellationToken cancellationToken = default);
+    Task<string?> GetMessageCitationsJsonAsync(Guid userId, Guid sessionId, Guid messageId, CancellationToken cancellationToken = default);
     Task<ChatQuotaRecord> GetQuotaAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ChatUsageRunRecord>> GetUsageRunsAsync(string featureName, CancellationToken cancellationToken = default);
 }

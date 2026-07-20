@@ -16,8 +16,6 @@ public sealed class StudentChatService : IStudentChatService
 {
     private const int RetrievalLimit = 8;
     private const int ConversationHistoryLimit = 12;
-    private const int StreamFlushIntervalMilliseconds = 40;
-    private const int StreamFlushCharacterThreshold = 48;
     private const int MaxContextCharacters = 9000;
     private const int MaxChunkContextCharacters = 1400;
     private static readonly JsonSerializerOptions CitationSerializerOptions = new(JsonSerializerDefaults.Web);
@@ -116,6 +114,7 @@ public sealed class StudentChatService : IStudentChatService
     public async Task<StudentChatCitationDetailDto?> GetCitationDetailAsync(
         Guid userId,
         Guid sessionId,
+        Guid messageId,
         Guid documentId,
         int chunkIndex,
         CancellationToken cancellationToken = default)
@@ -128,8 +127,10 @@ public sealed class StudentChatService : IStudentChatService
             return null;
         }
 
-        var similarityScore = await TryResolveCitationSimilarityAsync(
+        var similarityScore = await ResolveCitationSimilarityAsync(
+            userId,
             sessionId,
+            messageId,
             documentId,
             chunkIndex,
             cancellationToken);
@@ -354,10 +355,7 @@ public sealed class StudentChatService : IStudentChatService
         {
             completion = await _chatCompletionService.StreamCompletionAsync(
                 completionContext.Messages,
-                (_, _) =>
-                {
-                    return Task.CompletedTask;
-                },
+                (delta, token) => writeEvent("assistant-delta", new StudentChatAssistantDeltaDto(delta), token),
                 activeModel.ModelName,
                 cancellationToken);
         }
@@ -419,8 +417,6 @@ public sealed class StudentChatService : IStudentChatService
             return;
         }
 
-        await StreamCompletedAssistantResponseAsync(completion.Content, writeEvent, cancellationToken);
-
         await writeEvent(
             "assistant-complete",
             new StudentChatAssistantCompleteDto(
@@ -436,31 +432,6 @@ public sealed class StudentChatService : IStudentChatService
         Func<string, object, CancellationToken, Task> writeEvent,
         CancellationToken cancellationToken) =>
         writeEvent("processing-progress", new StudentChatProgressDto(stage), cancellationToken);
-
-    private static async Task StreamCompletedAssistantResponseAsync(
-        string content,
-        Func<string, object, CancellationToken, Task> writeEvent,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrEmpty(content))
-        {
-            return;
-        }
-
-        for (var offset = 0; offset < content.Length; offset += StreamFlushCharacterThreshold)
-        {
-            var length = Math.Min(StreamFlushCharacterThreshold, content.Length - offset);
-            await writeEvent(
-                "assistant-delta",
-                new StudentChatAssistantDeltaDto(content.Substring(offset, length)),
-                cancellationToken);
-
-            if (offset + length < content.Length)
-            {
-                await Task.Delay(StreamFlushIntervalMilliseconds, cancellationToken);
-            }
-        }
-    }
 
     private async Task<HashSet<Guid>> GetUsableSubjectIdsAsync(CancellationToken cancellationToken)
     {
@@ -621,28 +592,26 @@ public sealed class StudentChatService : IStudentChatService
             : normalized[..Math.Max(0, maxLength - 3)].TrimEnd() + "...";
     }
 
-    private async Task<double> TryResolveCitationSimilarityAsync(
+    private async Task<double?> ResolveCitationSimilarityAsync(
+        Guid userId,
         Guid sessionId,
+        Guid messageId,
         Guid documentId,
         int chunkIndex,
         CancellationToken cancellationToken)
     {
-        var citationJsonCandidates = await _chatRepository.GetCitationJsonAsync(sessionId, cancellationToken);
-
-        foreach (var citationJson in citationJsonCandidates)
+        var citationJson = await _chatRepository.GetMessageCitationsJsonAsync(userId, sessionId, messageId, cancellationToken);
+        if (citationJson is null)
         {
-            var citations = DeserializeCitations(citationJson);
-            var match = citations.FirstOrDefault(citation =>
-                citation.DocumentId == documentId
-                && citation.ChunkIndex == chunkIndex);
-
-            if (match is not null)
-            {
-                return match.SimilarityScore;
-            }
+            return null;
         }
 
-        return 0;
+        var citations = DeserializeCitations(citationJson);
+        var match = citations.FirstOrDefault(citation =>
+            citation.DocumentId == documentId
+            && citation.ChunkIndex == chunkIndex);
+
+        return match?.SimilarityScore;
     }
 
     private sealed record StudentChatSubjectContext(

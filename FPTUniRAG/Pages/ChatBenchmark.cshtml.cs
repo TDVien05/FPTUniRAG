@@ -1,7 +1,6 @@
 using FPTUniRAG.BusinessLayer.Rag.Chat;
 using FPTUniRAG.BusinessLayer.Rag.Chat.Benchmarking;
 using FPTUniRAG.BusinessLayer.Rag.Chat.Models;
-using FPTUniRAG.DataAccessLayer.Repositories.Chat;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,18 +18,15 @@ public sealed class ChatBenchmarkModel : PageModel
     private readonly IChatBenchmarkService _benchmarkService;
     private readonly IChatBenchmarkRunner _benchmarkRunner;
     private readonly IChatModelConfigurationService _chatModelConfiguration;
-    private readonly IStudentChatRepository _chatRepository;
 
     public ChatBenchmarkModel(
         IChatBenchmarkService benchmarkService,
         IChatBenchmarkRunner benchmarkRunner,
-        IChatModelConfigurationService chatModelConfiguration,
-        IStudentChatRepository chatRepository)
+        IChatModelConfigurationService chatModelConfiguration)
     {
         _benchmarkService = benchmarkService;
         _benchmarkRunner = benchmarkRunner;
         _chatModelConfiguration = chatModelConfiguration;
-        _chatRepository = chatRepository;
     }
 
     [BindProperty]
@@ -50,13 +46,13 @@ public sealed class ChatBenchmarkModel : PageModel
     [BindProperty(SupportsGet = true)]
     public Guid? BatchId { get; set; }
 
-    public IReadOnlyList<ChatBenchmarkBatchRecord> Batches { get; private set; } = [];
+    public IReadOnlyList<ChatBenchmarkBatch> Batches { get; private set; } = [];
 
-    public ChatBenchmarkBatchRecord? SelectedBatch { get; private set; }
+    public ChatBenchmarkBatch? SelectedBatch { get; private set; }
 
     public IReadOnlyList<ChatModelDto> AvailableModels { get; private set; } = [];
 
-    public IReadOnlyList<ChatSubjectRecord> Subjects { get; private set; } = [];
+    public IReadOnlyList<ChatBenchmarkSubject> Subjects { get; private set; } = [];
 
     [TempData]
     public string? SuccessMessage { get; set; }
@@ -120,7 +116,7 @@ public sealed class ChatBenchmarkModel : PageModel
         // no drill-down round trip.
         RunSummaries = await _benchmarkService.GetBatchSummariesAsync(SelectedBatch?.BatchId, cancellationToken);
         AvailableModels = await _chatModelConfiguration.GetModelsAsync(cancellationToken);
-        Subjects = await _chatRepository.SearchSubjectsAsync(null, SubjectLimit, cancellationToken);
+        Subjects = await _benchmarkService.GetSubjectsAsync(SubjectLimit, cancellationToken);
     }
 
     public bool IsViewingLatestBatch =>

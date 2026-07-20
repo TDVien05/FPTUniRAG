@@ -19,8 +19,8 @@ public static class ChatBenchmarkAggregation
 
     public static ChatBenchmarkRunSummary Summarize(ChatBenchmarkRunRecord run)
     {
-        var results = run.Results;
-        var successful = results.Where(result => result.IsSuccess).ToArray();
+        var storedResults = run.Results;
+        var successful = storedResults.Where(result => result.IsSuccess).ToArray();
 
         // Latency is only meaningful for successful calls: a request that failed after
         // 30 ms would otherwise look like the fastest answer in the set.
@@ -38,7 +38,7 @@ public static class ChatBenchmarkAggregation
             run.PromptCount,
             run.CompletedCount,
             successful.Length,
-            results.Count == 0 ? 0 : decimal.Round(successful.Length * 100m / results.Count, 2),
+            storedResults.Count == 0 ? 0 : decimal.Round(successful.Length * 100m / storedResults.Count, 2),
             Percentile(latencies, 0.5),
             Percentile(latencies, 0.95),
             latencies.Length == 0 ? null : latencies.Average(),
@@ -49,7 +49,7 @@ public static class ChatBenchmarkAggregation
             run.StartedAt,
             run.CompletedAt,
             run.ErrorMessage,
-            results);
+            storedResults.Select(MapResult).ToArray());
     }
 
     /// <summary>
@@ -103,7 +103,32 @@ public static class ChatBenchmarkAggregation
     }
 
     private static bool IsFinished(this ChatBenchmarkRunRecord run) => run.Status is "completed" or "failed";
+
+    private static ChatBenchmarkResult MapResult(ChatBenchmarkResultRecord result) =>
+        new(
+            result.ResultId,
+            result.PromptText,
+            result.AnswerText,
+            result.RetrievedChunkCount,
+            result.PromptTokens,
+            result.CompletionTokens,
+            result.TotalTokens,
+            result.ResponseTimeMs,
+            result.IsSuccess,
+            result.ErrorMessage);
 }
+
+public sealed record ChatBenchmarkResult(
+    Guid ResultId,
+    string PromptText,
+    string? AnswerText,
+    int RetrievedChunkCount,
+    long PromptTokens,
+    long CompletionTokens,
+    long TotalTokens,
+    int? ResponseTimeMs,
+    bool IsSuccess,
+    string? ErrorMessage);
 
 public sealed record ChatBenchmarkRunSummary(
     Guid RunId,
@@ -124,7 +149,7 @@ public sealed record ChatBenchmarkRunSummary(
     DateTime StartedAt,
     DateTime? CompletedAt,
     string? ErrorMessage,
-    IReadOnlyList<ChatBenchmarkResultRecord> Results)
+    IReadOnlyList<ChatBenchmarkResult> Results)
 {
     public bool IsFinished => Status is "completed" or "failed";
 

@@ -67,6 +67,27 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
             return new StudentChunkRetrievalResult([], true);
         }
 
+        if (useVectorSearch)
+        {
+            var similarityRows = await _vectorRepository.SearchSimilarChunksAsync(
+                _tableName, subjectId, embeddingConfiguration.Model, queryEmbedding!, limit, cancellationToken);
+
+            var vectorChunks = similarityRows
+                .Select(row => new StudentRetrievedChunk(
+                    row.ChunkId,
+                    row.Content,
+                    row.ChunkIndex,
+                    row.DocumentId,
+                    row.DocumentTitle,
+                    row.SubjectCode,
+                    row.SubjectName,
+                    row.ChapterTitle,
+                    row.SimilarityScore))
+                .ToList();
+
+            return new StudentChunkRetrievalResult(vectorChunks, false);
+        }
+
         var repositoryRows = await _vectorRepository.GetSubjectChunksAsync(
             _tableName, subjectId, embeddingConfiguration.Model, cancellationToken);
         var rows = repositoryRows.Select(row => new StudentRetrievedChunkWithEmbedding(
@@ -83,9 +104,7 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
                 row.SubjectCode,
                 row.SubjectName,
                 row.ChapterTitle,
-                useVectorSearch
-                    ? ComputeCosineSimilarity(queryEmbedding!, row.Embedding)
-                    : ComputeKeywordScore(queryTerms, row)))
+                ComputeKeywordScore(queryTerms, row)))
             .Where(item => item.SimilarityScore > 0)
             .OrderByDescending(item => item.SimilarityScore)
             .ThenBy(item => item.DocumentTitle)
@@ -93,7 +112,7 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
             .Take(limit)
             .ToList();
 
-        return new StudentChunkRetrievalResult(chunks, !useVectorSearch);
+        return new StudentChunkRetrievalResult(chunks, true);
     }
 
     private static string ResolveTableName(string? configuredTableName)
@@ -108,32 +127,6 @@ public sealed class StudentChunkRetrievalService : IStudentChunkRetrievalService
         }
 
         return tableName;
-    }
-
-    private static double ComputeCosineSimilarity(float[] left, float[] right)
-    {
-        if (left.Length == 0 || right.Length == 0 || left.Length != right.Length)
-        {
-            return 0;
-        }
-
-        double dot = 0;
-        double leftMagnitudeSquared = 0;
-        double rightMagnitudeSquared = 0;
-
-        for (var index = 0; index < left.Length; index++)
-        {
-            dot += left[index] * right[index];
-            leftMagnitudeSquared += left[index] * left[index];
-            rightMagnitudeSquared += right[index] * right[index];
-        }
-
-        if (leftMagnitudeSquared <= 0 || rightMagnitudeSquared <= 0)
-        {
-            return 0;
-        }
-
-        return dot / (Math.Sqrt(leftMagnitudeSquared) * Math.Sqrt(rightMagnitudeSquared));
     }
 
     private static IReadOnlyList<string> Tokenize(string value)

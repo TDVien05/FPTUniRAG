@@ -17,14 +17,39 @@ public sealed class ChatBenchmarkService : IChatBenchmarkService
         _benchmarkRepository = benchmarkRepository;
     }
 
+    public async Task<IReadOnlyList<ChatBenchmarkSubject>> GetSubjectsAsync(
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        var subjects = await _chatRepository.SearchSubjectsAsync(null, limit, cancellationToken);
+        return subjects
+            .Select(subject => new ChatBenchmarkSubject(
+                subject.SubjectId,
+                subject.SubjectCode,
+                subject.SubjectName))
+            .ToArray();
+    }
+
     public async Task<IReadOnlyList<ChatBenchmarkRunSummary>> GetBatchSummariesAsync(Guid? batchId, CancellationToken cancellationToken = default)
     {
         var runs = await _benchmarkRepository.GetBatchAsync(batchId, cancellationToken);
         return runs.Select(ChatBenchmarkAggregation.Summarize).ToArray();
     }
 
-    public async Task<IReadOnlyList<ChatBenchmarkBatchRecord>> GetRecentBatchesAsync(int limit, CancellationToken cancellationToken = default) =>
-        await _benchmarkRepository.GetRecentBatchesAsync(limit, cancellationToken);
+    public async Task<IReadOnlyList<ChatBenchmarkBatch>> GetRecentBatchesAsync(
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        var batches = await _benchmarkRepository.GetRecentBatchesAsync(limit, cancellationToken);
+        return batches
+            .Select(batch => new ChatBenchmarkBatch(
+                batch.BatchId,
+                batch.StartedAt,
+                batch.SubjectCode,
+                batch.PromptText,
+                batch.ModelCount))
+            .ToArray();
+    }
 
     public async Task<IReadOnlyList<ChatBenchmarkHealthPoint>> GetHealthTrendAsync(int limit, CancellationToken cancellationToken = default)
     {

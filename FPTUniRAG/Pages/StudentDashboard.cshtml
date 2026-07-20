@@ -403,7 +403,8 @@
                 && Array.isArray(message.citations)
                 && message.citations.length);
             const latestAssistantMessage = assistantMessages.at(-1);
-            state.latestSources = latestAssistantMessage?.citations || [];
+            state.latestSources = (latestAssistantMessage?.citations || [])
+                .map(citation => ({ ...citation, messageId: latestAssistantMessage.messageId }));
         }
 
         function upsertSessionSummary(sessionId, previewText, activityAt) {
@@ -626,6 +627,7 @@
                         data-document-id="${citation.documentId}"
                         data-chunk-index="${citation.chunkIndex}"
                         data-session-id="${state.sessionId || ""}"
+                        data-message-id="${message.messageId || ""}"
                         data-document-title="${escapeAttribute(citation.documentTitle)}"
                         data-chapter-title="${escapeAttribute(citation.chapterTitle)}"
                         data-subject-code="${escapeAttribute(citation.subjectCode)}">
@@ -708,6 +710,7 @@
                     data-document-id="${source.documentId}"
                     data-chunk-index="${source.chunkIndex}"
                     data-session-id="${state.sessionId || ""}"
+                    data-message-id="${source.messageId || ""}"
                     data-document-title="${escapeAttribute(source.documentTitle)}"
                     data-chapter-title="${escapeAttribute(source.chapterTitle)}"
                     data-subject-code="${escapeAttribute(source.subjectCode)}">
@@ -732,16 +735,18 @@
             container.querySelectorAll(".citation-trigger").forEach(button => {
                 button.addEventListener("click", async () => {
                     const sessionId = button.getAttribute("data-session-id");
+                    const messageId = button.getAttribute("data-message-id");
                     const documentId = button.getAttribute("data-document-id");
                     const chunkIndexRaw = button.getAttribute("data-chunk-index");
                     const chunkIndex = Number.parseInt(chunkIndexRaw || "", 10);
 
-                    if (!sessionId || !documentId || Number.isNaN(chunkIndex)) {
+                    if (!sessionId || !messageId || !documentId || Number.isNaN(chunkIndex)) {
                         return;
                     }
 
                     await openCitationDetail({
                         sessionId,
+                        messageId,
                         documentId,
                         chunkIndex,
                         documentTitle: button.getAttribute("data-document-title") || "Chunk detail",
@@ -766,6 +771,7 @@
 
                     await openCitationDetail({
                         sessionId: state.sessionId,
+                        messageId: message.messageId,
                         documentId: citation.documentId,
                         chunkIndex: citation.chunkIndex,
                         documentTitle: citation.documentTitle,
@@ -782,6 +788,7 @@
 
             try {
                 const url = new URL(`/api/student/chat/sessions/${encodeURIComponent(citation.sessionId)}/citations`, window.location.origin);
+                url.searchParams.set("messageId", citation.messageId);
                 url.searchParams.set("documentId", citation.documentId);
                 url.searchParams.set("chunkIndex", String(citation.chunkIndex));
 
@@ -955,7 +962,8 @@
                 assistantPlaceholder.messageId = payload.messageId;
                 assistantPlaceholder.messageContent = payload.messageContent || assistantPlaceholder.messageContent;
                 assistantPlaceholder.createdAt = payload.createdAt;
-                assistantPlaceholder.citations = Array.isArray(payload.citations) ? payload.citations : [];
+                assistantPlaceholder.citations = (Array.isArray(payload.citations) ? payload.citations : [])
+                    .map(citation => ({ ...citation, messageId: assistantPlaceholder.messageId }));
                 assistantPlaceholder.isStreaming = false;
                 assistantPlaceholder.progressStage = null;
                 state.latestSources = assistantPlaceholder.citations;

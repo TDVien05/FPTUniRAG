@@ -53,6 +53,7 @@ public static class StudentChatApiEndpoints
 
         group.MapGet("/sessions/{sessionId:guid}/citations", async (
             Guid sessionId,
+            Guid messageId,
             Guid documentId,
             int chunkIndex,
             HttpContext httpContext,
@@ -67,6 +68,7 @@ public static class StudentChatApiEndpoints
             var citation = await studentChatService.GetCitationDetailAsync(
                 userId,
                 sessionId,
+                messageId,
                 documentId,
                 chunkIndex,
                 cancellationToken);

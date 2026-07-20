@@ -81,6 +81,43 @@ public sealed class ChunkVectorRepository(AppDbContext context) : IChunkVectorRe
         return rows;
     }
 
+    public async Task<IReadOnlyList<ChunkSimilarityRecord>> SearchSimilarChunksAsync(string tableName, Guid subjectId, string model, float[] queryEmbedding, int limit, CancellationToken cancellationToken = default)
+    {
+        ValidateTableName(tableName);
+        if (queryEmbedding.Length == 0) return [];
+        var rows = new List<ChunkSimilarityRecord>();
+        await using var command = context.Database.GetDbConnection().CreateCommand();
+        command.CommandText = $"""
+            SELECT chunk_id, content, chunk_index, document_id, title, subject_code, subject_name, chapter_title, similarity FROM (
+                SELECT ce.chunk_id, c.content, c.chunk_index, d.document_id, d.title, s.subject_code, s.subject_name, ch.chapter_title,
+                       1 - (ce.embedding::vector <=> @queryEmbedding::real[]::vector) AS similarity
+                FROM {tableName} ce
+                INNER JOIN chunks c ON c.chunk_id = ce.chunk_id
+                INNER JOIN documents d ON d.document_id = c.document_id
+                INNER JOIN subjects s ON s.subject_id = d.subject_id
+                INNER JOIN chapters ch ON ch.chapter_id = d.chapter_id
+                WHERE d.subject_id = @subjectId AND lower(coalesce(d.status,'')) = 'completed' AND ce.embedding_model = @model
+            ) ranked
+            WHERE similarity > 0
+            ORDER BY similarity DESC, title, chunk_index
+            LIMIT @limit;
+            """;
+        command.Parameters.Add(new NpgsqlParameter("subjectId", subjectId));
+        command.Parameters.Add(new NpgsqlParameter("model", model));
+        command.Parameters.Add(new NpgsqlParameter<float[]>("queryEmbedding", NpgsqlDbType.Array | NpgsqlDbType.Real) { Value = queryEmbedding });
+        command.Parameters.Add(new NpgsqlParameter("limit", limit));
+        await OpenAsync(command, cancellationToken);
+        try
+        {
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+                rows.Add(new(reader.GetGuid(0), reader.GetString(1), reader.GetInt32(2), reader.GetGuid(3),
+                    reader.GetString(4), reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetDouble(8)));
+        }
+        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UndefinedTable) { }
+        return rows;
+    }
+
     public async Task<IReadOnlySet<Guid>> GetUsableSubjectIdsAsync(string tableName, CancellationToken cancellationToken = default)
     {
         ValidateTableName(tableName);

@@ -33,7 +33,7 @@ public sealed record StudentChatCitationDetailDto(
     string ChapterTitle,
     int ChunkIndex,
     string ChunkContent,
-    double SimilarityScore,
+    double? SimilarityScore,
     Guid? ChunkId = null);
 
 public sealed record StudentChatMessageDto(
