@@ -1,0 +1,402 @@
+@page "/StudentChatReport"
+@model FPTUniRAG.Pages.StudentChatReportModel
+@using System.Globalization
+@{
+    Layout = null;
+    ViewData["Title"] = "Student Chat Report - FPT UniRAG";
+    var selected = Model.Report.SelectedSession;
+    var metricTurns = selected?.Turns.Where(turn => turn.PromptTokens.HasValue || turn.CompletionTokens.HasValue).ToArray() ?? [];
+    var tokenAxisMax = metricTurns.Length == 0 ? 1L : Math.Max(1L, metricTurns.Max(turn => (turn.PromptTokens ?? 0) + (turn.CompletionTokens ?? 0)));
+    var latencyTurns = selected?.Turns.Where(turn => turn.ResponseTimeMs.HasValue).ToArray() ?? [];
+    var latencyAxisMax = latencyTurns.Length == 0 ? 1 : Math.Max(1, latencyTurns.Max(turn => turn.ResponseTimeMs!.Value));
+    // DateOnly stringifies with the server culture in route values, which the query-string binder
+    // then parses as invariant. Format explicitly so the filter survives paging and drill-down.
+    var fromRoute = Model.Report.FromDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    var toRoute = Model.Report.ToDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=block" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="admin-dashboard-page accounts-page">
+    <main class="admin-shell" aria-label="Student chat report">
+        @await Html.PartialAsync("_AdminNavigation")
+
+        <section class="accounts-main student-chat-report-main">
+            <div class="accounts-canvas">
+                <header class="accounts-header student-chat-report-header">
+                    <div>
+                        <p class="accounts-eyebrow">Conversation operations</p>
+                        <h1>Student Chat Report</h1>
+                        <p>Inspect stored student sessions, token consumption, response latency, retrieval activity, and complete prompt/answer turns.</p>
+                    </div>
+                </header>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Report.ValidationMessage))
+                {
+                    <div class="accounts-feedback accounts-feedback-error" role="alert">@Model.Report.ValidationMessage</div>
+                }
+
+                <form method="get" class="accounts-card student-chat-report-filters" aria-label="Filter student chat sessions">
+                    <label class="subject-field student-chat-report-search">
+                        <span>Student</span>
+                        <span class="subject-input-with-icon">
+                            <span class="material-symbols-outlined" aria-hidden="true">search</span>
+                            <input asp-for="Search" type="search" placeholder="Name, email, or student code" maxlength="100" />
+                        </span>
+                    </label>
+                    <label class="subject-field">
+                        <span>Subject</span>
+                        <select class="accounts-select" asp-for="SubjectId">
+                            <option value="">All subjects</option>
+                            @foreach (var subject in Model.Report.Subjects)
+                            {
+                                <option value="@subject.SubjectId">@subject.SubjectCode — @subject.SubjectName</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="subject-field">
+                        <span>From</span>
+                        <input class="accounts-select" asp-for="FromDate" type="date" />
+                    </label>
+                    <label class="subject-field">
+                        <span>To</span>
+                        <input class="accounts-select" asp-for="ToDate" type="date" />
+                    </label>
+                    <div class="student-chat-report-filter-actions">
+                        <button class="student-chat-report-filter-button" type="submit">
+                            <span class="material-symbols-outlined" aria-hidden="true">filter_alt</span>
+                            Apply filters
+                        </button>
+                        <a class="student-chat-report-reset-button" href="/StudentChatReport">Reset</a>
+                    </div>
+                </form>
+
+                <section class="benchmark-stats student-chat-report-stats" aria-label="Filtered chat totals">
+                    <article class="benchmark-stat">
+                        <p class="benchmark-stat-label">Sessions</p>
+                        <p class="benchmark-stat-value">@Model.Report.Summary.SessionCount.ToString("N0")</p>
+                        <p class="benchmark-stat-meta">Matching the current filters</p>
+                    </article>
+                    <article class="benchmark-stat">
+                        <p class="benchmark-stat-label">Prompt turns</p>
+                        <p class="benchmark-stat-value">@Model.Report.Summary.PromptCount.ToString("N0")</p>
+                        <p class="benchmark-stat-meta">@Model.Report.Summary.AnsweredCount.ToString("N0") saved response(s)</p>
+                    </article>
+                    <article class="benchmark-stat">
+                        <p class="benchmark-stat-label">Input / output</p>
+                        <p class="benchmark-stat-value student-chat-report-token-value">
+                            @Model.Report.Summary.PromptTokens.ToString("N0") <span>/</span> @Model.Report.Summary.CompletionTokens.ToString("N0")
+                        </p>
+                        <p class="benchmark-stat-meta">Provider token accounting</p>
+                    </article>
+                    <article class="benchmark-stat">
+                        <p class="benchmark-stat-label">Average latency</p>
+                        <p class="benchmark-stat-value">@FormatMs(Model.Report.Summary.AverageResponseTimeMs)</p>
+                        <p class="benchmark-stat-meta">Recorded completed responses</p>
+                    </article>
+                </section>
+
+                <section class="accounts-card accounts-table-card student-chat-report-session-card" aria-labelledby="student-chat-sessions-title">
+                    <div class="accounts-card-header">
+                        <div>
+                            <p class="accounts-eyebrow">Session explorer</p>
+                            <h2 id="student-chat-sessions-title">Student sessions</h2>
+                            <p>Newest activity first · page @Model.Report.Page of @Model.Report.TotalPages</p>
+                        </div>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table student-chat-report-session-table">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Subject</th>
+                                    <th class="is-numeric">Prompts</th>
+                                    <th class="is-numeric">Input</th>
+                                    <th class="is-numeric">Output</th>
+                                    <th class="is-numeric">Avg. latency</th>
+                                    <th>Last activity</th>
+                                    <th><span class="benchmark-sr-only">Open</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model.Report.Sessions.Count == 0)
+                                {
+                                    <tr>
+                                        <td colspan="8">
+                                            <div class="benchmark-empty">
+                                                <span class="material-symbols-outlined" aria-hidden="true">forum</span>
+                                                <p><strong>No student chat sessions found.</strong></p>
+                                                <p>Adjust the filters or wait for students to start a chat.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    @foreach (var session in Model.Report.Sessions)
+                                    {
+                                        <tr class="@(selected?.SessionId == session.SessionId ? "is-selected" : string.Empty)">
+                                            <td>
+                                                <strong>@session.StudentName</strong>
+                                                <span>@(session.StudentCode ?? session.StudentEmail)</span>
+                                            </td>
+                                            <td><strong>@(session.SubjectCode ?? "—")</strong><span>@(session.SubjectName ?? "No subject")</span></td>
+                                            <td class="is-numeric">@session.PromptCount.ToString("N0")</td>
+                                            <td class="is-numeric">@session.PromptTokens.ToString("N0")</td>
+                                            <td class="is-numeric">@session.CompletionTokens.ToString("N0")</td>
+                                            <td class="is-numeric">@FormatMs(session.AverageResponseTimeMs)</td>
+                                            <td>@(session.LastActivityAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
+                                            <td>
+                                                <a class="benchmark-link-button" asp-page="/StudentChatReport" asp-fragment="session-analysis"
+                                                   asp-route-Search="@Model.Report.Search" asp-route-SubjectId="@Model.Report.SubjectId"
+                                                   asp-route-FromDate="@fromRoute" asp-route-ToDate="@toRoute"
+                                                   asp-route-PageNumber="@Model.Report.Page" asp-route-SessionId="@session.SessionId">
+                                                    Analyze
+                                                    <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    @if (Model.Report.TotalPages > 1)
+                    {
+                        <nav class="student-chat-report-pagination" aria-label="Session pages">
+                            @if (Model.Report.Page > 1)
+                            {
+                                <a asp-page="/StudentChatReport" asp-route-Search="@Model.Report.Search" asp-route-SubjectId="@Model.Report.SubjectId"
+                                   asp-route-FromDate="@fromRoute" asp-route-ToDate="@toRoute"
+                                   asp-route-PageNumber="@(Model.Report.Page - 1)">Previous</a>
+                            }
+                            <span>Page @Model.Report.Page of @Model.Report.TotalPages</span>
+                            @if (Model.Report.Page < Model.Report.TotalPages)
+                            {
+                                <a asp-page="/StudentChatReport" asp-route-Search="@Model.Report.Search" asp-route-SubjectId="@Model.Report.SubjectId"
+                                   asp-route-FromDate="@fromRoute" asp-route-ToDate="@toRoute"
+                                   asp-route-PageNumber="@(Model.Report.Page + 1)">Next</a>
+                            }
+                        </nav>
+                    }
+                </section>
+
+                @if (selected is not null)
+                {
+                    <header class="accounts-header student-chat-analysis-header" id="session-analysis">
+                        <div>
+                            <p class="accounts-eyebrow">Selected session</p>
+                            <h2>@selected.StudentName · @(selected.SubjectCode ?? "No subject")</h2>
+                            <p>@selected.StudentEmail@if (!string.IsNullOrWhiteSpace(selected.StudentCode)) {<text> · @selected.StudentCode</text>} · Started @(selected.StartedAt?.ToString("yyyy-MM-dd HH:mm") ?? "unknown")</p>
+                        </div>
+                    </header>
+
+                    <section class="benchmark-stats student-chat-report-stats" aria-label="Selected session totals">
+                        <article class="benchmark-stat"><p class="benchmark-stat-label">Prompts</p><p class="benchmark-stat-value">@selected.PromptCount</p><p class="benchmark-stat-meta">@selected.AnsweredCount answered</p></article>
+                        <article class="benchmark-stat"><p class="benchmark-stat-label">Input tokens</p><p class="benchmark-stat-value">@selected.PromptTokens.ToString("N0")</p><p class="benchmark-stat-meta">Full provider context</p></article>
+                        <article class="benchmark-stat"><p class="benchmark-stat-label">Output tokens</p><p class="benchmark-stat-value">@selected.CompletionTokens.ToString("N0")</p><p class="benchmark-stat-meta">Generated content</p></article>
+                        <article class="benchmark-stat"><p class="benchmark-stat-label">Average latency</p><p class="benchmark-stat-value">@FormatMs(selected.AverageResponseTimeMs)</p><p class="benchmark-stat-meta">Session duration @FormatDuration(selected.DurationMs)</p></article>
+                    </section>
+
+                    <div class="student-chat-report-chart-grid">
+                        <section class="accounts-card student-chat-report-chart-card" aria-labelledby="session-token-chart-title">
+                            <div class="chatviz-header"><div><h3 class="chatviz-title" id="session-token-chart-title">Input / output by prompt</h3><p class="chatviz-subtitle">Provider tokens for each saved response.</p></div></div>
+                            @if (metricTurns.Length == 0)
+                            {
+                                <p class="student-chat-report-chart-empty">No token usage was saved for this session.</p>
+                            }
+                            else
+                            {
+                                <div class="chatviz-legend"><span class="chatviz-legend-item"><span class="chatviz-legend-swatch student-chat-input-swatch"></span>Input</span><span class="chatviz-legend-item"><span class="chatviz-legend-swatch student-chat-output-swatch"></span>Output</span></div>
+                                <div class="student-chat-turn-chart" role="img" aria-labelledby="session-token-chart-title">
+                                    @foreach (var turn in metricTurns)
+                                    {
+                                        var inputHeight = Percent(turn.PromptTokens ?? 0, tokenAxisMax);
+                                        var outputHeight = Percent(turn.CompletionTokens ?? 0, tokenAxisMax);
+                                        var tooltip = $"Prompt {turn.TurnNumber} · {(turn.PromptTokens ?? 0):N0} input · {(turn.CompletionTokens ?? 0):N0} output";
+                                        <div class="student-chat-turn-chart-column">
+                                            <div class="student-chat-token-bars" tabindex="0" data-tooltip="@tooltip" aria-label="@tooltip">
+                                                <span class="student-chat-input-bar" style="height:@inputHeight%"></span>
+                                                <span class="student-chat-output-bar" style="height:@outputHeight%"></span>
+                                            </div>
+                                            <span>P@turn.TurnNumber</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </section>
+
+                        <section class="accounts-card student-chat-report-chart-card" aria-labelledby="session-latency-chart-title">
+                            <div class="chatviz-header"><div><h3 class="chatviz-title" id="session-latency-chart-title">Response time by prompt</h3><p class="chatviz-subtitle">Elapsed time until the complete answer was available.</p></div></div>
+                            @if (latencyTurns.Length == 0)
+                            {
+                                <p class="student-chat-report-chart-empty">No response-time data was saved for this session.</p>
+                            }
+                            else
+                            {
+                                <div class="student-chat-turn-chart" role="img" aria-labelledby="session-latency-chart-title">
+                                    @foreach (var turn in latencyTurns)
+                                    {
+                                        var height = Percent(turn.ResponseTimeMs ?? 0, latencyAxisMax);
+                                        var tooltip = $"Prompt {turn.TurnNumber} · {FormatMs(turn.ResponseTimeMs)}";
+                                        <div class="student-chat-turn-chart-column">
+                                            <div class="student-chat-latency-bar" style="height:@height%" tabindex="0" data-tooltip="@tooltip" aria-label="@tooltip"></div>
+                                            <span>P@turn.TurnNumber</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </section>
+                    </div>
+
+                    <section class="student-chat-report-turns" aria-labelledby="session-turns-title">
+                        <div class="accounts-card-header student-chat-report-turns-header">
+                            <div><p class="accounts-eyebrow">Conversation detail</p><h2 id="session-turns-title">Prompt and answer turns</h2><p>Input token counts include the complete context sent to the provider.</p></div>
+                        </div>
+                        @foreach (var turn in selected.Turns)
+                        {
+                            <details class="accounts-card student-chat-turn-card" open="@(turn.TurnNumber == 1)">
+                                <summary>
+                                    <span class="student-chat-turn-number">@turn.TurnNumber</span>
+                                    <span class="student-chat-turn-summary-text">
+                                        <strong>@Preview(turn.PromptText ?? turn.AnswerText ?? "Stored message")</strong>
+                                        <small>@StatusLabel(turn.Status) · @FormatMs(turn.ResponseTimeMs) · @((turn.TotalTokens?.ToString("N0") ?? "—")) tokens</small>
+                                    </span>
+                                    <span class="student-chat-turn-status student-chat-turn-status-@turn.Status">@StatusLabel(turn.Status)</span>
+                                    <span class="material-symbols-outlined student-chat-turn-chevron" aria-hidden="true">expand_more</span>
+                                </summary>
+                                <div class="student-chat-turn-content">
+                                    <article class="student-chat-message-panel student-chat-prompt-panel">
+                                        <header><span class="material-symbols-outlined" aria-hidden="true">person</span><strong>Student prompt</strong><time>@(turn.PromptAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</time></header>
+                                        <p>@(turn.PromptText ?? "No paired student prompt was found.")</p>
+                                    </article>
+                                    <article class="student-chat-message-panel student-chat-answer-panel">
+                                        <header><span class="material-symbols-outlined" aria-hidden="true">smart_toy</span><strong>Assistant answer</strong><time>@(turn.AnswerAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</time></header>
+                                        @if (turn.AnswerText is null)
+                                        {
+                                            <p class="student-chat-report-missing">No saved response is available. The original failure reason was not stored.</p>
+                                        }
+                                        else
+                                        {
+                                            <div class="student-chat-report-markdown" data-markdown="@turn.AnswerText"></div>
+                                        }
+                                    </article>
+                                    <dl class="student-chat-turn-metrics">
+                                        <div><dt>Input tokens</dt><dd>@(turn.PromptTokens?.ToString("N0") ?? "—")</dd></div>
+                                        <div><dt>Output tokens</dt><dd>@(turn.CompletionTokens?.ToString("N0") ?? "—")</dd></div>
+                                        <div><dt>Total tokens</dt><dd>@(turn.TotalTokens?.ToString("N0") ?? "—")</dd></div>
+                                        <div><dt>Response time</dt><dd>@FormatMs(turn.ResponseTimeMs)</dd></div>
+                                        <div><dt>Retrieved chunks</dt><dd>@(turn.RetrievalCount?.ToString("N0") ?? "—")</dd></div>
+                                        <div><dt>Citations</dt><dd>@turn.Citations.Count.ToString("N0")</dd></div>
+                                        <div><dt>Provider</dt><dd>@(turn.ProviderName ?? "—")</dd></div>
+                                        <div><dt>Model</dt><dd>@(turn.ModelName ?? "—")</dd></div>
+                                    </dl>
+                                    @if (turn.Citations.Count > 0)
+                                    {
+                                        <div class="student-chat-citations">
+                                            <h4>Citation references</h4>
+                                            <ol>
+                                                @foreach (var citation in turn.Citations)
+                                                {
+                                                    <li><strong>[@citation.CitationNumber] @citation.DocumentTitle</strong><span>@citation.SubjectCode · @citation.ChapterTitle · chunk @citation.ChunkIndex · @citation.SimilarityScore.ToString("0.###", CultureInfo.InvariantCulture)</span></li>
+                                                }
+                                            </ol>
+                                        </div>
+                                    }
+                                </div>
+                            </details>
+                        }
+                    </section>
+                }
+            </div>
+        </section>
+    </main>
+
+    <div id="student-chat-report-tooltip" class="chatviz-tooltip" role="tooltip"></div>
+    <script>
+        (() => {
+            const escapeHtml = (value) => String(value ?? "")
+                .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+
+            document.querySelectorAll(".student-chat-report-markdown").forEach((target) => {
+                const markdown = target.dataset.markdown || "";
+                if (!window.marked || !window.DOMPurify) {
+                    target.innerHTML = escapeHtml(markdown).replaceAll("\n", "<br />");
+                    return;
+                }
+                try {
+                    target.innerHTML = window.DOMPurify.sanitize(window.marked.parse(markdown, { gfm: true, breaks: true }));
+                } catch {
+                    target.innerHTML = escapeHtml(markdown).replaceAll("\n", "<br />");
+                }
+            });
+
+            const tooltip = document.getElementById("student-chat-report-tooltip");
+            const show = (target, event) => {
+                if (!tooltip || !target.dataset.tooltip) return;
+                tooltip.textContent = target.dataset.tooltip;
+                const rect = target.getBoundingClientRect();
+                tooltip.style.left = `${event instanceof PointerEvent ? event.clientX : rect.left + rect.width / 2}px`;
+                tooltip.style.top = `${event instanceof PointerEvent ? event.clientY : rect.top}px`;
+                tooltip.classList.add("is-visible");
+            };
+            const hide = () => tooltip?.classList.remove("is-visible");
+            document.querySelectorAll("[data-tooltip]").forEach((target) => {
+                target.addEventListener("pointerenter", (event) => show(target, event));
+                target.addEventListener("pointermove", (event) => show(target, event));
+                target.addEventListener("pointerleave", hide);
+                target.addEventListener("focus", (event) => show(target, event));
+                target.addEventListener("blur", hide);
+            });
+        })();
+    </script>
+</body>
+</html>
+
+@functions {
+    private static string FormatMs(double? milliseconds)
+    {
+        if (!milliseconds.HasValue) return "—";
+        return milliseconds.Value < 1000 ? $"{milliseconds.Value:0} ms" : $"{milliseconds.Value / 1000:0.##} s";
+    }
+
+    private static string FormatMs(int? milliseconds) => FormatMs(milliseconds.HasValue ? milliseconds.Value : (double?)null);
+
+    private static string FormatDuration(long? milliseconds)
+    {
+        if (!milliseconds.HasValue) return "—";
+        var duration = TimeSpan.FromMilliseconds(milliseconds.Value);
+        return duration.TotalHours >= 1 ? $"{(int)duration.TotalHours}h {duration.Minutes}m" : duration.TotalMinutes >= 1 ? $"{(int)duration.TotalMinutes}m {duration.Seconds}s" : $"{duration.Seconds}s";
+    }
+
+    private static string Preview(string value)
+    {
+        var normalized = value.Replace('\r', ' ').Replace('\n', ' ').Trim();
+        return normalized.Length <= 88 ? normalized : normalized[..88] + "…";
+    }
+
+    private static string StatusLabel(string status) => status switch
+    {
+        "answered" => "Answered",
+        "no-saved-response" => "No saved response",
+        "usage-unavailable" => "Usage unavailable",
+        "unpaired-response" => "Unpaired response",
+        _ => status
+    };
+
+    private static string Percent(long value, long maximum) => Math.Clamp(value * 100d / Math.Max(1, maximum), 0, 100).ToString("0.##", CultureInfo.InvariantCulture);
+
+    private static string Percent(int value, int maximum) => Math.Clamp(value * 100d / Math.Max(1, maximum), 0, 100).ToString("0.##", CultureInfo.InvariantCulture);
+}

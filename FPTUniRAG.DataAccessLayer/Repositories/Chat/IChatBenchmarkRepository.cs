@@ -19,6 +19,9 @@ public interface IChatBenchmarkRepository
     /// <summary>Headline of each past benchmark, newest first, for the history picker.</summary>
     Task<IReadOnlyList<ChatBenchmarkBatchRecord>> GetRecentBatchesAsync(int limit, CancellationToken cancellationToken = default);
 
+    /// <summary>All runs and result rows for the latest fully-finished benchmark batches.</summary>
+    Task<IReadOnlyList<ChatBenchmarkRunRecord>> GetRecentBatchRunsAsync(int batchLimit, CancellationToken cancellationToken = default);
+
 }
 
 public sealed record ChatBenchmarkBatchRecord(
@@ -42,6 +45,7 @@ public sealed record ChatBenchmarkResultInput(
 
 public sealed record ChatBenchmarkRunRecord(
     Guid RunId,
+    Guid? BatchId,
     string ModelName,
     Guid? SubjectId,
     string? SubjectCode,

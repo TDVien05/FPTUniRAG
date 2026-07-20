@@ -5,26 +5,20 @@
     Layout = null;
     ViewData["Title"] = "Chat Model Benchmark - FPT UniRAG";
 
-    var responseRows = Model.ModelRows.Where(row => row.AverageResponseTimeMs.HasValue).ToList();
-    var chronologicalSessions = Model.SessionRows.OrderBy(row => row.LastUsedAt).ToList();
+    var healthPoints = Model.HealthTrend;
+    var latestHealth = healthPoints.LastOrDefault();
+    var successChartPoints = BuildChartPoints(healthPoints.Select(point => (double?)point.SuccessRate), 100);
+    var latencyAxisMax = NiceMax(healthPoints.Count == 0
+        ? 0
+        : healthPoints.Max(point => (point.P95LatencyMs ?? point.P50LatencyMs ?? 0) / 1000d));
+    var p50ChartPoints = BuildChartPoints(healthPoints.Select(point => point.P50LatencyMs / 1000d), latencyAxisMax);
+    var p95ChartPoints = BuildChartPoints(healthPoints.Select(point => point.P95LatencyMs / 1000d), latencyAxisMax);
+    var tokenAxisMax = NiceMax(healthPoints.Count == 0
+        ? 0
+        : healthPoints.Max(point => point.PromptTokens + point.CompletionTokens));
 
-    var modelTokenAxisMax = NiceMax(Model.ModelRows.Count == 0
-        ? 0
-        : Model.ModelRows.Max(row => Math.Max(row.PromptTokens, row.CompletionTokens)));
-    var responseAxisMax = NiceMax(responseRows.Count == 0
-        ? 0
-        : responseRows.Max(row => row.AverageResponseTimeMs!.Value / 1000d));
-    var sessionTokenAxisMax = NiceMax(chronologicalSessions.Count == 0
-        ? 0
-        : chronologicalSessions.Max(row => Math.Max(row.PromptTokens, row.CompletionTokens)));
-
-    // Summary strip + "fastest model" emphasis for the comparison table.
     var latencyRuns = Model.RunSummaries.Where(run => run.P50LatencyMs.HasValue).ToList();
     double? bestP50 = latencyRuns.Count == 0 ? null : latencyRuns.Min(run => run.P50LatencyMs!.Value);
-    var totalAttempts = Model.RunSummaries.Sum(run => run.CompletedCount);
-    var totalSuccesses = Model.RunSummaries.Sum(run => run.SuccessCount);
-    var overallSuccessRate = totalAttempts == 0 ? (decimal?)null : decimal.Round(totalSuccesses * 100m / totalAttempts, 1);
-    DateTime? lastRunAt = Model.RunSummaries.Count == 0 ? null : Model.RunSummaries.Max(run => run.StartedAt);
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -61,29 +55,26 @@
                     <div class="accounts-feedback accounts-feedback-error" role="alert">@Model.ErrorMessage</div>
                 }
 
-                <!-- Dense KPI strip: the four numbers that decide whether a run is worth starting -->
-                <section class="benchmark-stats" aria-label="Benchmark overview">
+                <section class="benchmark-stats" aria-label="Latest benchmark health">
                     <article class="benchmark-stat">
-                        <p class="benchmark-stat-label">Runs recorded</p>
-                        <p class="benchmark-stat-value">@Model.RunSummaries.Count</p>
-                        <p class="benchmark-stat-meta">One per model per benchmark</p>
+                        <p class="benchmark-stat-label">Latest success rate</p>
+                        <p class="benchmark-stat-value">@(latestHealth is null ? "—" : $"{latestHealth.SuccessRate.ToString("0.#", CultureInfo.InvariantCulture)}%")</p>
+                        <p class="benchmark-stat-meta">@(latestHealth is null ? "No completed batches" : $"{latestHealth.SuccessCount} of {latestHealth.AttemptCount} prompts")</p>
                     </article>
                     <article class="benchmark-stat">
-                        <p class="benchmark-stat-label">Models registered</p>
-                        <p class="benchmark-stat-value">@Model.AvailableModels.Count</p>
-                        <p class="benchmark-stat-meta"><a href="/ChatModels">Manage models</a></p>
+                        <p class="benchmark-stat-label">Latest p95 latency</p>
+                        <p class="benchmark-stat-value">@FormatMs(latestHealth?.P95LatencyMs)</p>
+                        <p class="benchmark-stat-meta">Successful responses only</p>
+                    </article>
+                    <article class="benchmark-stat @((latestHealth?.FailedPromptCount ?? 0) > 0 || (latestHealth?.FailedRunCount ?? 0) > 0 ? "is-warning" : string.Empty)">
+                        <p class="benchmark-stat-label">Latest failures</p>
+                        <p class="benchmark-stat-value">@(latestHealth is null ? "—" : latestHealth.FailedPromptCount.ToString("N0"))</p>
+                        <p class="benchmark-stat-meta">@(latestHealth is null ? "No completed batches" : $"{latestHealth.FailedRunCount} failed run(s)")</p>
                     </article>
                     <article class="benchmark-stat">
-                        <p class="benchmark-stat-label">Fastest p50</p>
-                        <p class="benchmark-stat-value">@FormatMs(bestP50)</p>
-                        <p class="benchmark-stat-meta">Across recorded runs</p>
-                    </article>
-                    <article class="benchmark-stat @(overallSuccessRate is < 100m ? "is-warning" : string.Empty)">
-                        <p class="benchmark-stat-label">Success rate</p>
-                        <p class="benchmark-stat-value">@(overallSuccessRate is null ? "—" : $"{overallSuccessRate.Value.ToString("0.#", CultureInfo.InvariantCulture)}%")</p>
-                        <p class="benchmark-stat-meta">
-                            @(lastRunAt is null ? "No runs yet" : $"Last run {lastRunAt.Value:yyyy-MM-dd HH:mm}")
-                        </p>
+                        <p class="benchmark-stat-label">Latest token usage</p>
+                        <p class="benchmark-stat-value">@(latestHealth is null ? "—" : (latestHealth.PromptTokens + latestHealth.CompletionTokens).ToString("N0"))</p>
+                        <p class="benchmark-stat-meta">@(latestHealth is null ? "No completed batches" : $"Completed {latestHealth.StartedAt:yyyy-MM-dd HH:mm}")</p>
                     </article>
                 </section>
 
@@ -357,298 +348,183 @@
                     </section>
                 }
 
-                <header class="accounts-header" style="margin-top: 32px;">
+                <header class="accounts-header benchmark-health-header">
                     <div>
-                        <p class="accounts-eyebrow">Observational</p>
-                        <h2>Production usage</h2>
-                        <p>What students actually sent. Not a controlled comparison — each model saw different questions, so read these alongside the request counts.</p>
+                        <p class="accounts-eyebrow">Operational health</p>
+                        <h2>Benchmark health trends</h2>
+                        <p>Recent completed batches reveal reliability, response-time stability, and token demand over time.</p>
                     </div>
                 </header>
 
-                <!-- Chart 1: prompt vs completion tokens by model -->
-                <section class="accounts-card chatviz-card" aria-labelledby="chatviz-model-tokens-title">
-                    <div class="chatviz-header">
-                        <div>
-                            <h2 class="chatviz-title" id="chatviz-model-tokens-title">Prompt vs. completion tokens by model</h2>
-                            <p class="chatviz-subtitle">Total tokens across every logged student chat request, grouped by model.</p>
-                        </div>
-                    </div>
-
-                    @if (Model.ModelRows.Count == 0)
-                    {
-                        <p class="chatviz-empty">No student chat requests have been logged yet.</p>
-                    }
-                    else
-                    {
-                        <div class="chatviz-legend">
-                            <span class="chatviz-legend-item"><span class="chatviz-legend-swatch" style="background:#2a78d6;"></span>Prompt tokens</span>
-                            <span class="chatviz-legend-item"><span class="chatviz-legend-swatch" style="background:#008300;"></span>Completion tokens</span>
-                        </div>
-                        <div class="chatviz-body">
-                            <div class="chatviz-yaxis" aria-hidden="true">
-                                @foreach (var tick in AxisTicks(modelTokenAxisMax))
+                @if (healthPoints.Count == 0)
+                {
+                    <section class="accounts-card benchmark-health-empty" aria-label="Benchmark health trends">
+                        <span class="material-symbols-outlined" aria-hidden="true">monitoring</span>
+                        <h3>No completed health history yet</h3>
+                        <p>Complete a benchmark above to create the first health data point.</p>
+                    </section>
+                }
+                else
+                {
+                    <div class="benchmark-health-grid">
+                        <section class="accounts-card benchmark-health-card" aria-labelledby="health-success-title">
+                            <div class="chatviz-header">
+                                <div>
+                                    <h3 class="chatviz-title" id="health-success-title">Success rate</h3>
+                                    <p class="chatviz-subtitle">Successful prompt responses in each completed batch.</p>
+                                </div>
+                                <span class="benchmark-health-value">@healthPoints.Last().SuccessRate.ToString("0.#", CultureInfo.InvariantCulture)% latest</span>
+                            </div>
+                            <div class="benchmark-svg-scroll">
+                                <svg class="benchmark-line-chart" viewBox="0 0 760 220" role="img" aria-labelledby="health-success-title">
+                                    @foreach (var tick in new[] { 100, 75, 50, 25, 0 })
+                                    {
+                                        var y = 10 + (100 - tick) * 1.8;
+                                        <line class="benchmark-chart-gridline" x1="42" y1="@y" x2="750" y2="@y"></line>
+                                    }
+                                    <polyline class="benchmark-chart-line benchmark-chart-line-success" points="@PointList(successChartPoints)"></polyline>
+                                    @for (var index = 0; index < healthPoints.Count; index++)
+                                    {
+                                        var health = healthPoints[index];
+                                        var point = successChartPoints[index];
+                                        var tooltip = $"{health.StartedAt:yyyy-MM-dd HH:mm} · {health.SuccessRate:0.#}% · {health.SuccessCount}/{health.AttemptCount} successful";
+                                        <circle class="benchmark-chart-point benchmark-chart-point-success" cx="@point.X" cy="@point.Y" r="5"
+                                                tabindex="0" data-tooltip="@tooltip" aria-label="@tooltip"></circle>
+                                    }
+                                </svg>
+                            </div>
+                            <div class="benchmark-chart-labels" style="grid-template-columns:repeat(@healthPoints.Count, minmax(34px, 1fr))" aria-hidden="true">
+                                @foreach (var health in healthPoints)
                                 {
-                                    <span>@tick</span>
+                                    <span>@health.StartedAt.ToString("MM-dd")</span>
                                 }
                             </div>
-                            <div class="chatviz-plot-wrap">
-                                <div class="chatviz-scroll">
-                                    <div class="chatviz-plot">
-                                        <div class="chatviz-gridlines" aria-hidden="true">
-                                            <span style="bottom:0%"></span>
-                                            <span style="bottom:25%"></span>
-                                            <span style="bottom:50%"></span>
-                                            <span style="bottom:75%"></span>
-                                            <span style="bottom:100%"></span>
-                                        </div>
-                                        <div class="chatviz-groups">
-                                            @foreach (var row in Model.ModelRows)
-                                            {
-                                                var promptPct = BarHeightPercent(row.PromptTokens, modelTokenAxisMax);
-                                                var completionPct = BarHeightPercent(row.CompletionTokens, modelTokenAxisMax);
-                                                <div class="chatviz-group">
-                                                    <button type="button" class="chatviz-bar chatviz-bar-prompt" style="height:@promptPct%"
-                                                            data-tooltip="@($"{row.Model} — Prompt tokens: {row.PromptTokens:N0}")"
-                                                            aria-label="@($"{row.Model} prompt tokens: {row.PromptTokens:N0}")"></button>
-                                                    <button type="button" class="chatviz-bar chatviz-bar-completion" style="height:@completionPct%"
-                                                            data-tooltip="@($"{row.Model} — Completion tokens: {row.CompletionTokens:N0}")"
-                                                            aria-label="@($"{row.Model} completion tokens: {row.CompletionTokens:N0}")"></button>
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
-                                    <div class="chatviz-xaxis">
-                                        @foreach (var row in Model.ModelRows)
-                                        {
-                                            <span class="chatviz-xlabel chatviz-xlabel-group" title="@row.Model">@row.Model (@row.RequestCount.ToString("N0") req)</span>
-                                        }
-                                    </div>
+                        </section>
+
+                        <section class="accounts-card benchmark-health-card" aria-labelledby="health-latency-title">
+                            <div class="chatviz-header">
+                                <div>
+                                    <h3 class="chatviz-title" id="health-latency-title">Response-time percentiles</h3>
+                                    <p class="chatviz-subtitle">p50 and p95 latency from successful responses.</p>
                                 </div>
                             </div>
-                        </div>
-                    }
-                </section>
-
-                <!-- Chart 2: average response time by model -->
-                <section class="accounts-card chatviz-card" aria-labelledby="chatviz-response-time-title">
-                    <div class="chatviz-header">
-                        <div>
-                            <h2 class="chatviz-title" id="chatviz-response-time-title">Average response time by model</h2>
-                            <p class="chatviz-subtitle">Seconds from request to completed answer, averaged per model.</p>
-                        </div>
-                    </div>
-
-                    @if (responseRows.Count == 0)
-                    {
-                        <p class="chatviz-empty">No response-time data yet — only requests logged after response-time tracking shipped have it.</p>
-                    }
-                    else
-                    {
-                        <div class="chatviz-body">
-                            <div class="chatviz-yaxis" aria-hidden="true">
-                                @foreach (var tick in AxisTicks(responseAxisMax))
+                            <div class="chatviz-legend" aria-hidden="true">
+                                <span class="chatviz-legend-item"><span class="chatviz-legend-swatch benchmark-swatch-p50"></span>p50</span>
+                                <span class="chatviz-legend-item"><span class="chatviz-legend-swatch benchmark-swatch-p95"></span>p95</span>
+                            </div>
+                            <div class="benchmark-svg-scroll">
+                                <svg class="benchmark-line-chart" viewBox="0 0 760 220" role="img" aria-labelledby="health-latency-title">
+                                    @for (var step = 0; step <= 4; step++)
+                                    {
+                                        var y = 10 + step * 45;
+                                        <line class="benchmark-chart-gridline" x1="42" y1="@y" x2="750" y2="@y"></line>
+                                    }
+                                    <polyline class="benchmark-chart-line benchmark-chart-line-p50" points="@PointList(p50ChartPoints)"></polyline>
+                                    <polyline class="benchmark-chart-line benchmark-chart-line-p95" points="@PointList(p95ChartPoints)"></polyline>
+                                    @for (var index = 0; index < healthPoints.Count; index++)
+                                    {
+                                        var health = healthPoints[index];
+                                        @if (health.P50LatencyMs.HasValue)
+                                        {
+                                            var point = p50ChartPoints[index];
+                                            var tooltip = $"{health.StartedAt:yyyy-MM-dd HH:mm} · p50 {FormatMs(health.P50LatencyMs)}";
+                                            <circle class="benchmark-chart-point benchmark-chart-point-p50" cx="@point.X" cy="@point.Y" r="4"
+                                                    tabindex="0" data-tooltip="@tooltip" aria-label="@tooltip"></circle>
+                                        }
+                                        @if (health.P95LatencyMs.HasValue)
+                                        {
+                                            var point = p95ChartPoints[index];
+                                            var tooltip = $"{health.StartedAt:yyyy-MM-dd HH:mm} · p95 {FormatMs(health.P95LatencyMs)}";
+                                            <circle class="benchmark-chart-point benchmark-chart-point-p95" cx="@point.X" cy="@point.Y" r="4"
+                                                    tabindex="0" data-tooltip="@tooltip" aria-label="@tooltip"></circle>
+                                        }
+                                    }
+                                </svg>
+                            </div>
+                            <div class="benchmark-chart-labels" style="grid-template-columns:repeat(@healthPoints.Count, minmax(34px, 1fr))" aria-hidden="true">
+                                @foreach (var health in healthPoints)
                                 {
-                                    <span>@tick s</span>
+                                    <span>@health.StartedAt.ToString("MM-dd")</span>
                                 }
                             </div>
-                            <div class="chatviz-plot-wrap">
-                                <div class="chatviz-scroll">
-                                    <div class="chatviz-plot">
-                                        <div class="chatviz-gridlines" aria-hidden="true">
-                                            <span style="bottom:0%"></span>
-                                            <span style="bottom:25%"></span>
-                                            <span style="bottom:50%"></span>
-                                            <span style="bottom:75%"></span>
-                                            <span style="bottom:100%"></span>
-                                        </div>
-                                        <div class="chatviz-groups">
-                                            @foreach (var row in responseRows)
-                                            {
-                                                var seconds = row.AverageResponseTimeMs!.Value / 1000d;
-                                                var pct = BarHeightPercent(seconds, responseAxisMax);
-                                                <div class="chatviz-group">
-                                                    <button type="button" class="chatviz-bar chatviz-bar-single" style="height:@pct%"
-                                                            data-tooltip="@($"{row.Model} — Avg. response time: {seconds:0.##} s")"
-                                                            aria-label="@($"{row.Model} average response time: {seconds:0.##} seconds")"></button>
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
-                                    <div class="chatviz-xaxis">
-                                        @foreach (var row in responseRows)
-                                        {
-                                            <span class="chatviz-xlabel chatviz-xlabel-single" title="@row.Model">@row.Model (@row.RequestCount.ToString("N0") req)</span>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                </section>
-
-                <!-- Chart 3: input vs output tokens per session -->
-                <section class="accounts-card chatviz-card" aria-labelledby="chatviz-session-tokens-title">
-                    <div class="chatviz-header">
-                        <div>
-                            <h2 class="chatviz-title" id="chatviz-session-tokens-title">Input vs. output tokens per session</h2>
-                            <p class="chatviz-subtitle">Most recent @chronologicalSessions.Count session(s) with chat activity, oldest to newest.</p>
-                        </div>
+                        </section>
                     </div>
 
-                    @if (chronologicalSessions.Count == 0)
-                    {
-                        <p class="chatviz-empty">No chat sessions have been logged yet.</p>
-                    }
-                    else
-                    {
-                        <div class="chatviz-legend">
-                            <span class="chatviz-legend-item"><span class="chatviz-legend-swatch" style="background:#2a78d6;"></span>Input (prompt) tokens</span>
-                            <span class="chatviz-legend-item"><span class="chatviz-legend-swatch" style="background:#008300;"></span>Output (completion) tokens</span>
-                        </div>
-                        <div class="chatviz-body">
-                            <div class="chatviz-yaxis" aria-hidden="true">
-                                @foreach (var tick in AxisTicks(sessionTokenAxisMax))
-                                {
-                                    <span>@tick</span>
-                                }
-                            </div>
-                            <div class="chatviz-plot-wrap">
-                                <div class="chatviz-scroll">
-                                    <div class="chatviz-plot">
-                                        <div class="chatviz-gridlines" aria-hidden="true">
-                                            <span style="bottom:0%"></span>
-                                            <span style="bottom:25%"></span>
-                                            <span style="bottom:50%"></span>
-                                            <span style="bottom:75%"></span>
-                                            <span style="bottom:100%"></span>
-                                        </div>
-                                        <div class="chatviz-groups">
-                                            @foreach (var row in chronologicalSessions)
-                                            {
-                                                var inputPct = BarHeightPercent(row.PromptTokens, sessionTokenAxisMax);
-                                                var outputPct = BarHeightPercent(row.CompletionTokens, sessionTokenAxisMax);
-                                                <div class="chatviz-group">
-                                                    <button type="button" class="chatviz-bar chatviz-bar-prompt" style="height:@inputPct%"
-                                                            data-tooltip="@($"{row.SessionLabel} — Input tokens: {row.PromptTokens:N0}")"
-                                                            aria-label="@($"{row.SessionLabel} input tokens: {row.PromptTokens:N0}")"></button>
-                                                    <button type="button" class="chatviz-bar chatviz-bar-completion" style="height:@outputPct%"
-                                                            data-tooltip="@($"{row.SessionLabel} — Output tokens: {row.CompletionTokens:N0}")"
-                                                            aria-label="@($"{row.SessionLabel} output tokens: {row.CompletionTokens:N0}")"></button>
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
-                                    <div class="chatviz-xaxis">
-                                        @foreach (var row in chronologicalSessions)
-                                        {
-                                            <span class="chatviz-xlabel chatviz-xlabel-group" title="@row.SessionLabel">@row.SessionLabel</span>
-                                        }
-                                    </div>
-                                </div>
+                    <section class="accounts-card benchmark-health-card benchmark-token-card" aria-labelledby="health-token-title">
+                        <div class="chatviz-header">
+                            <div>
+                                <h3 class="chatviz-title" id="health-token-title">Token usage</h3>
+                                <p class="chatviz-subtitle">Input and output tokens consumed by successful responses in each batch.</p>
                             </div>
                         </div>
-                    }
-                </section>
-
-                <!-- Exact per-session numbers -->
-                <section class="accounts-card accounts-table-card" aria-labelledby="chatviz-session-table-title">
-                    <div class="accounts-card-header">
-                        <div>
-                            <p class="accounts-eyebrow">Per-session detail</p>
-                            <h2 id="chatviz-session-table-title">Input / output tokens by session</h2>
-                            <p>Exact figures behind the chart above — most recent session first.</p>
+                        <div class="chatviz-legend" aria-hidden="true">
+                            <span class="chatviz-legend-item"><span class="chatviz-legend-swatch benchmark-swatch-input"></span>Input</span>
+                            <span class="chatviz-legend-item"><span class="chatviz-legend-swatch benchmark-swatch-output"></span>Output</span>
                         </div>
-                    </div>
-                    <div class="admin-table-wrap">
-                        <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Session</th>
-                                    <th>Model</th>
-                                    <th>Input tokens</th>
-                                    <th>Output tokens</th>
-                                    <th>Total tokens</th>
-                                    <th>Requests</th>
-                                    <th>Last used</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            @if (Model.SessionRows.Count == 0)
+                        <div class="benchmark-token-chart" role="img" aria-labelledby="health-token-title">
+                            @foreach (var health in healthPoints)
                             {
-                                <tr>
-                                    <td colspan="7"><span class="text-secondary">No chat sessions have been logged yet.</span></td>
-                                </tr>
+                                var inputHeight = BarHeightPercent(health.PromptTokens, tokenAxisMax);
+                                var outputHeight = BarHeightPercent(health.CompletionTokens, tokenAxisMax);
+                                var tooltip = $"{health.StartedAt:yyyy-MM-dd HH:mm} · {health.PromptTokens:N0} input · {health.CompletionTokens:N0} output";
+                                <div class="benchmark-token-column">
+                                    <div class="benchmark-token-stack" tabindex="0" data-tooltip="@tooltip" aria-label="@tooltip">
+                                        <span class="benchmark-token-output" style="height:@outputHeight%"></span>
+                                        <span class="benchmark-token-input" style="height:@inputHeight%"></span>
+                                    </div>
+                                    <span aria-hidden="true">@health.StartedAt.ToString("MM-dd")</span>
+                                </div>
                             }
-                            else
-                            {
-                                @foreach (var row in Model.SessionRows)
-                                {
+                        </div>
+                    </section>
+
+                    <section class="accounts-card accounts-table-card benchmark-health-table-card" aria-labelledby="health-table-title">
+                        <div class="accounts-card-header">
+                            <div>
+                                <p class="accounts-eyebrow">Exact values</p>
+                                <h2 id="health-table-title">Recent batch health</h2>
+                                <p>Latest completed batches first.</p>
+                            </div>
+                        </div>
+                        <div class="admin-table-wrap">
+                            <table class="admin-table benchmark-health-table">
+                                <thead>
                                     <tr>
-                                        <td><strong>@row.SessionLabel</strong></td>
-                                        <td>@(row.Model ?? "—")</td>
-                                        <td>@row.PromptTokens.ToString("N0")</td>
-                                        <td>@row.CompletionTokens.ToString("N0")</td>
-                                        <td>@row.TotalTokens.ToString("N0")</td>
-                                        <td>@row.RequestCount.ToString("N0")</td>
-                                        <td>@row.LastUsedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                        <th>Started</th>
+                                        <th>Subject</th>
+                                        <th class="is-numeric">Attempts</th>
+                                        <th class="is-numeric">Success</th>
+                                        <th class="is-numeric">Failures</th>
+                                        <th class="is-numeric">p50</th>
+                                        <th class="is-numeric">p95</th>
+                                        <th class="is-numeric">Tokens</th>
+                                        <th class="is-numeric">Avg. chunks</th>
+                                        <th class="is-numeric">Duration</th>
                                     </tr>
-                                }
-                            }
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <!-- Aggregate per-model numbers -->
-                <section class="accounts-card accounts-table-card" aria-labelledby="chatviz-model-table-title">
-                    <div class="accounts-card-header">
-                        <div>
-                            <p class="accounts-eyebrow">Model detail</p>
-                            <h2 id="chatviz-model-table-title">Model comparison</h2>
-                            <p>Metrics are based on every logged student chat completion for each model.</p>
+                                </thead>
+                                <tbody>
+                                    @foreach (var health in healthPoints.Reverse())
+                                    {
+                                        <tr>
+                                            <td><strong>@health.StartedAt.ToString("yyyy-MM-dd")</strong><span>@health.StartedAt.ToString("HH:mm")</span></td>
+                                            <td>@(health.SubjectCode ?? "All")</td>
+                                            <td class="is-numeric">@health.AttemptCount.ToString("N0")</td>
+                                            <td class="is-numeric">@health.SuccessRate.ToString("0.#", CultureInfo.InvariantCulture)%</td>
+                                            <td class="is-numeric @((health.FailedPromptCount > 0 || health.FailedRunCount > 0) ? "is-alert" : string.Empty)">
+                                                @health.FailedPromptCount prompt / @health.FailedRunCount run
+                                            </td>
+                                            <td class="is-numeric">@FormatMs(health.P50LatencyMs)</td>
+                                            <td class="is-numeric">@FormatMs(health.P95LatencyMs)</td>
+                                            <td class="is-numeric">@((health.PromptTokens + health.CompletionTokens).ToString("N0"))</td>
+                                            <td class="is-numeric">@(health.AverageRetrievedChunks?.ToString("0.#", CultureInfo.InvariantCulture) ?? "—")</td>
+                                            <td class="is-numeric">@FormatMs(health.DurationMs)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-                    <div class="admin-table-wrap">
-                        <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Model</th>
-                                    <th>Requests</th>
-                                    <th>Total tokens</th>
-                                    <th>Avg. prompt tokens</th>
-                                    <th>Avg. completion tokens</th>
-                                    <th>Avg. response time</th>
-                                    <th>Last used</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            @if (Model.ModelRows.Count == 0)
-                            {
-                                <tr>
-                                    <td colspan="7"><span class="text-secondary">No student chat requests have been logged yet.</span></td>
-                                </tr>
-                            }
-                            else
-                            {
-                                @foreach (var row in Model.ModelRows)
-                                {
-                                    <tr>
-                                        <td><strong>@row.Model</strong></td>
-                                        <td>@row.RequestCount.ToString("N0")</td>
-                                        <td>@row.TotalTokens.ToString("N0")</td>
-                                        <td>@row.AveragePromptTokens.ToString("N0", CultureInfo.InvariantCulture)</td>
-                                        <td>@row.AverageCompletionTokens.ToString("N0", CultureInfo.InvariantCulture)</td>
-                                        <td>@(row.AverageResponseTimeMs is null ? "—" : $"{row.AverageResponseTimeMs.Value / 1000:0.##} s")</td>
-                                        <td>@(row.LastUsedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
-                                    </tr>
-                                }
-                            }
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <p class="text-secondary" style="margin-top: 16px;">All figures reflect real usage history, not a controlled side-by-side test — a model only appears once at least one student chat request has used it.</p>
+                    </section>
+                }
             </div>
         </section>
     </main>
@@ -779,12 +655,12 @@
                 tooltip.classList.remove("is-visible");
             };
 
-            document.querySelectorAll(".chatviz-bar").forEach((bar) => {
-                bar.addEventListener("pointerenter", (event) => showTooltip(bar, event));
-                bar.addEventListener("pointermove", (event) => showTooltip(bar, event));
-                bar.addEventListener("pointerleave", hideTooltip);
-                bar.addEventListener("focus", (event) => showTooltip(bar, event));
-                bar.addEventListener("blur", hideTooltip);
+            document.querySelectorAll("[data-tooltip]").forEach((target) => {
+                target.addEventListener("pointerenter", (event) => showTooltip(target, event));
+                target.addEventListener("pointermove", (event) => showTooltip(target, event));
+                target.addEventListener("pointerleave", hideTooltip);
+                target.addEventListener("focus", (event) => showTooltip(target, event));
+                target.addEventListener("blur", hideTooltip);
             });
         })();
     </script>
@@ -807,6 +683,30 @@
 
     private static string FormatMs(int? milliseconds) => FormatMs(milliseconds.HasValue ? milliseconds.Value : (double?)null);
 
+    private static string FormatMs(long? milliseconds) => FormatMs(milliseconds.HasValue ? milliseconds.Value : (double?)null);
+
+    private static IReadOnlyList<ChartPoint> BuildChartPoints(IEnumerable<double?> values, double axisMax)
+    {
+        var source = values.ToArray();
+        if (source.Length == 0)
+        {
+            return [];
+        }
+
+        return source.Select((value, index) =>
+        {
+            var x = source.Length == 1 ? 396d : 50d + index * 700d / (source.Length - 1);
+            var normalized = axisMax <= 0 || !value.HasValue ? 0 : Math.Clamp(value.Value / axisMax, 0, 1);
+            var y = 190d - normalized * 180d;
+            return new ChartPoint(x, y, value.HasValue);
+        }).ToArray();
+    }
+
+    private static string PointList(IEnumerable<ChartPoint> points) => string.Join(
+        " ",
+        points.Where(point => point.HasValue).Select(point =>
+            $"{point.X.ToString("0.##", CultureInfo.InvariantCulture)},{point.Y.ToString("0.##", CultureInfo.InvariantCulture)}"));
+
     private static double NiceMax(double rawMax)
     {
         if (rawMax <= 0)
@@ -827,14 +727,6 @@
         return niceNormalized * magnitude;
     }
 
-    private static IEnumerable<string> AxisTicks(double axisMax)
-    {
-        for (var step = 0; step <= 4; step++)
-        {
-            yield return (axisMax * step / 4).ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
-        }
-    }
-
     private static string BarHeightPercent(double value, double axisMax)
     {
         if (axisMax <= 0)
@@ -845,4 +737,6 @@
         var percent = Math.Clamp(value / axisMax * 100, 0, 100);
         return percent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
     }
+
+    private sealed record ChartPoint(double X, double Y, bool HasValue);
 }

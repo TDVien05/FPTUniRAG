@@ -8,6 +8,15 @@ namespace FPTUniRAG.BusinessLayer.Rag.Chat.Benchmarking;
 /// </summary>
 public static class ChatBenchmarkAggregation
 {
+    public static IReadOnlyList<ChatBenchmarkHealthPoint> SummarizeHealth(IEnumerable<ChatBenchmarkRunRecord> runs) =>
+        runs
+            .Where(run => run.BatchId.HasValue)
+            .GroupBy(run => run.BatchId!.Value)
+            .Where(group => group.All(run => run.IsFinished()))
+            .Select(group => BuildHealthPoint(group.Key, group.ToArray()))
+            .OrderBy(point => point.StartedAt)
+            .ToArray();
+
     public static ChatBenchmarkRunSummary Summarize(ChatBenchmarkRunRecord run)
     {
         var results = run.Results;
@@ -63,6 +72,37 @@ public static class ChatBenchmarkAggregation
         var index = Math.Clamp(rank - 1, 0, sortedValues.Count - 1);
         return sortedValues[index];
     }
+
+    private static ChatBenchmarkHealthPoint BuildHealthPoint(Guid batchId, IReadOnlyList<ChatBenchmarkRunRecord> runs)
+    {
+        var results = runs.SelectMany(run => run.Results).ToArray();
+        var successful = results.Where(result => result.IsSuccess).ToArray();
+        var latencies = successful
+            .Where(result => result.ResponseTimeMs.HasValue)
+            .Select(result => (double)result.ResponseTimeMs!.Value)
+            .OrderBy(value => value)
+            .ToArray();
+        var completedAt = runs.Max(run => run.CompletedAt);
+        var startedAt = runs.Min(run => run.StartedAt);
+
+        return new ChatBenchmarkHealthPoint(
+            batchId,
+            startedAt,
+            runs.Select(run => run.SubjectCode).FirstOrDefault(code => !string.IsNullOrWhiteSpace(code)),
+            results.Length,
+            successful.Length,
+            results.Length - successful.Length,
+            runs.Count(run => run.Status == "failed"),
+            results.Length == 0 ? 0 : decimal.Round(successful.Length * 100m / results.Length, 2),
+            Percentile(latencies, 0.5),
+            Percentile(latencies, 0.95),
+            successful.Sum(result => result.PromptTokens),
+            successful.Sum(result => result.CompletionTokens),
+            successful.Length == 0 ? null : successful.Average(result => (double)result.RetrievedChunkCount),
+            completedAt.HasValue ? (long)Math.Round((completedAt.Value - startedAt).TotalMilliseconds) : null);
+    }
+
+    private static bool IsFinished(this ChatBenchmarkRunRecord run) => run.Status is "completed" or "failed";
 }
 
 public sealed record ChatBenchmarkRunSummary(

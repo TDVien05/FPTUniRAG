@@ -155,9 +155,44 @@ public sealed class ChatBenchmarkRepository(AppDbContext context) : IChatBenchma
         }
     }
 
+    public async Task<IReadOnlyList<ChatBenchmarkRunRecord>> GetRecentBatchRunsAsync(int batchLimit, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var batchIds = await context.ChatBenchmarkRuns.AsNoTracking()
+                .Where(run => run.BatchId != null)
+                .GroupBy(run => run.BatchId!.Value)
+                .Where(group => group.All(run => run.Status == "completed" || run.Status == "failed"))
+                .Select(group => new
+                {
+                    BatchId = group.Key,
+                    StartedAt = group.Max(run => run.StartedAt)
+                })
+                .OrderByDescending(batch => batch.StartedAt)
+                .Take(batchLimit)
+                .Select(batch => batch.BatchId)
+                .ToListAsync(cancellationToken);
+
+            if (batchIds.Count == 0)
+            {
+                return [];
+            }
+
+            return await ProjectRuns(context.ChatBenchmarkRuns.AsNoTracking()
+                .Where(run => run.BatchId != null && batchIds.Contains(run.BatchId.Value))
+                .OrderBy(run => run.StartedAt))
+                .ToListAsync(cancellationToken);
+        }
+        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UndefinedTable)
+        {
+            return [];
+        }
+    }
+
     private static IQueryable<ChatBenchmarkRunRecord> ProjectRuns(IQueryable<ChatBenchmarkRun> query) =>
         query.Select(run => new ChatBenchmarkRunRecord(
             run.ChatBenchmarkRunId,
+            run.BatchId,
             run.ModelName,
             run.SubjectId,
             run.Subject != null ? run.Subject.SubjectCode : null,

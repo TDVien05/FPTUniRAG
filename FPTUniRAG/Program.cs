@@ -56,6 +56,7 @@ builder.Services.AddScoped<IChatModelRepository, ChatModelRepository>();
 builder.Services.AddScoped<IChatBenchmarkRepository, ChatBenchmarkRepository>();
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 builder.Services.AddScoped<IAdminReportingRepository, AdminReportingRepository>();
+builder.Services.AddScoped<IStudentChatReportRepository, StudentChatReportRepository>();
 builder.Services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
 builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
 builder.Services.AddScoped<IEmbeddingRepository, EmbeddingRepository>();
@@ -80,6 +81,7 @@ builder.Services.AddScoped<IAccountManagementService, AccountManagementService>(
 builder.Services.AddSingleton<IStudentImportJobTracker, StudentImportJobTracker>();
 builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 builder.Services.AddScoped<IAnalysisService, AnalysisService>();
+builder.Services.AddScoped<IStudentChatReportService, StudentChatReportService>();
 builder.Services.AddScoped<ISubjectManagementService, SubjectManagementService>();
 builder.Services.AddScoped<ITeacherHeaderSubjectNotifier, SignalRTeacherHeaderSubjectNotifier>();
 builder.Services.AddScoped<ISubscriptionPlanNotifier, SignalRSubscriptionPlanNotifier>();
@@ -161,6 +163,7 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AuthorizePage("/Subjects", "AdminOnly");
     options.Conventions.AuthorizeFolder("/Subjects", "AdminOnly");
     options.Conventions.AuthorizePage("/Analysis", "AdminOnly");
+    options.Conventions.AuthorizePage("/StudentChatReport", "AdminOnly");
     options.Conventions.AuthorizePage("/ChangePassword");
     options.Conventions.AuthorizePage("/TeacherHome", "TeacherOrAdmin");
     options.Conventions.AuthorizePage("/TeacherUpload", "TeacherOrAdmin");

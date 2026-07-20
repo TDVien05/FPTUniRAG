@@ -11,6 +11,7 @@
     var isFreeQuotaSettings = currentPath.Equals("/FreeQuotaSettings", StringComparison.OrdinalIgnoreCase);
     var isEmbeddingBenchmark = currentPath.Equals("/EmbeddingBenchmark", StringComparison.OrdinalIgnoreCase);
     var isChatBenchmark = currentPath.Equals("/ChatBenchmark", StringComparison.OrdinalIgnoreCase);
+    var isStudentChatReport = currentPath.Equals("/StudentChatReport", StringComparison.OrdinalIgnoreCase);
     var isAnalysis = currentPath.Equals("/Analysis", StringComparison.OrdinalIgnoreCase);
 }
 
@@ -69,6 +70,10 @@
         <a class="admin-nav-item @(isChatBenchmark ? "active" : string.Empty)" href="/ChatBenchmark" @(isChatBenchmark ? "aria-current=page" : string.Empty)>
             <span class="material-symbols-outlined" aria-hidden="true">forum</span>
             Chat Benchmark
+        </a>
+        <a class="admin-nav-item @(isStudentChatReport ? "active" : string.Empty)" href="/StudentChatReport" @(isStudentChatReport ? "aria-current=page" : string.Empty)>
+            <span class="material-symbols-outlined" aria-hidden="true">manage_search</span>
+            Student Chat Report
         </a>
         <a class="admin-nav-item @(isAnalysis ? "active" : string.Empty)" href="/Analysis" @(isAnalysis ? "aria-current=page" : string.Empty)>
             <span class="material-symbols-outlined" aria-hidden="true">analytics</span>

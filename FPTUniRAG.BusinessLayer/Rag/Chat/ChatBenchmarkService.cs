@@ -26,6 +26,12 @@ public sealed class ChatBenchmarkService : IChatBenchmarkService
     public async Task<IReadOnlyList<ChatBenchmarkBatchRecord>> GetRecentBatchesAsync(int limit, CancellationToken cancellationToken = default) =>
         await _benchmarkRepository.GetRecentBatchesAsync(limit, cancellationToken);
 
+    public async Task<IReadOnlyList<ChatBenchmarkHealthPoint>> GetHealthTrendAsync(int limit, CancellationToken cancellationToken = default)
+    {
+        var runs = await _benchmarkRepository.GetRecentBatchRunsAsync(limit, cancellationToken);
+        return ChatBenchmarkAggregation.SummarizeHealth(runs);
+    }
+
     public async Task<ChatBenchmarkSummary> GetSummaryAsync(CancellationToken cancellationToken = default)
     {
         var runs = await _chatRepository.GetUsageRunsAsync(ChatFeatureName, cancellationToken);

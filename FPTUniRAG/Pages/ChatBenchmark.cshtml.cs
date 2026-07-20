@@ -14,6 +14,7 @@ public sealed class ChatBenchmarkModel : PageModel
 {
     private const int SubjectLimit = 200;
     private const int BatchHistoryLimit = 20;
+    private const int HealthTrendLimit = 20;
 
     private readonly IChatBenchmarkService _benchmarkService;
     private readonly IChatBenchmarkRunner _benchmarkRunner;
@@ -41,11 +42,9 @@ public sealed class ChatBenchmarkModel : PageModel
     [BindProperty]
     public List<string> SelectedModels { get; set; } = [];
 
-    public IReadOnlyList<ChatBenchmarkRow> ModelRows { get; private set; } = [];
-
-    public IReadOnlyList<ChatSessionBenchmarkRow> SessionRows { get; private set; } = [];
-
     public IReadOnlyList<ChatBenchmarkRunSummary> RunSummaries { get; private set; } = [];
+
+    public IReadOnlyList<ChatBenchmarkHealthPoint> HealthTrend { get; private set; } = [];
 
     /// <summary>Which past benchmark to display. Defaults to the most recent one.</summary>
     [BindProperty(SupportsGet = true)]
@@ -111,11 +110,8 @@ public sealed class ChatBenchmarkModel : PageModel
 
     private async Task LoadAsync(CancellationToken cancellationToken)
     {
-        var summary = await _benchmarkService.GetSummaryAsync(cancellationToken);
-        ModelRows = summary.ModelRows;
-        SessionRows = summary.SessionRows;
-
         Batches = await _benchmarkService.GetRecentBatchesAsync(BatchHistoryLimit, cancellationToken);
+        HealthTrend = await _benchmarkService.GetHealthTrendAsync(HealthTrendLimit, cancellationToken);
         SelectedBatch = BatchId.HasValue
             ? Batches.FirstOrDefault(batch => batch.BatchId == BatchId.Value)
             : Batches.FirstOrDefault();

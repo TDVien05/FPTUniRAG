@@ -85,4 +85,10 @@ Desktop.ini
 .DS_Store
 
 FPTUniRAG.Tests/
+!FPTUniRAG.Tests/
+FPTUniRAG.Tests/*
+!FPTUniRAG.Tests/AdminDashboard/
+FPTUniRAG.Tests/AdminDashboard/*
+!FPTUniRAG.Tests/AdminDashboard/StudentChatReportServiceTests.cs
+!FPTUniRAG.Tests/AdminDashboard/StudentChatTurnReconstructorTests.cs
 GAP_BUSINESS.md

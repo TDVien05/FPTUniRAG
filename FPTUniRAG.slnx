@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="FPTUniRAG.BusinessLayer/FPTUniRAG.BusinessLayer.csproj" />
   <Project Path="FPTUniRAG.DataAccessLayer/FPTUniRAG.DataAccessLayer.csproj" />
+  <Project Path="FPTUniRAG.Tests/FPTUniRAG.Tests.csproj" />
   <Project Path="FPTUniRAG/FPTUniRAG.csproj" />
 </Solution>

@@ -12,7 +12,26 @@ public interface IChatBenchmarkService
     Task<IReadOnlyList<ChatBenchmarkRunSummary>> GetBatchSummariesAsync(Guid? batchId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<ChatBenchmarkBatchRecord>> GetRecentBatchesAsync(int limit, CancellationToken cancellationToken = default);
+
+    /// <summary>Operational health for recent fully-finished benchmark batches, oldest first.</summary>
+    Task<IReadOnlyList<ChatBenchmarkHealthPoint>> GetHealthTrendAsync(int limit, CancellationToken cancellationToken = default);
 }
+
+public sealed record ChatBenchmarkHealthPoint(
+    Guid BatchId,
+    DateTime StartedAt,
+    string? SubjectCode,
+    int AttemptCount,
+    int SuccessCount,
+    int FailedPromptCount,
+    int FailedRunCount,
+    decimal SuccessRate,
+    double? P50LatencyMs,
+    double? P95LatencyMs,
+    long PromptTokens,
+    long CompletionTokens,
+    double? AverageRetrievedChunks,
+    long? DurationMs);
 
 public sealed record ChatBenchmarkSummary(
     IReadOnlyList<ChatBenchmarkRow> ModelRows,
