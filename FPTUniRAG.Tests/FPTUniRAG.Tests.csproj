@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FPTUniRAG\FPTUniRAG.csproj" />
     <ProjectReference Include="..\FPTUniRAG.BusinessLayer\FPTUniRAG.BusinessLayer.csproj" />
     <ProjectReference Include="..\FPTUniRAG.DataAccessLayer\FPTUniRAG.DataAccessLayer.csproj" />
   </ItemGroup>

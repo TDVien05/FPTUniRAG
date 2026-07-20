@@ -26,7 +26,7 @@
                 </p>
             </div>
             <div class="flex gap-3">
-                <a class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700" href="/TeacherDocuments">Document Management</a>
+                <a class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700" href="/TeacherDocuments?subjectId=@Model.Input.SubjectId">Document Management</a>
                 <a class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white" href="/TeacherHome">Back Home</a>
             </div>
         </div>
@@ -83,7 +83,7 @@
                         </div>
 
                         <div class="flex items-center justify-end gap-3 pt-4">
-                            <a class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700" href="/TeacherDocuments">Cancel</a>
+                            <a class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700" href="/TeacherDocuments?subjectId=@Model.Input.SubjectId">Cancel</a>
                             <button class="rounded-xl bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800" type="submit">Upload and Generate Chunks</button>
                         </div>
                     </form>
@@ -188,7 +188,7 @@
                     }
 
                     if (status.isCompleted) {
-                        progressLink.href = `/TeacherDocuments/Details?documentId=${encodeURIComponent(documentId)}`;
+                        progressLink.href = `/TeacherDocuments/Details?documentId=${encodeURIComponent(documentId)}&subjectId=@Model.Input.SubjectId`;
                         progressLink.classList.remove("hidden");
                         return;
                     }

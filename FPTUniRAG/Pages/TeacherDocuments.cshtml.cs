@@ -24,46 +24,61 @@ public class TeacherDocumentsModel : PageModel
     [BindProperty(SupportsGet = true)]
     public string? Query { get; set; }
 
+    [BindProperty(SupportsGet = true)]
+    public Guid? SubjectId { get; set; }
+
     [TempData]
     public string? SuccessMessage { get; set; }
 
     [TempData]
     public string? ErrorMessage { get; set; }
 
-    public IReadOnlyList<TeacherDocumentManagementItemDto> DocumentsBySubject { get; private set; } = [];
+    public IReadOnlyList<TeacherDocumentManagementItemDto> ManagedSubjects { get; private set; } = [];
 
-    public int ManagedSubjectCount => DocumentsBySubject.Count;
+    public TeacherDocumentManagementItemDto? SelectedSubject { get; private set; }
 
-    public int TotalDocumentCount => DocumentsBySubject.Sum(item => item.DocumentCount);
+    public IReadOnlyList<TeacherSubjectDocumentDto> VisibleDocuments { get; private set; } = [];
 
-    public int SubjectsWithDocumentsCount => DocumentsBySubject.Count(item => item.DocumentCount > 0);
+    public int CompletedDocumentCount => SelectedSubject?.Documents.Count(document =>
+        string.Equals(document.Status, "completed", StringComparison.OrdinalIgnoreCase)) ?? 0;
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
         var teacherEmail = User.FindFirstValue(ClaimTypes.Email);
         if (string.IsNullOrWhiteSpace(teacherEmail))
         {
-            DocumentsBySubject = [];
+            ManagedSubjects = [];
             return;
         }
 
-        var items = await _subjectManagementService.GetDocumentManagementItemsForTeacherAsync(
+        ManagedSubjects = await _subjectManagementService.GetDocumentManagementItemsForTeacherAsync(
             teacherEmail,
             cancellationToken);
 
+        SelectedSubject = SubjectId.HasValue
+            ? ManagedSubjects.FirstOrDefault(item => item.SubjectId == SubjectId.Value)
+            : null;
+        SelectedSubject ??= ManagedSubjects.FirstOrDefault();
+        SubjectId = SelectedSubject?.SubjectId;
+
+        if (SelectedSubject is null)
+        {
+            VisibleDocuments = [];
+            return;
+        }
+
+        var documents = SelectedSubject.Documents;
         if (!string.IsNullOrWhiteSpace(Query))
         {
             var normalizedQuery = Query.Trim();
-            items = items
-                .Where(item =>
-                    item.SubjectCode.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase)
-                    || item.SubjectName.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase)
-                    || (!string.IsNullOrWhiteSpace(item.LatestDocumentTitle)
-                        && item.LatestDocumentTitle.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase)))
+            documents = documents
+                .Where(document =>
+                    document.ChapterTitle.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase)
+                    || document.DocumentTitle.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }
 
-        DocumentsBySubject = items;
+        VisibleDocuments = documents;
     }
 
     public async Task<IActionResult> OnPostRetryAsync(Guid documentId, Guid subjectId, CancellationToken cancellationToken)
@@ -82,7 +97,7 @@ public class TeacherDocumentsModel : PageModel
         if (!result.Succeeded)
         {
             ErrorMessage = result.Message;
-            return RedirectToPage(new { Query });
+            return RedirectToPage(new { subjectId, Query });
         }
 
         return RedirectToPage("/TeacherUpload", new { subjectId, processingDocumentId = documentId });
@@ -114,6 +129,6 @@ public class TeacherDocumentsModel : PageModel
             ErrorMessage = result.Message;
         }
 
-        return RedirectToPage(new { Query });
+        return RedirectToPage(new { subjectId, Query });
     }
 }

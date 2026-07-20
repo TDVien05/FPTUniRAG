@@ -91,4 +91,7 @@ FPTUniRAG.Tests/*
 FPTUniRAG.Tests/AdminDashboard/*
 !FPTUniRAG.Tests/AdminDashboard/StudentChatReportServiceTests.cs
 !FPTUniRAG.Tests/AdminDashboard/StudentChatTurnReconstructorTests.cs
+!FPTUniRAG.Tests/TeacherDocuments/
+FPTUniRAG.Tests/TeacherDocuments/*
+!FPTUniRAG.Tests/TeacherDocuments/TeacherDocumentsModelTests.cs
 GAP_BUSINESS.md

@@ -107,7 +107,7 @@
 </head>
 <body class="font-body-md text-on-surface bg-background">
     <nav class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 shadow-sm">
-        <div class="flex items-center justify-between px-gutter max-w-[1280px] mx-auto h-16">
+        <div class="flex items-center justify-between px-gutter w-full h-16">
             <div class="flex items-center gap-base md:gap-gutter">
                 <span class="font-headline-lg text-[24px] font-bold text-primary">FPT UniRAG</span>
                 <div class="hidden md:flex gap-gutter"></div>
@@ -153,167 +153,192 @@
         </div>
     </aside>
 
-    <main class="md:ml-64 pt-20 px-gutter pb-8 max-w-[1280px] mx-auto">
-        <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-gutter mb-8">
-            <div class="max-w-2xl">
-                <nav class="flex items-center gap-2 text-sm text-secondary mb-2">
-                    <span class="hover:text-primary cursor-pointer">Workspace</span>
-                    <span class="material-symbols-outlined text-xs">chevron_right</span>
-                    <span class="text-on-surface font-medium">Document Management</span>
-                </nav>
-                <h1 class="font-headline-lg text-on-surface">Knowledge Library</h1>
-                <p class="font-body-md text-secondary mt-1">Real document data for the subjects where you are the current header teacher.</p>
-            </div>
-            <div class="flex gap-4">
-                <div class="bg-surface-container-lowest border border-outline-variant/30 px-6 py-3 rounded-xl flex flex-col shadow-sm min-w-[140px]">
-                    <span class="text-secondary font-label-sm uppercase tracking-tight text-[10px]">Managed Subjects</span>
-                    <span class="text-primary font-bold text-xl">@Model.ManagedSubjectCount</span>
-                </div>
-                <div class="bg-surface-container-lowest border border-outline-variant/30 px-6 py-3 rounded-xl flex flex-col shadow-sm min-w-[140px]">
-                    <span class="text-secondary font-label-sm uppercase tracking-tight text-[10px]">Total Documents</span>
-                    <span class="text-on-surface font-bold text-xl">@Model.TotalDocumentCount</span>
-                </div>
-                <div class="bg-surface-container-lowest border border-outline-variant/30 px-6 py-3 rounded-xl flex flex-col shadow-sm min-w-[140px]">
-                    <span class="text-secondary font-label-sm uppercase tracking-tight text-[10px]">Subjects With Files</span>
-                    <span class="text-on-surface font-bold text-xl">@Model.SubjectsWithDocumentsCount</span>
-                </div>
-            </div>
+    <main class="md:ml-64 pt-20 px-gutter pb-8">
+        <div class="mb-8">
+            <nav class="flex items-center gap-2 text-sm text-secondary mb-2" aria-label="Breadcrumb">
+                <span>Workspace</span>
+                <span class="material-symbols-outlined text-xs" aria-hidden="true">chevron_right</span>
+                <span class="text-on-surface font-medium">Document Management</span>
+            </nav>
+            <h1 class="font-headline-lg text-on-surface">Knowledge Library</h1>
+            <p class="font-body-md text-secondary mt-1">Choose a subject to manage its chapters, documents, and generated chunks.</p>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div class="lg:col-span-12 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-sm flex flex-col">
-                @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+        @if (Model.ManagedSubjects.Count == 0)
+        {
+            <section class="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-10 text-center shadow-sm">
+                <span class="material-symbols-outlined text-4xl text-secondary" aria-hidden="true">folder_off</span>
+                <h2 class="mt-3 font-headline-lg text-xl text-on-surface">No managed subjects</h2>
+                <p class="mt-2 text-sm text-secondary">No subjects are assigned to you as header teacher yet.</p>
+            </section>
+        }
+        else
+        {
+            <form class="mb-5 lg:hidden" method="get">
+                <label class="mb-2 block text-sm font-semibold text-on-surface" for="subject-selector">Subject</label>
+                <select class="min-h-11 w-full rounded-xl border border-outline-variant/40 bg-white px-4 text-sm text-on-surface focus:border-primary focus:ring-primary" id="subject-selector" name="subjectId" onchange="this.form.submit()">
+                    @foreach (var subject in Model.ManagedSubjects)
+                    {
+                        <option value="@subject.SubjectId" selected="@(subject.SubjectId == Model.SubjectId)">@subject.SubjectCode — @subject.SubjectName (@subject.DocumentCount)</option>
+                    }
+                </select>
+            </form>
+
+            <div class="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+                <aside class="sticky top-20 hidden overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container-lowest shadow-sm lg:block" aria-label="Managed subjects">
+                    <div class="border-b border-outline-variant/20 px-4 py-4">
+                        <h2 class="font-semibold text-on-surface">Your Subjects</h2>
+                        <p class="mt-1 text-xs text-secondary">@Model.ManagedSubjects.Count subject(s) assigned</p>
+                    </div>
+                    <nav class="max-h-[calc(100vh-12rem)] space-y-1 overflow-y-auto p-2">
+                        @foreach (var subject in Model.ManagedSubjects)
+                        {
+                            var isActive = subject.SubjectId == Model.SubjectId;
+                            <a class="flex min-h-14 items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors @(isActive ? "bg-primary/10 text-primary" : "text-secondary hover:bg-surface-container-high")"
+                               href="/TeacherDocuments?subjectId=@subject.SubjectId"
+                               aria-current="@(isActive ? "page" : null)">
+                                <span class="min-w-0">
+                                    <strong class="block truncate text-sm">@subject.SubjectCode</strong>
+                                    <span class="block truncate text-xs opacity-80">@subject.SubjectName</span>
+                                </span>
+                                <span class="shrink-0 rounded-full bg-surface-container px-2 py-1 text-[11px] font-semibold">@subject.DocumentCount</span>
+                            </a>
+                        }
+                    </nav>
+                </aside>
+
+                @if (Model.SelectedSubject is not null)
                 {
-                    <div class="mx-4 mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-                        @Model.SuccessMessage
-                    </div>
-                }
+                    <div class="min-w-0 space-y-6">
+                        <section class="flex flex-col gap-5 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm xl:flex-row xl:items-end xl:justify-between">
+                            <div class="min-w-0">
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">@Model.SelectedSubject.SubjectCode</p>
+                                <h2 class="mt-1 truncate font-headline-lg text-2xl text-on-surface">@Model.SelectedSubject.SubjectName</h2>
+                                <p class="mt-1 text-sm text-secondary">Only documents from this subject are shown below.</p>
+                            </div>
+                            <a class="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                               href="/TeacherUpload?subjectId=@Model.SelectedSubject.SubjectId">
+                                <span class="material-symbols-outlined text-lg" aria-hidden="true">upload_file</span>
+                                Upload Document
+                            </a>
+                        </section>
 
-                @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
-                {
-                    <div class="mx-4 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
-                        @Model.ErrorMessage
-                    </div>
-                }
+                        <section class="grid grid-cols-1 gap-4 sm:grid-cols-3" aria-label="Selected subject statistics">
+                            <div class="rounded-xl border border-outline-variant/30 bg-surface-container-lowest px-5 py-4 shadow-sm">
+                                <span class="text-[10px] font-semibold uppercase tracking-wider text-secondary">Documents</span>
+                                <strong class="mt-1 block text-xl text-primary">@Model.SelectedSubject.DocumentCount</strong>
+                            </div>
+                            <div class="rounded-xl border border-outline-variant/30 bg-surface-container-lowest px-5 py-4 shadow-sm">
+                                <span class="text-[10px] font-semibold uppercase tracking-wider text-secondary">Completed</span>
+                                <strong class="mt-1 block text-xl text-on-surface">@Model.CompletedDocumentCount</strong>
+                            </div>
+                            <div class="rounded-xl border border-outline-variant/30 bg-surface-container-lowest px-5 py-4 shadow-sm">
+                                <span class="text-[10px] font-semibold uppercase tracking-wider text-secondary">Last Updated</span>
+                                <strong class="mt-1 block text-sm text-on-surface">@(Model.SelectedSubject.LastUpdatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "No uploads")</strong>
+                            </div>
+                        </section>
 
-                <div class="p-4 border-b border-outline-variant/20 flex items-center justify-between gap-4 flex-wrap">
-                    <div class="flex items-center gap-4">
-                        <h2 class="font-label-md text-on-surface">Managed Subjects</h2>
-                        <div class="h-4 w-[1px] bg-outline-variant/30"></div>
-                        <span class="text-sm text-secondary">@Model.DocumentsBySubject.Count subject(s)</span>
-                    </div>
-                    <form class="flex gap-2" method="get">
-                        <div class="relative">
-                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-sm">search</span>
-                            <input asp-for="Query" class="pl-9 pr-4 py-1.5 bg-surface-container-low border border-outline-variant/20 text-sm rounded-lg focus:ring-1 focus:ring-primary/30 w-48 lg:w-72 outline-none" placeholder="Filter subjects or documents..." type="text" />
-                        </div>
-                        <button class="flex items-center gap-1 px-3 py-1.5 border border-outline-variant/20 text-sm rounded-lg hover:bg-surface-container-low text-secondary" type="submit">
-                            <span class="material-symbols-outlined text-sm">filter_list</span>
-                            <span>Filter</span>
-                        </button>
-                    </form>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead>
-                            <tr class="border-b border-outline-variant/10 text-secondary bg-surface-container-low/30">
-                                <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px]">Subject Code</th>
-                                <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px]">Subject Name</th>
-                                <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px]">Documents</th>
-                                <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px]">Latest File</th>
-                                <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px]">Last Updated</th>
-                                <th class="px-6 py-4 font-label-sm font-semibold uppercase tracking-wider text-[10px] text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-outline-variant/10">
-                            @if (Model.DocumentsBySubject.Count == 0)
+                        <section class="flex flex-col overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container-lowest shadow-sm">
+                            @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
                             {
-                                <tr>
-                                    <td class="px-6 py-10 text-center text-secondary" colspan="6">
-                                        No real subject/document data matched your current filter.
-                                    </td>
-                                </tr>
+                                <div class="mx-4 mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900" role="status">@Model.SuccessMessage</div>
                             }
-                            else
+                            @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
                             {
-                                foreach (var item in Model.DocumentsBySubject)
-                                {
-                                    if (item.Documents.Count == 0)
-                                    {
-                                        <tr class="hover:bg-surface-container-low/50 transition-colors group">
-                                            <td class="px-6 py-4 font-medium text-sm">@item.SubjectCode</td>
-                                            <td class="px-6 py-4 text-sm text-on-surface">@item.SubjectName</td>
-                                            <td class="px-6 py-4 text-sm text-secondary">No chapters</td>
-                                            <td class="px-6 py-4 text-sm text-secondary">No document uploaded yet</td>
-                                            <td class="px-6 py-4 text-sm text-secondary">N/A</td>
-                                            <td class="px-6 py-4 text-right">
-                                                <a class="flex items-center justify-end gap-1 px-3 py-1 bg-primary text-white text-xs font-medium rounded hover:bg-primary/90 transition-all" href="/TeacherUpload?subjectId=@item.SubjectId">
-                                                    <span class="material-symbols-outlined text-sm">upload_file</span>Upload
-                                                </a>
-                                            </td>
+                                <div class="mx-4 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900" role="alert">@Model.ErrorMessage</div>
+                            }
+
+                            <div class="flex flex-col gap-4 border-b border-outline-variant/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <h3 class="font-semibold text-on-surface">Chapters and Documents</h3>
+                                    <p class="mt-1 text-xs text-secondary">@Model.VisibleDocuments.Count matching document(s)</p>
+                                </div>
+                                <form class="flex w-full gap-2 sm:w-auto" method="get">
+                                    <input name="subjectId" type="hidden" value="@Model.SelectedSubject.SubjectId" />
+                                    <label class="sr-only" for="document-query">Search documents in @Model.SelectedSubject.SubjectCode</label>
+                                    <div class="relative min-w-0 flex-1 sm:w-72">
+                                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm text-secondary" aria-hidden="true">search</span>
+                                        <input asp-for="Query" class="min-h-11 w-full rounded-lg border border-outline-variant/30 bg-surface-container-low py-2 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" id="document-query" placeholder="Search chapter or document..." type="search" />
+                                    </div>
+                                    <button class="inline-flex min-h-11 items-center justify-center rounded-lg border border-outline-variant/30 px-4 text-sm font-medium text-secondary hover:bg-surface-container-low" type="submit">Search</button>
+                                </form>
+                            </div>
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full min-w-[760px] text-left">
+                                    <thead>
+                                        <tr class="border-b border-outline-variant/10 bg-surface-container-low/30 text-secondary">
+                                            <th class="px-6 py-4 text-[10px] font-semibold uppercase tracking-wider">Chapter</th>
+                                            <th class="px-6 py-4 text-[10px] font-semibold uppercase tracking-wider">Document</th>
+                                            <th class="px-6 py-4 text-[10px] font-semibold uppercase tracking-wider">Status</th>
+                                            <th class="px-6 py-4 text-[10px] font-semibold uppercase tracking-wider">Uploaded</th>
+                                            <th class="px-6 py-4 text-right text-[10px] font-semibold uppercase tracking-wider">Actions</th>
                                         </tr>
-                                    }
-                                    else
-                                    {
-                                        foreach (var document in item.Documents)
+                                    </thead>
+                                    <tbody class="divide-y divide-outline-variant/10">
+                                        @if (Model.VisibleDocuments.Count == 0)
                                         {
-                                            <tr class="hover:bg-surface-container-low/50 transition-colors group">
-                                                <td class="px-6 py-4 font-medium text-sm">@item.SubjectCode</td>
-                                                <td class="px-6 py-4 text-sm text-on-surface">@item.SubjectName</td>
-                                                <td class="px-6 py-4 text-sm text-secondary">
-                                                    <strong class="block text-on-surface">@document.ChapterTitle</strong>
-                                                    <span>@document.DocumentTitle · @document.ChunkCount chunk(s)</span>
-                                                </td>
-                                                <td class="px-6 py-4 text-sm text-secondary">
-                                                    <span class="uppercase tracking-wide text-primary">@document.Status</span>
-                                                    @if (!string.IsNullOrWhiteSpace(document.ProcessingError))
-                                                    {
-                                                        <span class="mt-1 block max-w-sm text-xs normal-case text-rose-700">@document.ProcessingError</span>
-                                                    }
-                                                </td>
-                                                <td class="px-6 py-4 text-sm text-secondary">@(document.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")</td>
-                                                <td class="px-6 py-4 text-right">
-                                                    <div class="flex justify-end gap-2">
-                                                        <a class="flex items-center gap-1 px-3 py-1 border border-outline-variant/40 text-xs font-medium rounded hover:bg-surface-container-low transition-all" href="/TeacherDocuments/Details?documentId=@document.DocumentId">
-                                                            <span class="material-symbols-outlined text-sm">visibility</span>View Chunks
-                                                        </a>
-                                                        @if (string.Equals(document.Status, "failed", StringComparison.OrdinalIgnoreCase))
-                                                        {
-                                                            <form method="post" asp-page-handler="Retry">
-                                                                <input type="hidden" name="documentId" value="@document.DocumentId" />
-                                                                <input type="hidden" name="subjectId" value="@item.SubjectId" />
-                                                                <input type="hidden" name="Query" value="@Model.Query" />
-                                                                <button class="flex items-center gap-1 px-3 py-1 border border-amber-300 bg-amber-50 text-amber-900 text-xs font-medium rounded hover:bg-amber-100 transition-all" type="submit">
-                                                                    <span class="material-symbols-outlined text-sm">refresh</span>Retry Sync
-                                                                </button>
-                                                            </form>
-                                                        }
-                                                        <form class="delete-chapter-form" method="post" asp-page-handler="DeleteChapter" data-chapter-title="@document.ChapterTitle">
-                                                            <input type="hidden" name="subjectId" value="@item.SubjectId" />
-                                                            <input type="hidden" name="chapterId" value="@document.ChapterId" />
-                                                            <input type="hidden" name="Query" value="@Model.Query" />
-                                                            <button class="flex items-center gap-1 px-3 py-1 border border-rose-300 bg-rose-50 text-rose-800 text-xs font-medium rounded hover:bg-rose-100 transition-all" type="submit">
-                                                                <span class="material-symbols-outlined text-sm">delete</span>Delete Chapter
-                                                            </button>
-                                                        </form>
-                                                    </div>
+                                            <tr>
+                                                <td class="px-6 py-12 text-center text-sm text-secondary" colspan="5">
+                                                    @(string.IsNullOrWhiteSpace(Model.Query) ? "No documents have been uploaded for this subject." : "No chapters or documents match your search.")
                                                 </td>
                                             </tr>
                                         }
-                                    }
-                                }
-                            }
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="p-4 bg-surface-container-low/30 border-t border-outline-variant/10 flex items-center justify-between">
-                    <span class="text-[12px] text-secondary">Showing @Model.DocumentsBySubject.Count subject(s) with real database data</span>
-                    <a class="px-4 py-1.5 bg-primary text-white text-[12px] rounded-lg hover:bg-primary/90 transition-all shadow-sm font-medium" href="/TeacherHome">Back to Home</a>
-                </div>
+                                        else
+                                        {
+                                            foreach (var document in Model.VisibleDocuments)
+                                            {
+                                                <tr class="group transition-colors hover:bg-surface-container-low/50">
+                                                    <td class="px-6 py-4 text-sm font-medium text-on-surface">@document.ChapterTitle</td>
+                                                    <td class="px-6 py-4 text-sm text-secondary">
+                                                        <strong class="block max-w-xs truncate text-on-surface">@document.DocumentTitle</strong>
+                                                        <span class="text-xs">@document.ChunkCount chunk(s)</span>
+                                                    </td>
+                                                    <td class="px-6 py-4 text-sm text-secondary">
+                                                        <span class="uppercase tracking-wide text-primary">@document.Status</span>
+                                                        @if (!string.IsNullOrWhiteSpace(document.ProcessingError))
+                                                        {
+                                                            <span class="mt-1 block max-w-sm text-xs normal-case text-rose-700">@document.ProcessingError</span>
+                                                        }
+                                                    </td>
+                                                    <td class="px-6 py-4 text-sm text-secondary">@(document.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")</td>
+                                                    <td class="px-6 py-4 text-right">
+                                                        <div class="flex justify-end gap-2">
+                                                            <a class="inline-flex min-h-9 items-center gap-1 rounded border border-outline-variant/40 px-3 py-1 text-xs font-medium hover:bg-surface-container-low" href="/TeacherDocuments/Details?documentId=@document.DocumentId&subjectId=@Model.SelectedSubject.SubjectId&query=@Uri.EscapeDataString(Model.Query ?? string.Empty)">
+                                                                <span class="material-symbols-outlined text-sm" aria-hidden="true">visibility</span>View Chunks
+                                                            </a>
+                                                            @if (string.Equals(document.Status, "failed", StringComparison.OrdinalIgnoreCase))
+                                                            {
+                                                                <form method="post" asp-page-handler="Retry">
+                                                                    <input type="hidden" name="documentId" value="@document.DocumentId" />
+                                                                    <input type="hidden" name="subjectId" value="@Model.SelectedSubject.SubjectId" />
+                                                                    <input type="hidden" name="Query" value="@Model.Query" />
+                                                                    <button class="inline-flex min-h-9 items-center gap-1 rounded border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100" type="submit">
+                                                                        <span class="material-symbols-outlined text-sm" aria-hidden="true">refresh</span>Retry Sync
+                                                                    </button>
+                                                                </form>
+                                                            }
+                                                            <form class="delete-chapter-form" method="post" asp-page-handler="DeleteChapter" data-chapter-title="@document.ChapterTitle">
+                                                                <input type="hidden" name="subjectId" value="@Model.SelectedSubject.SubjectId" />
+                                                                <input type="hidden" name="chapterId" value="@document.ChapterId" />
+                                                                <input type="hidden" name="Query" value="@Model.Query" />
+                                                                <button class="inline-flex min-h-9 items-center gap-1 rounded border border-rose-300 bg-rose-50 px-3 py-1 text-xs font-medium text-rose-800 hover:bg-rose-100" type="submit">
+                                                                    <span class="material-symbols-outlined text-sm" aria-hidden="true">delete</span>Delete Chapter
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+                }
             </div>
-        </div>
+        }
     </main>
 
     <nav class="md:hidden fixed bottom-0 left-0 w-full bg-surface/95 backdrop-blur-md border-t border-outline-variant/20 flex justify-around p-2 z-50">

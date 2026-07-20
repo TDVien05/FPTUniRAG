@@ -22,6 +22,12 @@ public class TeacherDocumentDetailsModel : PageModel
     [TempData]
     public string? ErrorMessage { get; set; }
 
+    [BindProperty(SupportsGet = true)]
+    public Guid? SubjectId { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public string? Query { get; set; }
+
     public TeacherDocumentDetailDto? Document { get; private set; }
 
     public async Task<IActionResult> OnGetAsync(Guid documentId, CancellationToken cancellationToken)
@@ -41,6 +47,8 @@ public class TeacherDocumentDetailsModel : PageModel
         {
             return Forbid();
         }
+
+        SubjectId = Document.SubjectId;
 
         return Page();
     }
