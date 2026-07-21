@@ -45,4 +45,14 @@ public interface IAccountManagementService
         string currentPassword,
         string newPassword,
         CancellationToken cancellationToken = default);
+
+    Task<OperationResult> RequestPasswordResetAsync(
+        string email,
+        string resetPageUrl,
+        CancellationToken cancellationToken = default);
+
+    Task<OperationResult> ResetPasswordAsync(
+        string token,
+        string newPassword,
+        CancellationToken cancellationToken = default);
 }

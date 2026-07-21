@@ -20,74 +20,16 @@
 <body class="admin-dashboard-page">
     <main class="admin-shell" aria-label="FPT UniRAG admin dashboard">
         @await Html.PartialAsync("_AdminNavigation")
-        @* <aside class="admin-sidebar" aria-label="Admin navigation">
-            <a class="admin-logo" href="/AdminDashboard" aria-label="FPT UniRAG dashboard">
-                <span class="admin-logo-mark" aria-hidden="true">
-                    <span class="material-symbols-outlined">school</span>
-                </span>
-                <span>
-                    <strong>FPT UniRAG</strong>
-                    <small>Academic RAG</small>
-                </span>
-            </a>
-
-            <nav class="admin-nav">
-                <a class="admin-nav-item active" href="/AdminDashboard" aria-current="page">
-                    <span class="material-symbols-outlined" aria-hidden="true">dashboard</span>
-                    Dashboard
-                </a>
-                <details class="admin-nav-group">
-                    <summary class="admin-nav-item">
-                        <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
-                        Subjects
-                        <span class="material-symbols-outlined admin-nav-chevron" aria-hidden="true">expand_more</span>
-                    </summary>
-                    <div class="admin-subnav">
-                        <a href="/Subjects">Manage Subjects</a>
-                        <a href="/Subjects/AssignTeacher">Assign Teacher</a>
-                        <a href="/Subjects/AssignHeader">Assign Header</a>
-                    </div>
-                </details>
-                <a class="admin-nav-item" href="/Accounts">
-                    <span class="material-symbols-outlined" aria-hidden="true">groups</span>
-                    Accounts
-                </a>
-                <a class="admin-nav-item" href="/SubscriptionPlans">
-                    <span class="material-symbols-outlined" aria-hidden="true">payments</span>
-                    Subscription Plans
-                </a>
-                <a class="admin-nav-item" href="/EmbeddingSettings">
-                    <span class="material-symbols-outlined" aria-hidden="true">tune</span>
-                    Embedding Settings
-                </a>
-                <a class="admin-nav-item" href="/EmbeddingBenchmark">
-                    <span class="material-symbols-outlined" aria-hidden="true">speed</span>
-                    Embedding Benchmark
-                </a>
-                <a class="admin-nav-item" href="/Analysis">
-                    <span class="material-symbols-outlined" aria-hidden="true">analytics</span>
-                    Analytics
-                </a>
-            </nav>
-
-            <section class="admin-sidebar-footer" aria-label="Sidebar actions">
-                <a class="admin-sidebar-footer-link" href="#">
-                    <span class="material-symbols-outlined" aria-hidden="true">help_outline</span>
-                    <span>Help</span>
-                </a>
-                <a class="admin-sidebar-footer-link" href="/ChangePassword">
-                    <span class="material-symbols-outlined" aria-hidden="true">lock</span>
-                    <span>Change Password</span>
-                </a>
-                <a class="admin-sidebar-footer-link" href="/Logout">
-                    <span class="material-symbols-outlined" aria-hidden="true">logout</span>
-                    <span>Logout</span>
-                </a>
-            </section>
-        </aside> *@
 
         <section class="admin-main">
             <div class="admin-content">
+                <header class="subject-create-header accounts-header">
+                    <div>
+                        <h1>Admin Dashboard</h1>
+                        <p>Overview of subjects, documents, and account activity.</p>
+                    </div>
+                </header>
+
                 <section class="admin-stat-grid" aria-label="Dashboard statistics">
                     <article class="admin-stat-card">
                         <span class="admin-stat-icon blue"><span class="material-symbols-outlined" aria-hidden="true">menu_book</span></span>

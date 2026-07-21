@@ -37,13 +37,13 @@
         }
         else
         {
-            <div class="mb-8 flex items-center justify-between gap-4">
+            <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <p class="text-sm font-medium text-blue-700">@Model.Document.SubjectCode · @Model.Document.SubjectName</p>
                     <h1 class="mt-2 font-[Manrope] text-3xl font-bold">@Model.Document.Title</h1>
                     <p class="mt-2 text-sm text-slate-600">Chapter: @Model.Document.ChapterTitle</p>
                 </div>
-                <div class="flex gap-3">
+                <div class="flex flex-wrap gap-3">
                     <a class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700" href="/TeacherUpload?subjectId=@Model.Document.SubjectId">Upload Another</a>
                     <a class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white" asp-page="/TeacherDocuments" asp-route-subjectId="@Model.Document.SubjectId" asp-route-Query="@Model.Query">Back to Documents</a>
                 </div>

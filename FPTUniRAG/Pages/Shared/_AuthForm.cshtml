@@ -28,7 +28,7 @@
         <div class="auth-field ui-field" data-slot="field" data-invalid="@(passwordInvalid ? "true" : null)">
             <div class="auth-field-row">
                 <label asp-for="Input.Password" class="ui-label" data-slot="field-label">Password</label>
-                <a href="#">Forgot password?</a>
+                <a href="/ForgotPassword">Forgot password?</a>
             </div>
             <div class="auth-input-group ui-input-group" data-slot="input-group">
                 <span class="auth-input-leading-icon material-symbols-outlined" aria-hidden="true">lock</span>
@@ -40,11 +40,6 @@
             <span asp-validation-for="Input.Password" class="auth-field-message"></span>
         </div>
     </div>
-
-    <label class="auth-check ui-checkbox" data-slot="checkbox-field">
-        <input asp-for="Input.RememberMe" type="checkbox" />
-        <span>Remember me on this device</span>
-    </label>
 
     <button type="submit" class="ui-button ui-button-primary" data-slot="button">
         <span>Sign In</span>

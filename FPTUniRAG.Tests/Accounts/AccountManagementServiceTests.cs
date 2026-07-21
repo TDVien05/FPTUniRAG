@@ -133,6 +133,13 @@ public sealed class AccountManagementServiceTests
             string role,
             CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("SMTP unavailable");
+
+        public Task SendPasswordResetLinkAsync(
+            string email,
+            string fullName,
+            string resetLink,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("SMTP unavailable");
     }
 
     private sealed class SuccessfulCredentialEmailSender : ICredentialEmailSender
@@ -142,6 +149,12 @@ public sealed class AccountManagementServiceTests
             string fullName,
             string password,
             string role,
+            CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task SendPasswordResetLinkAsync(
+            string email,
+            string fullName,
+            string resetLink,
             CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
@@ -178,6 +191,9 @@ public sealed class AccountManagementServiceTests
             Task.FromResult(ExistingUser);
 
         public Task<User?> FindUserByIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<User?>(null);
+
+        public Task<User?> FindUserByPasswordResetTokenHashAsync(string tokenHash, CancellationToken cancellationToken = default) =>
             Task.FromResult<User?>(null);
 
         public Task<IReadOnlyList<AccountListRecord>> GetAccountsAsync(CancellationToken cancellationToken = default) =>

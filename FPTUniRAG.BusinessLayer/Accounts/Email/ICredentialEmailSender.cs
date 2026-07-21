@@ -8,4 +8,10 @@ public interface ICredentialEmailSender
         string password,
         string role,
         CancellationToken cancellationToken = default);
+
+    Task SendPasswordResetLinkAsync(
+        string email,
+        string fullName,
+        string resetLink,
+        CancellationToken cancellationToken = default);
 }

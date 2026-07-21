@@ -15,6 +15,8 @@ namespace FPTUniRAG.BusinessLayer.Accounts;
 
 public sealed class AccountManagementService : IAccountManagementService
 {
+    private static readonly TimeSpan PasswordResetTokenLifetime = TimeSpan.FromMinutes(30);
+
     private readonly IAccountRepository _accountRepository;
     private readonly IPasswordService _passwordService;
     private readonly ICredentialEmailSender _credentialEmailSender;
@@ -356,6 +358,95 @@ public sealed class AccountManagementService : IAccountManagementService
 
         await _accountRepository.SaveUserAsync(user, cancellationToken);
         return OperationResult.Success("Password changed successfully.");
+    }
+
+    public async Task<OperationResult> RequestPasswordResetAsync(
+        string email,
+        string resetPageUrl,
+        CancellationToken cancellationToken = default)
+    {
+        const string genericMessage = "If an account exists for that email, a password reset link has been sent.";
+
+        var normalizedEmail = email.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedEmail) || !MailAddress.TryCreate(normalizedEmail, out _))
+        {
+            return OperationResult.Success(genericMessage);
+        }
+
+        var user = await _accountRepository.FindUserByEmailAsync(normalizedEmail, tracked: true, cancellationToken);
+        if (user is null || user.IsBlocked)
+        {
+            return OperationResult.Success(genericMessage);
+        }
+
+        var rawToken = GenerateResetToken();
+        user.PasswordResetTokenHash = HashResetToken(rawToken);
+        user.PasswordResetTokenExpiresAt = CreateDatabaseTimestamp().Add(PasswordResetTokenLifetime);
+
+        await _accountRepository.SaveUserAsync(user, cancellationToken);
+
+        var resetLink = $"{resetPageUrl.TrimEnd('/')}?token={Uri.EscapeDataString(rawToken)}";
+
+        try
+        {
+            await _credentialEmailSender.SendPasswordResetLinkAsync(user.Email, user.FullName, resetLink, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Failed to send password reset email to {Email}", user.Email);
+        }
+
+        return OperationResult.Success(genericMessage);
+    }
+
+    public async Task<OperationResult> ResetPasswordAsync(
+        string token,
+        string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        const string invalidTokenMessage = "This password reset link is invalid or has expired. Please request a new one.";
+
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return OperationResult.Failure(invalidTokenMessage);
+        }
+
+        var passwordValidationError = ValidateNewPassword(newPassword);
+        if (passwordValidationError is not null)
+        {
+            return OperationResult.Failure(passwordValidationError);
+        }
+
+        var tokenHash = HashResetToken(token.Trim());
+        var user = await _accountRepository.FindUserByPasswordResetTokenHashAsync(tokenHash, cancellationToken);
+
+        if (user is null
+            || user.PasswordResetTokenExpiresAt is null
+            || user.PasswordResetTokenExpiresAt < CreateDatabaseTimestamp())
+        {
+            return OperationResult.Failure(invalidTokenMessage);
+        }
+
+        user.PasswordHash = _passwordService.HashPassword(newPassword);
+        user.MustChangePassword = false;
+        user.PasswordResetTokenHash = null;
+        user.PasswordResetTokenExpiresAt = null;
+
+        await _accountRepository.SaveUserAsync(user, cancellationToken);
+        return OperationResult.Success("Your password has been reset. You can now sign in with your new password.");
+    }
+
+    private static string GenerateResetToken()
+    {
+        return Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+            .Replace('+', '-')
+            .Replace('/', '_')
+            .TrimEnd('=');
+    }
+
+    private static string HashResetToken(string token)
+    {
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
     }
 
     private static string NormalizeRole(string? role)

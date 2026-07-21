@@ -84,8 +84,8 @@ public class LoginModel : PageModel
 
         var authenticationProperties = new AuthenticationProperties
         {
-            IsPersistent = Input.RememberMe,
-            ExpiresUtc = Input.RememberMe ? DateTimeOffset.UtcNow.AddDays(30) : DateTimeOffset.UtcNow.AddDays(1)
+            IsPersistent = false,
+            ExpiresUtc = DateTimeOffset.UtcNow.AddDays(1)
         };
 
         await HttpContext.SignInAsync(
@@ -114,7 +114,5 @@ public class LoginModel : PageModel
         [Required(ErrorMessage = "Password is required.")]
         [DataType(DataType.Password)]
         public string Password { get; set; } = string.Empty;
-
-        public bool RememberMe { get; set; }
     }
 }

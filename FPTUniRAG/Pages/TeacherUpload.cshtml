@@ -15,7 +15,7 @@
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900 font-[Inter]">
     <main class="mx-auto max-w-5xl px-6 py-10">
-        <div class="mb-8 flex items-center justify-between gap-4">
+        <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <p class="text-sm font-medium text-blue-700">Teacher Upload</p>
                 <h1 class="mt-2 font-[Manrope] text-3xl font-bold">
@@ -25,7 +25,7 @@
                     Only subjects where you are the header teacher can upload documents. Each chapter can store one document.
                 </p>
             </div>
-            <div class="flex gap-3">
+            <div class="flex flex-wrap gap-3">
                 <a class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700" href="/TeacherDocuments?subjectId=@Model.Input.SubjectId">Document Management</a>
                 <a class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white" href="/TeacherHome">Back Home</a>
             </div>
@@ -82,7 +82,7 @@
                             <span asp-validation-for="Input.File" class="mt-1 block text-sm text-rose-700"></span>
                         </div>
 
-                        <div class="flex items-center justify-end gap-3 pt-4">
+                        <div class="flex flex-wrap items-center justify-end gap-3 pt-4">
                             <a class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700" href="/TeacherDocuments?subjectId=@Model.Input.SubjectId">Cancel</a>
                             <button class="rounded-xl bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800" type="submit">Upload and Generate Chunks</button>
                         </div>

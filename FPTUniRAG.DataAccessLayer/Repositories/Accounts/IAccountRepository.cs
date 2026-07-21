@@ -6,6 +6,7 @@ public interface IAccountRepository
 {
     Task<User?> FindUserByEmailAsync(string email, bool tracked = false, CancellationToken cancellationToken = default);
     Task<User?> FindUserByIdAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<User?> FindUserByPasswordResetTokenHashAsync(string tokenHash, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AccountListRecord>> GetAccountsAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AccountStatusRecord>> GetAccountStatusesAsync(CancellationToken cancellationToken = default);
     Task<bool> StudentIdentityExistsAsync(string email, string studentCode, CancellationToken cancellationToken = default);

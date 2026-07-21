@@ -114,35 +114,6 @@
 <body class="admin-dashboard-page bg-background text-on-background overflow-x-hidden">
     <main class="admin-shell" aria-label="Platform analytics">
         @await Html.PartialAsync("_AdminNavigation")
-        @* <aside class="admin-sidebar" aria-label="Admin navigation">
-            <a class="admin-logo" href="/AdminDashboard" aria-label="FPT UniRAG dashboard">
-                <span class="admin-logo-mark" aria-hidden="true"><span class="material-symbols-outlined">school</span></span>
-                <span><strong>FPT UniRAG</strong><small>Academic RAG</small></span>
-            </a>
-
-            <nav class="admin-nav">
-                <a class="admin-nav-item" href="/AdminDashboard"><span class="material-symbols-outlined" aria-hidden="true">dashboard</span>Dashboard</a>
-                <details class="admin-nav-group">
-                    <summary class="admin-nav-item"><span class="material-symbols-outlined" aria-hidden="true">menu_book</span>Subjects<span class="material-symbols-outlined admin-nav-chevron" aria-hidden="true">expand_more</span></summary>
-                    <div class="admin-subnav">
-                        <a href="/Subjects">Manage Subjects</a>
-                        <a href="/Subjects/AssignTeacher">Assign Teacher</a>
-                        <a href="/Subjects/AssignHeader">Assign Header</a>
-                    </div>
-                </details>
-                <a class="admin-nav-item" href="/Accounts"><span class="material-symbols-outlined" aria-hidden="true">groups</span>Accounts</a>
-                <a class="admin-nav-item" href="/SubscriptionPlans"><span class="material-symbols-outlined" aria-hidden="true">payments</span>Subscription Plans</a>
-                <a class="admin-nav-item" href="/EmbeddingSettings"><span class="material-symbols-outlined" aria-hidden="true">tune</span>Embedding Settings</a>
-                <a class="admin-nav-item" href="/EmbeddingBenchmark"><span class="material-symbols-outlined" aria-hidden="true">speed</span>Embedding Benchmark</a>
-                <a class="admin-nav-item active" href="/Analysis" aria-current="page"><span class="material-symbols-outlined" aria-hidden="true">analytics</span>Analytics</a>
-            </nav>
-
-            <section class="admin-sidebar-footer" aria-label="Sidebar actions">
-                <a class="admin-sidebar-footer-link" href="#"><span class="material-symbols-outlined" aria-hidden="true">help_outline</span><span>Help</span></a>
-                <a class="admin-sidebar-footer-link" href="/ChangePassword"><span class="material-symbols-outlined" aria-hidden="true">lock</span><span>Change Password</span></a>
-                <a class="admin-sidebar-footer-link" href="/Logout"><span class="material-symbols-outlined" aria-hidden="true">logout</span><span>Logout</span></a>
-            </section>
-        </aside> *@
 
         <section class="admin-main min-h-screen pb-10">
         <header class="sticky top-0 z-30 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 h-16 flex items-center shadow-sm">
@@ -177,7 +148,7 @@
             </div>
 
             <section class="mb-10">
-                <div class="flex items-center justify-between mb-6">
+                <div class="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h2 class="font-headline-md text-headline-md text-on-surface">Platform Analytics</h2>
                         <p class="text-secondary font-body-sm text-body-sm">Monitor system usage and token consumption for @Model.SelectedPeriodLabel.ToLowerInvariant()</p>
@@ -246,10 +217,10 @@
                         <h2 class="font-headline-md text-headline-md text-on-surface">Subscription Purchases by Plan</h2>
                         <p class="text-secondary font-body-sm text-body-sm">Who bought which plan for @Model.SelectedPeriodLabel.ToLowerInvariant().</p>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <div class="relative">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="relative w-full sm:w-auto">
                             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-sm">search</span>
-                            <input class="pl-9 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-label-sm focus:ring-2 focus:ring-primary/20 w-64" placeholder="Search students..." type="text" />
+                            <input class="pl-9 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-label-sm focus:ring-2 focus:ring-primary/20 w-full sm:w-64" placeholder="Search students..." type="text" />
                         </div>
                         <button class="flex items-center gap-2 px-4 py-2 border border-outline-variant/30 rounded-lg text-label-sm font-medium text-secondary hover:bg-surface-container-low transition-all" type="button">
                             <span class="material-symbols-outlined text-[18px]">download</span>
@@ -362,29 +333,5 @@
         </div>
         </section>
     </main>
-
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-surface/90 border-t border-outline-variant/10 px-4 py-2 flex justify-around items-center z-50">
-        <button class="flex flex-col items-center gap-1 text-secondary" type="button">
-            <span class="material-symbols-outlined">home</span>
-            <span class="text-[10px] font-medium">Home</span>
-        </button>
-        <button class="flex flex-col items-center gap-1 text-secondary" type="button">
-            <span class="material-symbols-outlined">school</span>
-            <span class="text-[10px] font-medium">Courses</span>
-        </button>
-        <div class="relative -top-6">
-            <button class="w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg shadow-primary/30" type="button">
-                <span class="material-symbols-outlined" style='font-variation-settings: "FILL" 1;'>add</span>
-            </button>
-        </div>
-        <button class="flex flex-col items-center gap-1 text-primary font-bold" type="button">
-            <span class="material-symbols-outlined" style='font-variation-settings: "FILL" 1;'>admin_panel_settings</span>
-            <span class="text-[10px] font-medium">Admin</span>
-        </button>
-        <button class="flex flex-col items-center gap-1 text-secondary" type="button">
-            <span class="material-symbols-outlined">person</span>
-            <span class="text-[10px] font-medium">Profile</span>
-        </button>
-    </nav>
 </body>
 </html>

@@ -15,32 +15,62 @@ public sealed class SmtpCredentialEmailSender : ICredentialEmailSender
         _options = options.Value;
     }
 
-    public async Task SendCredentialsAsync(
+    public Task SendCredentialsAsync(
         string email,
         string fullName,
         string password,
         string role,
         CancellationToken cancellationToken = default)
     {
+        var subject = $"FPT UniRAG {role} account credentials";
+        var body = $"""
+            Hello {fullName},
+
+            Your FPT UniRAG {role} account has been created.
+
+            Email: {email}
+            Password: {password}
+
+            Please sign in and change your password after your first login.
+            """;
+
+        return SendEmailAsync(email, subject, body, cancellationToken);
+    }
+
+    public Task SendPasswordResetLinkAsync(
+        string email,
+        string fullName,
+        string resetLink,
+        CancellationToken cancellationToken = default)
+    {
+        const string subject = "Reset your FPT UniRAG password";
+        var body = $"""
+            Hello {fullName},
+
+            We received a request to reset the password for your FPT UniRAG account ({email}).
+
+            Reset your password using the link below. This link expires in 30 minutes:
+            {resetLink}
+
+            If you did not request this, you can safely ignore this email.
+            """;
+
+        return SendEmailAsync(email, subject, body, cancellationToken);
+    }
+
+    private async Task SendEmailAsync(
+        string toEmail,
+        string subject,
+        string body,
+        CancellationToken cancellationToken)
+    {
         var options = NormalizeAndValidateOptions();
 
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(options.FromName, options.FromEmail));
-        message.To.Add(MailboxAddress.Parse(email));
-        message.Subject = $"FPT UniRAG {role} account credentials";
-        message.Body = new TextPart("plain")
-        {
-            Text = $"""
-                Hello {fullName},
-
-                Your FPT UniRAG {role} account has been created.
-
-                Email: {email}
-                Password: {password}
-
-                Please sign in and change your password after your first login.
-                """
-        };
+        message.To.Add(MailboxAddress.Parse(toEmail));
+        message.Subject = subject;
+        message.Body = new TextPart("plain") { Text = body };
 
         using var client = new SmtpClient();
         client.Timeout = options.TimeoutMilliseconds;
@@ -71,7 +101,7 @@ public sealed class SmtpCredentialEmailSender : ICredentialEmailSender
         catch (SmtpProtocolException exception)
         {
             throw new InvalidOperationException(
-                $"SMTP protocol error while sending credentials: {exception.Message}",
+                $"SMTP protocol error while sending email: {exception.Message}",
                 exception);
         }
         finally

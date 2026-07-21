@@ -961,6 +961,7 @@ body.auth-page {
   --admin-primary: #1a73e8;
   --admin-primary-hover: #155fc7;
   --admin-primary-soft: #e3f2fd;
+  --admin-primary-text: #155fc7;
   --admin-success: #166534;
   --admin-success-soft: #dcfce7;
   --admin-warning: #92400e;
@@ -1070,7 +1071,7 @@ body.admin-dashboard-page {
 
 .admin-nav-item.active {
   background: var(--admin-primary-soft);
-  color: var(--admin-primary);
+  color: var(--admin-primary-text);
 }
 
 .admin-nav-item .material-symbols-outlined {
@@ -1129,7 +1130,7 @@ body.admin-dashboard-page {
 
 .admin-subnav a.active {
   background: var(--admin-primary-soft);
-  color: var(--admin-primary);
+  color: var(--admin-primary-text);
 }
 
 .admin-sidebar-footer {
@@ -1232,8 +1233,8 @@ body.admin-dashboard-page {
 }
 
 .admin-icon-button {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 14px;
 }
 
@@ -1242,7 +1243,20 @@ body.admin-dashboard-page {
 .admin-row-actions a:hover {
   border-color: var(--admin-border-strong);
   background: var(--admin-surface-soft);
-  color: var(--admin-primary);
+  color: var(--admin-primary-text);
+}
+
+.admin-nav-item:focus-visible,
+.admin-subnav a:focus-visible,
+.admin-sidebar-footer-link:focus-visible,
+.admin-primary-button:focus-visible,
+.admin-secondary-button:focus-visible,
+.admin-ghost-button:focus-visible,
+.admin-icon-button:focus-visible,
+.admin-row-actions button:focus-visible,
+.admin-row-actions a:focus-visible {
+  outline: 2px solid var(--admin-primary-text);
+  outline-offset: 2px;
 }
 
 .admin-user {
@@ -1380,7 +1394,7 @@ body.admin-dashboard-page {
 .admin-ghost-button {
   border: 1px solid var(--admin-border);
   background: var(--admin-surface);
-  color: var(--admin-primary);
+  color: var(--admin-primary-text);
 }
 
 .admin-secondary-button:hover,
@@ -1464,10 +1478,12 @@ body.admin-dashboard-page {
 .admin-left-stack {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   gap: 10px;
 }
 
 .admin-panel {
+  min-width: 0;
   padding: 24px;
 }
 
@@ -1586,19 +1602,19 @@ body.admin-dashboard-page {
 
 .admin-row-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .admin-row-actions button,
 .admin-row-actions a {
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
   text-decoration: none;
 }
 
 .admin-row-actions .material-symbols-outlined {
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .admin-user-actions {
@@ -2494,6 +2510,7 @@ body.admin-dashboard-page {
   .admin-sidebar {
     position: static;
     height: auto;
+    min-width: 0;
     flex-direction: row;
     align-items: center;
     padding: 16px;
@@ -2501,8 +2518,31 @@ body.admin-dashboard-page {
 
   .admin-nav {
     flex: 1;
+    min-width: 0;
     flex-direction: row;
     overflow-x: auto;
+  }
+
+  .admin-sidebar-footer {
+    flex: 0 0 auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    margin-top: 0;
+    padding: 0 0 0 12px;
+    border-top: 0;
+    border-left: 1px solid var(--admin-border);
+  }
+
+  .admin-sidebar-footer-link {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+    padding: 10px;
+  }
+
+  .admin-sidebar-footer-link span:last-child {
+    display: none;
   }
 
   .admin-sidebar-card {

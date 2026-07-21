@@ -15,6 +15,9 @@ public sealed class AccountRepository(AppDbContext context) : IAccountRepository
     public Task<User?> FindUserByIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
         context.Users.FirstOrDefaultAsync(user => user.UserId == userId, cancellationToken);
 
+    public Task<User?> FindUserByPasswordResetTokenHashAsync(string tokenHash, CancellationToken cancellationToken = default) =>
+        context.Users.FirstOrDefaultAsync(user => user.PasswordResetTokenHash == tokenHash, cancellationToken);
+
     public async Task<IReadOnlyList<AccountListRecord>> GetAccountsAsync(CancellationToken cancellationToken = default) =>
         await context.Users.AsNoTracking().OrderBy(user => user.Role).ThenBy(user => user.FullName)
             .Select(user => new AccountListRecord(user.UserId, user.FullName, user.Email, user.Role, user.IsBlocked))
