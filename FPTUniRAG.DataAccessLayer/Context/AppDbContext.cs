@@ -528,6 +528,7 @@ public partial class AppDbContext : DbContext
                 .HasNoKey()
                 .ToView("student_active_chat_entitlements");
 
+            entity.Property(e => e.CarryoverTokens).HasColumnName("carryover_tokens");
             entity.Property(e => e.DailyTokenLimit).HasColumnName("daily_token_limit");
             entity.Property(e => e.Email)
                 .HasMaxLength(255)
@@ -570,6 +571,9 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(255)
                 .HasColumnName("embedding_model");
             entity.Property(e => e.EmbeddingDimensions).HasColumnName("embedding_dimensions");
+            entity.Property(e => e.FixedChunkSize)
+                .HasDefaultValue(800)
+                .HasColumnName("fixed_chunk_size");
             entity.Property(e => e.UpdatedAt)
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("updated_at");
@@ -608,6 +612,9 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("uuid_generate_v4()")
                 .HasColumnName("student_subscription_id");
             entity.Property(e => e.AutoRenew).HasColumnName("auto_renew");
+            entity.Property(e => e.CarryoverTokens)
+                .HasDefaultValue(0L)
+                .HasColumnName("carryover_tokens");
             entity.Property(e => e.CanceledAt)
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("canceled_at");
@@ -725,9 +732,6 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(50)
                 .HasDefaultValueSql("'fixed'::character varying")
                 .HasColumnName("default_chunking_strategy");
-            entity.Property(e => e.DefaultFixedChunkSize)
-                .HasDefaultValue(800)
-                .HasColumnName("default_fixed_chunk_size");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.SubjectCode)
                 .HasMaxLength(50)

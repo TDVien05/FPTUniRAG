@@ -39,6 +39,14 @@ public sealed class FixedChunkingService : IFixedChunkingService
         while (countedStart < countedCharacterIndexes.Count)
         {
             var countedEnd = Math.Min(countedStart + chunkSize, countedCharacterIndexes.Count);
+
+            if (countedEnd == countedCharacterIndexes.Count && countedCharacterIndexes.Count > chunkSize)
+            {
+                // The trailing chunk would otherwise be shorter than chunkSize; anchor it to the
+                // document's end so it also reaches a full chunkSize counted characters.
+                countedStart = countedCharacterIndexes.Count - chunkSize;
+            }
+
             var sourceStart = countedCharacterIndexes[countedStart];
             var sourceEnd = countedEnd < countedCharacterIndexes.Count
                 ? countedCharacterIndexes[countedEnd]

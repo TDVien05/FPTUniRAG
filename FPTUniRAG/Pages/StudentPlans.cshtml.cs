@@ -64,9 +64,9 @@ public class StudentPlansModel : PageModel
         }
 
         var normalizedPlanCode = planCode.Trim().ToLowerInvariant();
-        if (!await _studentPlanService.CanPurchaseAsync(userId, cancellationToken))
+        if (!await _studentPlanService.CanPurchaseAsync(userId, normalizedPlanCode, cancellationToken))
         {
-            ErrorMessage = "You already have an active subscription. You cannot purchase another plan right now.";
+            ErrorMessage = "You already have an active subscription. You can only switch to a higher-tier plan right now, or wait until your current plan's tokens are used up.";
             return RedirectToPage();
         }
 
@@ -113,7 +113,7 @@ public class StudentPlansModel : PageModel
                 plan.HasPrioritySupport,
                 plan.HasFileUpload,
                 plan.HasHistoryExport,
-                !HasActiveSubscription || canReplaceActiveSubscription,
+                !HasActiveSubscription || canReplaceActiveSubscription || plan.MonthlyPrice > state.CurrentPlan.MonthlyPrice,
                 recommendedPlanId == plan.PlanId,
                 state.CurrentPlan.PlanId == plan.PlanId,
                 BuildHighlights(plan)))

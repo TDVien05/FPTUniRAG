@@ -38,4 +38,6 @@ public partial class StudentActiveChatEntitlement
     public DateTime? ExpiresAt { get; set; }
 
     public string? SubscriptionStatus { get; set; }
+
+    public long CarryoverTokens { get; set; }
 }

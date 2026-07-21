@@ -18,7 +18,4 @@ public sealed class SubjectInputModel
     [Required(ErrorMessage = "Chunking strategy is required.")]
     [RegularExpression("^(fixed|semantic)$", ErrorMessage = "Chunking strategy must be fixed or semantic.")]
     public string DefaultChunkingStrategy { get; set; } = SubjectChunkingStrategies.Fixed;
-
-    [Range(1, int.MaxValue, ErrorMessage = "Fixed chunk size must be greater than zero.")]
-    public int DefaultFixedChunkSize { get; set; } = 800;
 }

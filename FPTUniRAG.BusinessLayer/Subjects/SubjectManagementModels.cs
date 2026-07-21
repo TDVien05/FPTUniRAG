@@ -6,7 +6,6 @@ public sealed record SubjectListItemDto(
     string SubjectName,
     string? Description,
     string DefaultChunkingStrategy,
-    int DefaultFixedChunkSize,
     DateTime? CreatedAt);
 
 public sealed record SubjectEditDto(
@@ -15,7 +14,6 @@ public sealed record SubjectEditDto(
     string SubjectName,
     string? Description,
     string DefaultChunkingStrategy,
-    int DefaultFixedChunkSize,
     DateTime? CreatedAt);
 
 public sealed record SubjectDeletePreviewDto(
@@ -40,8 +38,7 @@ public sealed record UpsertSubjectRequest(
     string SubjectCode,
     string SubjectName,
     string? Description,
-    string DefaultChunkingStrategy,
-    int DefaultFixedChunkSize);
+    string DefaultChunkingStrategy);
 
 public sealed record SubjectTeacherAssignmentListItemDto(
     Guid SubjectId,
@@ -55,7 +52,6 @@ public sealed record TeacherHeaderSubjectDashboardItemDto(
     string SubjectName,
     string? Description,
     string DefaultChunkingStrategy,
-    int DefaultFixedChunkSize,
     int DocumentCount,
     int ChapterCount);
 

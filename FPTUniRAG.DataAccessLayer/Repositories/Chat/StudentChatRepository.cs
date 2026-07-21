@@ -88,7 +88,7 @@ public sealed class StudentChatRepository(AppDbContext context) : IStudentChatRe
     {
         var entitlement = await context.StudentActiveChatEntitlements.AsNoTracking().FirstOrDefaultAsync(i => i.UserId == userId, cancellationToken);
         var usage = await context.StudentTokenUsageCurrentMonths.AsNoTracking().FirstOrDefaultAsync(i => i.UserId == userId, cancellationToken);
-        return new ChatQuotaRecord(entitlement?.PlanId, entitlement?.PlanCode, entitlement?.MonthlyTokenLimit, usage?.TotalTokensUsedThisMonth ?? 0);
+        return new ChatQuotaRecord(entitlement?.PlanId, entitlement?.PlanCode, entitlement?.MonthlyTokenLimit, entitlement?.CarryoverTokens ?? 0, usage?.TotalTokensUsedThisMonth ?? 0);
     }
 
     public async Task<IReadOnlyList<ChatUsageRunRecord>> GetUsageRunsAsync(string featureName, CancellationToken cancellationToken = default) =>

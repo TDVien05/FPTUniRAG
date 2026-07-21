@@ -8,7 +8,7 @@ namespace FPTUniRAG.BusinessLayer.Subjects;
 public sealed class SubjectManagementService(ISubjectRepository repository, ITeacherHeaderSubjectNotifier notifier) : ISubjectManagementService
 {
     public async Task<IReadOnlyList<SubjectListItemDto>> GetSubjectsAsync(CancellationToken cancellationToken = default) =>
-        (await repository.GetSubjectsAsync(cancellationToken)).Select(s => new SubjectListItemDto(s.SubjectId, s.SubjectCode, s.SubjectName, s.Description, s.DefaultChunkingStrategy, s.DefaultFixedChunkSize, s.CreatedAt)).ToList();
+        (await repository.GetSubjectsAsync(cancellationToken)).Select(s => new SubjectListItemDto(s.SubjectId, s.SubjectCode, s.SubjectName, s.Description, s.DefaultChunkingStrategy, s.CreatedAt)).ToList();
 
     public async Task<IReadOnlyList<SubjectTeacherAssignmentListItemDto>> GetSubjectsForTeacherAssignmentAsync(CancellationToken cancellationToken = default) =>
         (await repository.GetSubjectsAsync(cancellationToken)).Select(s => new SubjectTeacherAssignmentListItemDto(s.SubjectId, s.SubjectCode, s.SubjectName,
@@ -16,7 +16,7 @@ public sealed class SubjectManagementService(ISubjectRepository repository, ITea
 
     public async Task<IReadOnlyList<TeacherHeaderSubjectDashboardItemDto>> GetHeaderSubjectsForTeacherAsync(string teacherEmail, CancellationToken cancellationToken = default) =>
         (await repository.GetHeaderLinksAsync(teacherEmail.Trim(), cancellationToken)).Select(l => new TeacherHeaderSubjectDashboardItemDto(l.SubjectId, l.Subject.SubjectCode, l.Subject.SubjectName,
-            l.Subject.Description, l.Subject.DefaultChunkingStrategy, l.Subject.DefaultFixedChunkSize, l.Subject.Documents.Count, l.Subject.Chapters.Count)).ToList();
+            l.Subject.Description, l.Subject.DefaultChunkingStrategy, l.Subject.Documents.Count, l.Subject.Chapters.Count)).ToList();
 
     public async Task<IReadOnlyList<TeacherDocumentManagementItemDto>> GetDocumentManagementItemsForTeacherAsync(string teacherEmail, CancellationToken cancellationToken = default) =>
         (await repository.GetHeaderLinksAsync(teacherEmail.Trim(), cancellationToken)).Select(l =>
@@ -62,7 +62,7 @@ public sealed class SubjectManagementService(ISubjectRepository repository, ITea
         var code = request.SubjectCode.Trim();
         if (await repository.SubjectCodeExistsAsync(code, null, cancellationToken)) return (false, "A subject with this code already exists.", null);
         var subject = new Subject { SubjectId = Guid.NewGuid(), SubjectCode = code, SubjectName = request.SubjectName.Trim(), Description = NormalizeDescription(request.Description),
-            DefaultChunkingStrategy = NormalizeChunkingStrategy(request.DefaultChunkingStrategy), DefaultFixedChunkSize = request.DefaultFixedChunkSize, CreatedAt = DatabaseTimestamp() };
+            DefaultChunkingStrategy = NormalizeChunkingStrategy(request.DefaultChunkingStrategy), CreatedAt = DatabaseTimestamp() };
         await repository.AddSubjectAsync(subject, cancellationToken); return (true, "Subject created successfully.", subject.SubjectId);
     }
 
@@ -72,7 +72,7 @@ public sealed class SubjectManagementService(ISubjectRepository repository, ITea
         var validation = Validate(request); if (validation is not null) return OperationResult.Failure(validation);
         var code = request.SubjectCode.Trim(); if (await repository.SubjectCodeExistsAsync(code, subjectId, cancellationToken)) return OperationResult.Failure("A subject with this code already exists.");
         subject.SubjectCode = code; subject.SubjectName = request.SubjectName.Trim(); subject.Description = NormalizeDescription(request.Description);
-        subject.DefaultChunkingStrategy = NormalizeChunkingStrategy(request.DefaultChunkingStrategy); subject.DefaultFixedChunkSize = request.DefaultFixedChunkSize;
+        subject.DefaultChunkingStrategy = NormalizeChunkingStrategy(request.DefaultChunkingStrategy);
         var emails = await repository.SaveSubjectAsync(subject, cancellationToken); await notifier.NotifyHeaderSubjectsChangedAsync(emails, cancellationToken);
         return OperationResult.Success("Subject updated successfully.");
     }
@@ -102,8 +102,8 @@ public sealed class SubjectManagementService(ISubjectRepository repository, ITea
         return OperationResult.Success("Subject deleted successfully.");
     }
 
-    private static SubjectEditDto ToEdit(Subject s) => new(s.SubjectId, s.SubjectCode, s.SubjectName, s.Description, s.DefaultChunkingStrategy, s.DefaultFixedChunkSize, s.CreatedAt);
-    private static string? Validate(UpsertSubjectRequest r) => !SubjectChunkingStrategies.IsSupported(r.DefaultChunkingStrategy) ? "The selected chunking strategy is invalid." : r.DefaultFixedChunkSize <= 0 ? "Fixed chunk size must be greater than zero." : null;
+    private static SubjectEditDto ToEdit(Subject s) => new(s.SubjectId, s.SubjectCode, s.SubjectName, s.Description, s.DefaultChunkingStrategy, s.CreatedAt);
+    private static string? Validate(UpsertSubjectRequest r) => !SubjectChunkingStrategies.IsSupported(r.DefaultChunkingStrategy) ? "The selected chunking strategy is invalid." : null;
     private static string? NormalizeDescription(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     private static string NormalizeChunkingStrategy(string? value) => SubjectChunkingStrategies.Normalize(value);
     private static DateTime DatabaseTimestamp() => DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);

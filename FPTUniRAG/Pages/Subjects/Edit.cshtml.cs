@@ -44,8 +44,7 @@ public class EditModel : PageModel
             SubjectCode = subject.SubjectCode,
             SubjectName = subject.SubjectName,
             Description = subject.Description,
-            DefaultChunkingStrategy = subject.DefaultChunkingStrategy,
-            DefaultFixedChunkSize = subject.DefaultFixedChunkSize
+            DefaultChunkingStrategy = subject.DefaultChunkingStrategy
         };
 
         return Page();
@@ -75,8 +74,7 @@ public class EditModel : PageModel
                 Input.SubjectCode,
                 Input.SubjectName,
                 Input.Description,
-                Input.DefaultChunkingStrategy,
-                Input.DefaultFixedChunkSize),
+                Input.DefaultChunkingStrategy),
             cancellationToken);
 
         if (!result.Succeeded)

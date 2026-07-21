@@ -16,6 +16,7 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
     private readonly ISemanticChunkingService _semanticChunkingService;
     private readonly IOpenRouterEmbeddingService _openRouterEmbeddingService;
     private readonly IChunkEmbeddingStore _chunkEmbeddingStore;
+    private readonly IEmbeddingConfigurationService _embeddingConfigurationService;
     private readonly RagIngestionOptions _options;
     private readonly IWebHostEnvironment _environment;
     private readonly IDocumentProcessingQueue _processingQueue;
@@ -29,6 +30,7 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
         ISemanticChunkingService semanticChunkingService,
         IOpenRouterEmbeddingService openRouterEmbeddingService,
         IChunkEmbeddingStore chunkEmbeddingStore,
+        IEmbeddingConfigurationService embeddingConfigurationService,
         IOptions<RagIngestionOptions> options,
         IWebHostEnvironment environment,
         IDocumentProcessingQueue processingQueue,
@@ -40,6 +42,7 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
         _semanticChunkingService = semanticChunkingService;
         _openRouterEmbeddingService = openRouterEmbeddingService;
         _chunkEmbeddingStore = chunkEmbeddingStore;
+        _embeddingConfigurationService = embeddingConfigurationService;
         _options = options.Value;
         _environment = environment;
         _processingQueue = processingQueue;
@@ -55,16 +58,20 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
         var link = await _documentRepository.GetManagedSubjectAsync(teacherEmail, subjectId, cancellationToken);
         var subject = link?.Subject;
 
-        return subject is null
-            ? null
-            : new TeacherUploadContextDto(
-                subject.SubjectId,
-                subject.SubjectCode,
-                subject.SubjectName,
-                subject.Description,
-                SubjectChunkingStrategies.Normalize(subject.DefaultChunkingStrategy),
-                subject.DefaultFixedChunkSize,
-                NormalizeAllowedFileTypes());
+        if (subject is null)
+        {
+            return null;
+        }
+
+        var embeddingConfiguration = await _embeddingConfigurationService.GetCurrentAsync(cancellationToken);
+        return new TeacherUploadContextDto(
+            subject.SubjectId,
+            subject.SubjectCode,
+            subject.SubjectName,
+            subject.Description,
+            SubjectChunkingStrategies.Normalize(subject.DefaultChunkingStrategy),
+            embeddingConfiguration.FixedChunkSize,
+            NormalizeAllowedFileTypes());
     }
 
     public async Task<TeacherDocumentUploadResult> UploadAsync(
@@ -113,7 +120,7 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
                 command.SubjectId, normalizedChapterTitle, CreateDatabaseTimestamp(), cancellationToken);
         }
 
-        var resolvedChunking = ResolveChunkingConfiguration(subjectLink.Subject);
+        var resolvedChunking = await ResolveChunkingConfigurationAsync(subjectLink.Subject, cancellationToken);
         var relativeFilePath = await SaveUploadedFileAsync(command.File, subjectLink.Subject.SubjectCode, cancellationToken);
         var document = new Document
         {
@@ -454,7 +461,7 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
             .ToList();
     }
 
-    private SubjectChunkingConfiguration ResolveChunkingConfiguration(Subject subject)
+    private async Task<SubjectChunkingConfiguration> ResolveChunkingConfigurationAsync(Subject subject, CancellationToken cancellationToken)
     {
         var strategy = SubjectChunkingStrategies.Normalize(subject.DefaultChunkingStrategy);
         if (!SubjectChunkingStrategies.IsSupported(strategy))
@@ -464,17 +471,18 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
 
         if (string.Equals(strategy, SubjectChunkingStrategies.Fixed, StringComparison.OrdinalIgnoreCase))
         {
-            if (subject.DefaultFixedChunkSize <= 0)
+            var fixedChunkSize = (await _embeddingConfigurationService.GetCurrentAsync(cancellationToken)).FixedChunkSize;
+            if (fixedChunkSize <= 0)
             {
-                throw new InvalidOperationException($"Subject '{subject.SubjectCode}' must have a fixed chunk size greater than zero.");
+                throw new InvalidOperationException("The global fixed chunk size must be greater than zero.");
             }
 
-            if (_options.FixedChunkOverlap < 0 || _options.FixedChunkOverlap >= subject.DefaultFixedChunkSize)
+            if (_options.FixedChunkOverlap < 0 || _options.FixedChunkOverlap >= fixedChunkSize)
             {
-                throw new InvalidOperationException("RagIngestion:FixedChunkOverlap must be zero or greater and smaller than the subject fixed chunk size.");
+                throw new InvalidOperationException("RagIngestion:FixedChunkOverlap must be zero or greater and smaller than the global fixed chunk size.");
             }
 
-            return new SubjectChunkingConfiguration(strategy, subject.DefaultFixedChunkSize, _options.FixedChunkOverlap);
+            return new SubjectChunkingConfiguration(strategy, fixedChunkSize, _options.FixedChunkOverlap);
         }
 
         if (_options.Semantic.MaxChunkSize <= 0)

@@ -23,6 +23,15 @@ CREATE TABLE IF NOT EXISTS embedding_settings (
     CONSTRAINT embedding_settings_singleton CHECK (setting_id = 1)
 );
 
+ALTER TABLE embedding_settings
+    ADD COLUMN IF NOT EXISTS fixed_chunk_size integer NOT NULL DEFAULT 800;
+
+ALTER TABLE embedding_settings
+    DROP CONSTRAINT IF EXISTS ck_embedding_settings_fixed_chunk_size;
+ALTER TABLE embedding_settings
+    ADD CONSTRAINT ck_embedding_settings_fixed_chunk_size
+    CHECK (fixed_chunk_size > 0);
+
 CREATE TABLE IF NOT EXISTS student_free_quota_settings (
     setting_id smallint PRIMARY KEY DEFAULT 1,
     monthly_token_limit bigint NOT NULL DEFAULT 2000,
@@ -102,6 +111,15 @@ CREATE TABLE IF NOT EXISTS student_subscriptions (
 
 ALTER TABLE student_subscriptions
     ADD COLUMN IF NOT EXISTS stripe_subscription_id character varying(100);
+
+ALTER TABLE student_subscriptions
+    ADD COLUMN IF NOT EXISTS carryover_tokens bigint NOT NULL DEFAULT 0;
+
+ALTER TABLE student_subscriptions
+    DROP CONSTRAINT IF EXISTS ck_student_subscriptions_carryover_non_negative;
+ALTER TABLE student_subscriptions
+    ADD CONSTRAINT ck_student_subscriptions_carryover_non_negative
+    CHECK (carryover_tokens >= 0);
 
 CREATE INDEX IF NOT EXISTS idx_student_subscriptions_user
     ON student_subscriptions (user_id);
@@ -201,7 +219,6 @@ CREATE TABLE IF NOT EXISTS subjects (
     subject_name character varying(255) NOT NULL,
     description text,
     default_chunking_strategy character varying(50) NOT NULL DEFAULT 'fixed',
-    default_fixed_chunk_size integer NOT NULL DEFAULT 800,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -583,11 +600,12 @@ ALTER TABLE subjects
     ADD CONSTRAINT ck_subjects_default_chunking_strategy
     CHECK (lower(default_chunking_strategy) IN ('fixed', 'semantic'));
 
+-- Fixed chunk size moved from a per-subject value to the single global
+-- embedding_settings.fixed_chunk_size, applied to every subject using fixed chunking.
 ALTER TABLE subjects
     DROP CONSTRAINT IF EXISTS ck_subjects_default_fixed_chunk_size;
 ALTER TABLE subjects
-    ADD CONSTRAINT ck_subjects_default_fixed_chunk_size
-    CHECK (default_fixed_chunk_size > 0);
+    DROP COLUMN IF EXISTS default_fixed_chunk_size;
 
 ALTER TABLE sessions
     DROP CONSTRAINT IF EXISTS fk_session_user;
@@ -784,7 +802,8 @@ SELECT
     COALESCE(sp.has_history_export, false) AS has_history_export,
     ss.started_at,
     ss.expires_at,
-    COALESCE(ss.subscription_status, 'free'::character varying(50)) AS subscription_status
+    COALESCE(ss.subscription_status, 'free'::character varying(50)) AS subscription_status,
+    COALESCE(ss.carryover_tokens, 0) AS carryover_tokens
 FROM users u
 LEFT JOIN student_subscriptions ss
     ON ss.user_id = u.user_id

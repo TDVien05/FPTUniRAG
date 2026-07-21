@@ -153,7 +153,7 @@
                                             <td>
                                                 @(subject.DefaultChunkingStrategy == "semantic"
                                                     ? "Semantic chunking"
-                                                    : $"Fixed size ({subject.DefaultFixedChunkSize} characters, line breaks excluded)")
+                                                    : "Fixed size (see Embedding Settings)")
                                             </td>
                                             <td>@(subject.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")</td>
                                             <td class="admin-user-actions subject-table-actions">

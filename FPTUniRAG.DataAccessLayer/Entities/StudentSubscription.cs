@@ -25,6 +25,8 @@ public partial class StudentSubscription
 
     public bool AutoRenew { get; set; }
 
+    public long CarryoverTokens { get; set; }
+
     public Guid? GrantedBy { get; set; }
 
     public string? Notes { get; set; }

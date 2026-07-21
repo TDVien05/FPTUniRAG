@@ -624,7 +624,7 @@ public sealed class StudentChatService : IStudentChatService
         var quota = await _chatRepository.GetQuotaAsync(userId, cancellationToken);
 
         var monthlyTokenLimit = quota.MonthlyTokenLimit is > 0
-            ? quota.MonthlyTokenLimit.Value
+            ? quota.MonthlyTokenLimit.Value + quota.CarryoverTokens
             : await _freeTokenQuotaService.GetMonthlyTokenLimitAsync(cancellationToken);
 
         var tokensUsedThisMonth = quota.TokensUsedThisMonth;

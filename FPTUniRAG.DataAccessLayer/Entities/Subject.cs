@@ -15,8 +15,6 @@ public partial class Subject
 
     public string DefaultChunkingStrategy { get; set; } = null!;
 
-    public int DefaultFixedChunkSize { get; set; }
-
     public DateTime? CreatedAt { get; set; }
 
     public virtual ICollection<Chapter> Chapters { get; set; } = new List<Chapter>();

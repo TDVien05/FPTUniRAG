@@ -40,8 +40,7 @@ public class CreateModel : PageModel
                 Input.SubjectCode,
                 Input.SubjectName,
                 Input.Description,
-                Input.DefaultChunkingStrategy,
-                Input.DefaultFixedChunkSize),
+                Input.DefaultChunkingStrategy),
             cancellationToken);
 
         if (!result.Succeeded)

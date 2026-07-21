@@ -144,15 +144,8 @@
                                     <option value="fixed">Fixed size</option>
                                     <option value="semantic">Semantic chunking</option>
                                 </select>
-                                <small>Applies to new documents uploaded under this subject.</small>
+                                <small>Applies to new documents uploaded under this subject. The fixed chunk size is configured globally on the <a href="/EmbeddingSettings">Embedding Settings</a> page and applies to every subject using this strategy.</small>
                                 <span asp-validation-for="Input.DefaultChunkingStrategy" class="accounts-field-error"></span>
-                            </label>
-
-                            <label class="subject-field" id="fixed-chunk-size-field">
-                                <span>Fixed Chunk Size (excluding line breaks)</span>
-                                <input asp-for="Input.DefaultFixedChunkSize" type="number" min="1" step="1" />
-                                <small>Spaces count; `\r` and `\n` do not. Only applies to new fixed-size uploads.</small>
-                                <span asp-validation-for="Input.DefaultFixedChunkSize" class="accounts-field-error"></span>
                             </label>
 
                             <footer class="subject-form-actions">
@@ -170,22 +163,5 @@
     </main>
 
     <partial name="_ValidationScriptsPartial" />
-    <script>
-        (() => {
-            const strategySelect = document.getElementById("Input_DefaultChunkingStrategy");
-            const fixedChunkSizeField = document.getElementById("fixed-chunk-size-field");
-
-            if (!strategySelect || !fixedChunkSizeField) {
-                return;
-            }
-
-            const syncFixedChunkSizeVisibility = () => {
-                fixedChunkSizeField.hidden = strategySelect.value === "semantic";
-            };
-
-            strategySelect.addEventListener("change", syncFixedChunkSizeVisibility);
-            syncFixedChunkSizeVisibility();
-        })();
-    </script>
 </body>
 </html>

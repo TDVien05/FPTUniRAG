@@ -515,15 +515,7 @@
                             }
                             else
                             {
-                                @if (Model.HasActiveSubscription && !(Model.TokensRemainingThisMonth is decimal remaining && remaining <= 0))
-                                {
-                                    <button class="plans-action-button" type="button" disabled>
-                                        <span class="material-symbols-outlined" aria-hidden="true">lock</span>
-                                        Active plan already registered
-                                    </button>
-                                    <div class="plans-action-note">You cannot purchase another plan while your current subscription is active.</div>
-                                }
-                                else if (plan.IsPurchasable)
+                                @if (plan.IsPurchasable)
                                 {
                                     <form method="post" asp-page-handler="Purchase">
                                         <input type="hidden" name="planCode" value="@plan.PlanCode" />
@@ -534,8 +526,23 @@
                                     </form>
                                     @if (Model.HasActiveSubscription)
                                     {
-                                        <div class="plans-action-note">Your current plan has no tokens left. Purchasing this plan will replace it immediately.</div>
+                                        @if (Model.TokensRemainingThisMonth is decimal remaining && remaining <= 0)
+                                        {
+                                            <div class="plans-action-note">Your current plan has no tokens left. Purchasing this plan will replace it immediately.</div>
+                                        }
+                                        else
+                                        {
+                                            <div class="plans-action-note">Upgrading takes effect immediately. Any unused tokens on your current plan carry over until this billing cycle ends.</div>
+                                        }
                                     }
+                                }
+                                else if (Model.HasActiveSubscription)
+                                {
+                                    <button class="plans-action-button" type="button" disabled>
+                                        <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+                                        Active plan already registered
+                                    </button>
+                                    <div class="plans-action-note">You cannot switch to this plan while your current subscription is active.</div>
                                 }
                                 else
                                 {

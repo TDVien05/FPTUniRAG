@@ -35,4 +35,4 @@ public sealed record ChatSessionSummaryRecord(Guid SessionId, Guid SubjectId, st
 public sealed record ChatSessionRecord(Guid SessionId, Guid SubjectId, string SubjectCode, string SubjectName, DateTime? StartedAt);
 public sealed record ChatSubjectRecord(Guid SubjectId, string SubjectCode, string SubjectName, string? Description);
 public sealed record ChatCitationChunkRecord(Guid ChunkId, Guid DocumentId, string Title, string SubjectCode, string SubjectName, string ChapterTitle, int ChunkIndex, string Content);
-public sealed record ChatQuotaRecord(Guid? PlanId, string? PlanCode, long? MonthlyTokenLimit, decimal TokensUsedThisMonth);
+public sealed record ChatQuotaRecord(Guid? PlanId, string? PlanCode, long? MonthlyTokenLimit, long CarryoverTokens, decimal TokensUsedThisMonth);

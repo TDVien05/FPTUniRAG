@@ -84,6 +84,13 @@
                             </select>
                         </label>
 
+                        <label class="subject-field">
+                            <span>Fixed chunk size (excluding line breaks)</span>
+                            <input asp-for="FixedChunkSize" type="number" min="1" step="1" />
+                            <small>Applies to every subject using the "Fixed size" chunking strategy. Spaces count; `\r` and `\n` do not. Only affects new uploads.</small>
+                            <span asp-validation-for="FixedChunkSize" class="accounts-field-error"></span>
+                        </label>
+
                         <div class="embedding-settings-current" aria-label="Current embedding model">
                             <div>
                                 <span>Current model</span>
@@ -93,12 +100,16 @@
                                 <span>Dimensions</span>
                                 <strong>@Model.Current?.Dimensions</strong>
                             </div>
+                            <div>
+                                <span>Fixed chunk size</span>
+                                <strong>@Model.Current?.FixedChunkSize</strong>
+                            </div>
                         </div>
 
                         <p class="text-secondary">Only documents embedded with the active model are used for semantic retrieval.</p>
                         <footer class="subject-form-actions accounts-actions">
                             <button class="subject-submit-button" type="submit">
-                                Save embedding model
+                                Save embedding settings
                                 <span class="material-symbols-outlined" aria-hidden="true">save</span>
                             </button>
                         </footer>
@@ -107,5 +118,7 @@
             </div>
         </section>
     </main>
+
+    <partial name="_ValidationScriptsPartial" />
 </body>
 </html>

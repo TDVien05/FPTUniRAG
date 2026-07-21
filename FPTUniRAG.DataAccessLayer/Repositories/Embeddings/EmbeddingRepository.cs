@@ -12,7 +12,7 @@ public sealed class EmbeddingRepository(AppDbContext context) : IEmbeddingReposi
         try
         {
             return await context.EmbeddingSettings.AsNoTracking().Where(item => item.SettingId == 1)
-                .Select(item => new EmbeddingSettingRecord(item.EmbeddingModel, item.EmbeddingDimensions, item.UpdatedAt, item.UpdatedBy))
+                .Select(item => new EmbeddingSettingRecord(item.EmbeddingModel, item.EmbeddingDimensions, item.FixedChunkSize, item.UpdatedAt, item.UpdatedBy))
                 .SingleOrDefaultAsync(cancellationToken);
         }
         catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UndefinedTable)
@@ -21,13 +21,13 @@ public sealed class EmbeddingRepository(AppDbContext context) : IEmbeddingReposi
         }
     }
 
-    public async Task<EmbeddingSettingRecord> UpsertSettingAsync(string model, int dimensions, Guid updatedBy, DateTime updatedAt, CancellationToken cancellationToken = default)
+    public async Task<EmbeddingSettingRecord> UpsertSettingAsync(string model, int dimensions, int fixedChunkSize, Guid updatedBy, DateTime updatedAt, CancellationToken cancellationToken = default)
     {
         var setting = await context.EmbeddingSettings.SingleOrDefaultAsync(item => item.SettingId == 1, cancellationToken);
         if (setting is null) { setting = new EmbeddingSetting { SettingId = 1 }; context.EmbeddingSettings.Add(setting); }
-        setting.EmbeddingModel = model; setting.EmbeddingDimensions = dimensions; setting.UpdatedAt = updatedAt; setting.UpdatedBy = updatedBy;
+        setting.EmbeddingModel = model; setting.EmbeddingDimensions = dimensions; setting.FixedChunkSize = fixedChunkSize; setting.UpdatedAt = updatedAt; setting.UpdatedBy = updatedBy;
         await context.SaveChangesAsync(cancellationToken);
-        return new EmbeddingSettingRecord(model, dimensions, updatedAt, updatedBy);
+        return new EmbeddingSettingRecord(model, dimensions, fixedChunkSize, updatedAt, updatedBy);
     }
 
     public async Task<IReadOnlyList<EmbeddingRunRecord>> GetRunsAsync(CancellationToken cancellationToken = default) =>
