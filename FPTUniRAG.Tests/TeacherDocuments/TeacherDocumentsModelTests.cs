@@ -90,7 +90,8 @@ public sealed class TeacherDocumentsModelTests
             documents.LastOrDefault()?.DocumentId,
             documents.LastOrDefault()?.DocumentTitle,
             documents.LastOrDefault()?.Status,
-            documents);
+            documents,
+            true);
     }
 
     private static TeacherSubjectDocumentDto CreateDocument(string chapterTitle, string documentTitle) =>

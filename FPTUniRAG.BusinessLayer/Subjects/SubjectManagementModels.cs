@@ -64,7 +64,8 @@ public sealed record TeacherDocumentManagementItemDto(
     Guid? LatestDocumentId,
     string? LatestDocumentTitle,
     string? LatestDocumentStatus,
-    IReadOnlyList<TeacherSubjectDocumentDto> Documents);
+    IReadOnlyList<TeacherSubjectDocumentDto> Documents,
+    bool CanManage);
 
 public sealed record TeacherSubjectDocumentDto(
     Guid DocumentId,

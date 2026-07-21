@@ -19,6 +19,14 @@ public sealed class SubjectRepository(AppDbContext context) : ISubjectRepository
             .Include(l => l.Subject).ThenInclude(s => s.Documents).ThenInclude(d => d.ProcessingJobs)
             .OrderBy(l => l.Subject.SubjectCode).ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<TeacherSubject>> GetAssignedLinksAsync(string teacherEmail, CancellationToken cancellationToken = default) =>
+        await context.TeacherSubjects.AsNoTracking().Where(l => l.Teacher.Email != null && l.Teacher.Email.ToLower() == teacherEmail.ToLower())
+            .Include(l => l.Teacher).Include(l => l.Subject).ThenInclude(s => s.Chapters)
+            .Include(l => l.Subject).ThenInclude(s => s.Documents).ThenInclude(d => d.Chapter)
+            .Include(l => l.Subject).ThenInclude(s => s.Documents).ThenInclude(d => d.Chunks)
+            .Include(l => l.Subject).ThenInclude(s => s.Documents).ThenInclude(d => d.ProcessingJobs)
+            .OrderBy(l => l.Subject.SubjectCode).ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<Teacher>> GetTeachersAsync(CancellationToken cancellationToken = default) =>
         await context.Teachers.AsNoTracking().OrderBy(t => t.FullName).ToListAsync(cancellationToken);
 

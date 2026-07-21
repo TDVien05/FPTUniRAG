@@ -19,7 +19,7 @@ public sealed class SubjectManagementService(ISubjectRepository repository, ITea
             l.Subject.Description, l.Subject.DefaultChunkingStrategy, l.Subject.Documents.Count, l.Subject.Chapters.Count)).ToList();
 
     public async Task<IReadOnlyList<TeacherDocumentManagementItemDto>> GetDocumentManagementItemsForTeacherAsync(string teacherEmail, CancellationToken cancellationToken = default) =>
-        (await repository.GetHeaderLinksAsync(teacherEmail.Trim(), cancellationToken)).Select(l =>
+        (await repository.GetAssignedLinksAsync(teacherEmail.Trim(), cancellationToken)).Select(l =>
         {
             var documents = l.Subject.Documents.OrderBy(d => d.Chapter.ChapterOrder).ThenBy(d => d.CreatedAt).ToList();
             var latest = documents.OrderByDescending(d => d.CreatedAt).FirstOrDefault();
@@ -29,7 +29,7 @@ public sealed class SubjectManagementService(ISubjectRepository repository, ITea
                     var latestJob = d.ProcessingJobs.OrderByDescending(job => job.StartedAt ?? DateTime.MinValue).FirstOrDefault();
                     return new TeacherSubjectDocumentDto(d.DocumentId, d.ChapterId, d.Chapter.ChapterTitle, d.Title,
                         d.Status ?? "unknown", latestJob?.ErrorMessage, d.Chunks.Count, d.CreatedAt);
-                }).ToList());
+                }).ToList(), l.IsHeadOfDepartment);
         }).ToList();
 
     public async Task<IReadOnlyList<SubjectHeaderAssignmentListItemDto>> GetSubjectsForHeaderAssignmentAsync(CancellationToken cancellationToken = default) =>

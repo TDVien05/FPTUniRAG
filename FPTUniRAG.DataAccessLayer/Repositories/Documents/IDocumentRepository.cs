@@ -6,6 +6,7 @@ public interface IDocumentRepository
 {
     Task<TeacherSubject?> GetManagedSubjectAsync(string teacherEmail, Guid subjectId, CancellationToken cancellationToken = default);
     Task<Document?> GetManagedDocumentAsync(string teacherEmail, Guid documentId, CancellationToken cancellationToken = default);
+    Task<Document?> GetAssignedDocumentAsync(string teacherEmail, Guid documentId, CancellationToken cancellationToken = default);
     Task<bool> ManagesSubjectAsync(string teacherEmail, Guid subjectId, CancellationToken cancellationToken = default);
     Task<Chapter?> FindChapterAsync(Guid subjectId, string title, CancellationToken cancellationToken = default);
     Task<bool> ChapterHasDocumentAsync(Guid chapterId, CancellationToken cancellationToken = default);

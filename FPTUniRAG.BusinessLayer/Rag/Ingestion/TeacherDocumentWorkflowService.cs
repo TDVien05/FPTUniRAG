@@ -427,7 +427,7 @@ public sealed class TeacherDocumentWorkflowService : ITeacherDocumentWorkflowSer
         Guid documentId,
         CancellationToken cancellationToken = default)
     {
-        var document = await _documentRepository.GetManagedDocumentAsync(teacherEmail, documentId, cancellationToken);
+        var document = await _documentRepository.GetAssignedDocumentAsync(teacherEmail, documentId, cancellationToken);
         return document is null ? null : new TeacherDocumentDetailDto(
                 document.DocumentId,
                 document.SubjectId,

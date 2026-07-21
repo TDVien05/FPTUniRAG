@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "skills": {
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "computedHash": "ce0af583006d2fd4731663adc50c0a5df1121f0d49a5bb9c308eca4ee295c60a"
+    },
+    "bmad-spec": {
+      "source": "aj-geddes/claude-code-bmad-skills/bmad-planning-orchestrator/skills/bmad-spec",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/bmad-spec/SKILL.md"
+    },
+    "bmad-tech-spec": {
+      "source": "aj-geddes/claude-code-bmad-skills/bmad-planning-orchestrator/skills/bmad-tech-spec",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/bmad-tech-spec/SKILL.md"
+    },
+    "bmad-architecture": {
+      "source": "aj-geddes/claude-code-bmad-skills/bmad-planning-orchestrator/skills/bmad-architecture",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/bmad-architecture/SKILL.md"
+    },
+    "bmad-epics-and-stories": {
+      "source": "aj-geddes/claude-code-bmad-skills/bmad-planning-orchestrator/skills/bmad-epics-and-stories",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/bmad-epics-and-stories/SKILL.md"
+    },
+    "bmad-readiness-check": {
+      "source": "aj-geddes/claude-code-bmad-skills/bmad-planning-orchestrator/skills/bmad-readiness-check",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/bmad-readiness-check/SKILL.md"
+    },
+    "bmad-document-project": {
+      "source": "aj-geddes/claude-code-bmad-skills/bmad-planning-orchestrator/skills/bmad-document-project",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/bmad-document-project/SKILL.md"
+    }
+  }
+}

@@ -8,8 +8,10 @@ namespace FPTUniRAG.DataAccessLayer.Repositories.Documents;
 public sealed class DocumentRepository(AppDbContext context) : IDocumentRepository
 {
     private IQueryable<TeacherSubject> Managed(string email) => context.TeacherSubjects.Where(l => l.IsHeadOfDepartment && l.Teacher.Email != null && l.Teacher.Email.ToLower() == email.Trim().ToLower());
+    private IQueryable<TeacherSubject> Assigned(string email) => context.TeacherSubjects.Where(l => l.Teacher.Email != null && l.Teacher.Email.ToLower() == email.Trim().ToLower());
     public Task<TeacherSubject?> GetManagedSubjectAsync(string email, Guid subjectId, CancellationToken token = default) => Managed(email).Include(l => l.Teacher).Include(l => l.Subject).ThenInclude(s => s.Chapters).Include(l => l.Subject).ThenInclude(s => s.Documents).FirstOrDefaultAsync(l => l.SubjectId == subjectId, token);
     public Task<Document?> GetManagedDocumentAsync(string email, Guid documentId, CancellationToken token = default) => Managed(email).SelectMany(l => l.Subject.Documents).Include(d => d.Subject).Include(d => d.Chapter).Include(d => d.Chunks).Include(d => d.ProcessingJobs).FirstOrDefaultAsync(d => d.DocumentId == documentId, token);
+    public Task<Document?> GetAssignedDocumentAsync(string email, Guid documentId, CancellationToken token = default) => Assigned(email).SelectMany(l => l.Subject.Documents).Include(d => d.Subject).Include(d => d.Chapter).Include(d => d.Chunks).Include(d => d.ProcessingJobs).FirstOrDefaultAsync(d => d.DocumentId == documentId, token);
     public Task<bool> ManagesSubjectAsync(string email, Guid subjectId, CancellationToken token = default) => Managed(email).AnyAsync(l => l.SubjectId == subjectId, token);
     public Task<Chapter?> FindChapterAsync(Guid subjectId, string title, CancellationToken token = default) => context.Chapters.FirstOrDefaultAsync(c => c.SubjectId == subjectId && c.ChapterTitle.ToLower() == title.ToLower(), token);
     public Task<bool> ChapterHasDocumentAsync(Guid chapterId, CancellationToken token = default) => context.Documents.AnyAsync(d => d.ChapterId == chapterId, token);

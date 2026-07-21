@@ -6,6 +6,7 @@ public interface ISubjectRepository
 {
     Task<IReadOnlyList<Subject>> GetSubjectsAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<TeacherSubject>> GetHeaderLinksAsync(string teacherEmail, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TeacherSubject>> GetAssignedLinksAsync(string teacherEmail, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Teacher>> GetTeachersAsync(CancellationToken cancellationToken = default);
     Task<Subject?> FindSubjectAsync(Guid subjectId, bool tracked = false, CancellationToken cancellationToken = default);
     Task<SubjectDeleteCountRecord?> GetDeleteCountsAsync(Guid subjectId, CancellationToken cancellationToken = default);
