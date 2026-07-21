@@ -193,6 +193,9 @@
                             <div>
                                 <p id="composerHint" class="text-sm text-secondary">No subject selected.</p>
                                 <p id="composerError" class="mt-1 hidden text-sm font-medium text-error"></p>
+                                <p class="mt-1 hidden text-xs text-secondary/70 sm:block">
+                                    Press <kbd class="rounded border border-outline-variant bg-surface-container px-1 py-0.5 font-sans">Enter</kbd> to send · <kbd class="rounded border border-outline-variant bg-surface-container px-1 py-0.5 font-sans">Shift+Enter</kbd> for a new line
+                                </p>
                             </div>
                             <button id="sendButton" class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-white shadow-md transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-primary/40" type="submit" aria-label="Send message">
                                 <span class="material-symbols-outlined">send</span>
@@ -1138,6 +1141,12 @@
         });
 
         elements.messageInput.addEventListener("input", autoResizeTextarea);
+        elements.messageInput.addEventListener("keydown", event => {
+            if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+                event.preventDefault();
+                elements.chatForm.requestSubmit();
+            }
+        });
         elements.newChatButton.addEventListener("click", startNewChat);
         elements.citationModalClose.addEventListener("click", closeCitationModal);
         elements.citationModal.addEventListener("click", event => {
