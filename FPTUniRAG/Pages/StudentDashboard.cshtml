@@ -83,7 +83,10 @@
 <body class="min-h-screen overflow-hidden bg-background font-body text-on-surface">
     <header class="fixed top-0 left-0 right-0 z-50 h-16 border-b border-outline-variant bg-surface/90 backdrop-blur">
         <div class="flex h-full items-center justify-between px-4 lg:px-6">
-            <div class="flex items-center gap-6">
+            <div class="flex items-center gap-3 lg:gap-6">
+                <button id="subjectsToggle" type="button" class="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high md:hidden" aria-label="Open subjects panel" aria-expanded="false" aria-controls="subjectsAside">
+                    <span class="material-symbols-outlined">menu</span>
+                </button>
                 <span class="font-display text-2xl font-bold text-primary">FPT UniRAG</span>
                 <span class="hidden rounded-full bg-surface-container px-3 py-1 text-sm font-medium text-secondary md:inline-flex">Student Chat</span>
             </div>
@@ -98,6 +101,9 @@
                 <a class="hidden rounded-full border border-outline-variant bg-surface-container-lowest px-4 py-2 text-sm font-medium text-primary transition hover:bg-surface-container-high md:inline-flex" href="/StudentPlans">
                     Upgrade plan
                 </a>
+                <button id="sourcesToggle" type="button" class="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high lg:hidden" aria-label="Open sources panel" aria-expanded="false" aria-controls="sourcesAside">
+                    <span class="material-symbols-outlined">menu_book</span>
+                </button>
                 <a class="rounded-full p-2 transition-colors hover:bg-surface-container-high" href="/ChangePassword" aria-label="Change password">
                     <span class="material-symbols-outlined text-on-surface-variant">settings</span>
                 </a>
@@ -109,20 +115,25 @@
     </header>
 
     <div class="flex h-screen flex-col pt-16 md:flex-row">
-        <aside class="flex w-full flex-col border-b border-outline-variant bg-surface-container-low px-4 py-4 md:h-full md:w-80 md:border-b-0 md:border-r">
-            <div class="mb-4 flex items-start gap-3 px-2">
-                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-white">
-                    <span class="material-symbols-outlined">school</span>
+        <aside id="subjectsAside" class="fixed inset-y-0 left-0 z-40 flex w-80 max-w-[85vw] -translate-x-full flex-col overflow-y-auto border-r border-outline-variant bg-surface-container-low px-4 pb-4 pt-20 shadow-2xl transition-transform duration-200 ease-out md:static md:z-auto md:h-full md:w-80 md:translate-x-0 md:border-b-0 md:pt-4 md:shadow-none">
+            <div class="mb-4 flex items-start justify-between gap-3 px-2">
+                <div class="flex items-start gap-3">
+                    <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-white">
+                        <span class="material-symbols-outlined">school</span>
+                    </div>
+                    <div>
+                        <h2 class="font-display text-xl font-semibold text-primary">Subjects</h2>
+                        <p class="text-sm text-secondary">Choose a subject before chatting</p>
+                    </div>
                 </div>
-                <div>
-                    <h2 class="font-display text-xl font-semibold text-primary">Subjects</h2>
-                    <p class="text-sm text-secondary">Choose a subject before chatting</p>
-                </div>
+                <button id="subjectsClose" type="button" class="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high md:hidden" aria-label="Close subjects panel">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
             </div>
 
             <label class="relative mb-4 block">
                 <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant material-symbols-outlined">search</span>
-                <input id="subjectSearchInput" class="w-full rounded-2xl border border-outline-variant bg-surface-container-lowest py-3 pl-11 pr-4 text-sm text-on-surface outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10" placeholder="Search subjects by code or name" type="search" />
+                <input id="subjectSearchInput" class="w-full rounded-2xl border border-outline-variant bg-surface-container-lowest py-3 pl-11 pr-4 text-sm text-on-surface outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10" placeholder="Search subjects by code or name" aria-label="Search subjects by code or name" type="search" />
             </label>
 
             <div id="subjectList" class="flex max-h-64 flex-col gap-2 overflow-y-auto pr-1 md:min-h-0 md:max-h-none md:flex-1"></div>
@@ -169,7 +180,7 @@
                         </div>
                     </section>
 
-                    <section id="chatMessages" class="flex flex-col gap-6"></section>
+                    <section id="chatMessages" class="flex flex-col gap-6" aria-live="polite" aria-atomic="false"></section>
                     <div id="chatBottomSpacer" class="h-8 shrink-0"></div>
                 </div>
             </div>
@@ -193,10 +204,15 @@
             </div>
         </main>
 
-        <aside class="hidden w-80 flex-col border-l border-outline-variant bg-surface-container-low p-4 lg:flex">
-            <div class="mb-4 flex items-center gap-2 px-2">
-                <span class="material-symbols-outlined text-primary">menu_book</span>
-                <h3 class="font-display text-xl font-semibold">Sources</h3>
+        <aside id="sourcesAside" class="fixed inset-y-0 right-0 z-40 flex w-80 max-w-[85vw] translate-x-full flex-col overflow-y-auto border-l border-outline-variant bg-surface-container-low p-4 pt-20 shadow-2xl transition-transform duration-200 ease-out lg:static lg:z-auto lg:w-80 lg:translate-x-0 lg:pt-4 lg:shadow-none">
+            <div class="mb-4 flex items-center justify-between gap-2 px-2">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">menu_book</span>
+                    <h3 class="font-display text-xl font-semibold">Sources</h3>
+                </div>
+                <button id="sourcesClose" type="button" class="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high lg:hidden" aria-label="Close sources panel">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
             </div>
             <div id="sourcesPanel" class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
                 <div class="rounded-2xl border border-dashed border-outline-variant bg-surface-container-lowest p-5 text-sm leading-6 text-secondary">
@@ -205,6 +221,9 @@
             </div>
         </aside>
     </div>
+
+    <div id="subjectsBackdrop" class="fixed inset-0 z-30 hidden bg-slate-950/40 md:hidden" aria-hidden="true"></div>
+    <div id="sourcesBackdrop" class="fixed inset-0 z-30 hidden bg-slate-950/40 lg:hidden" aria-hidden="true"></div>
 
     <div id="citationModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-950/45 p-4">
         <div class="w-full max-w-3xl rounded-[28px] border border-outline-variant bg-surface-container-lowest shadow-2xl">
@@ -266,8 +285,44 @@
             composerHint: document.getElementById("composerHint"),
             composerError: document.getElementById("composerError"),
             sendButton: document.getElementById("sendButton"),
-            newChatButton: document.getElementById("newChatButton")
+            newChatButton: document.getElementById("newChatButton"),
+            subjectsAside: document.getElementById("subjectsAside"),
+            subjectsToggle: document.getElementById("subjectsToggle"),
+            subjectsClose: document.getElementById("subjectsClose"),
+            subjectsBackdrop: document.getElementById("subjectsBackdrop"),
+            sourcesAside: document.getElementById("sourcesAside"),
+            sourcesToggle: document.getElementById("sourcesToggle"),
+            sourcesClose: document.getElementById("sourcesClose"),
+            sourcesBackdrop: document.getElementById("sourcesBackdrop")
         };
+
+        function toggleSubjectsDrawer(forceOpen) {
+            const isOpen = elements.subjectsAside.classList.contains("translate-x-0");
+            const open = forceOpen ?? !isOpen;
+            elements.subjectsAside.classList.toggle("translate-x-0", open);
+            elements.subjectsAside.classList.toggle("-translate-x-full", !open);
+            elements.subjectsBackdrop.classList.toggle("hidden", !open);
+            elements.subjectsToggle.setAttribute("aria-expanded", String(open));
+            if (open) {
+                elements.subjectsClose.focus();
+            } else if (document.activeElement && elements.subjectsAside.contains(document.activeElement)) {
+                elements.subjectsToggle.focus();
+            }
+        }
+
+        function toggleSourcesDrawer(forceOpen) {
+            const isOpen = elements.sourcesAside.classList.contains("translate-x-0");
+            const open = forceOpen ?? !isOpen;
+            elements.sourcesAside.classList.toggle("translate-x-0", open);
+            elements.sourcesAside.classList.toggle("translate-x-full", !open);
+            elements.sourcesBackdrop.classList.toggle("hidden", !open);
+            elements.sourcesToggle.setAttribute("aria-expanded", String(open));
+            if (open) {
+                elements.sourcesClose.focus();
+            } else if (document.activeElement && elements.sourcesAside.contains(document.activeElement)) {
+                elements.sourcesToggle.focus();
+            }
+        }
 
         function escapeHtml(value) {
             return String(value ?? "")
@@ -375,7 +430,7 @@
 
             assistantPlaceholder.messageContent += delta;
             assistantPlaceholder.isStreaming = true;
-            renderChat();
+            updateStreamingMessageDom(assistantPlaceholder);
             scrollChatToBottom();
         }
 
@@ -454,6 +509,7 @@
                         data-subject-id="${subject.subjectId}"
                         data-subject-code="${escapeHtml(subject.subjectCode)}"
                         data-subject-name="${escapeHtml(subject.subjectName)}"
+                        aria-pressed="${selected}"
                         class="subject-option w-full rounded-2xl border p-4 text-left transition ${selected ? "border-primary bg-surface-container-high shadow-sm" : "border-outline-variant bg-surface-container-lowest hover:border-primary/40 hover:bg-surface-container-high"}">
                         <div class="flex items-start justify-between gap-3">
                             <div>
@@ -494,6 +550,10 @@
                     if (subjectChanged) {
                         await refreshSessions(subjectId);
                     }
+
+                    if (window.matchMedia("(max-width: 767px)").matches) {
+                        toggleSubjectsDrawer(false);
+                    }
                 });
             });
         }
@@ -529,6 +589,7 @@
                     <button
                         type="button"
                         data-session-id="${session.sessionId}"
+                        aria-pressed="${selected}"
                         class="session-option w-full rounded-2xl border p-3 text-left transition ${selected ? "border-primary bg-surface-container-high shadow-sm" : "border-outline-variant bg-surface-container-lowest hover:border-primary/40 hover:bg-surface-container-high"}">
                         <div class="flex items-start justify-between gap-3">
                             <p class="line-clamp-2 text-sm font-semibold text-on-surface">${escapeHtml(session.previewText || "Untitled chat")}</p>
@@ -545,6 +606,10 @@
                     }
 
                     await openSession(sessionId);
+
+                    if (window.matchMedia("(max-width: 767px)").matches) {
+                        toggleSubjectsDrawer(false);
+                    }
                 });
             });
         }
@@ -610,54 +675,79 @@
                 return;
             }
 
-            elements.chatMessages.innerHTML = state.messages.map(message => {
-                if (String(message.senderRole || "").toLowerCase() !== "assistant") {
-                    return `
-                        <div class="flex justify-end">
-                            <div class="max-w-[72%] rounded-3xl border border-outline-variant bg-surface-container-lowest px-6 py-4 shadow-sm">
-                                <p class="whitespace-pre-wrap text-base leading-7 text-on-surface">${escapeHtml(message.messageContent)}</p>
-                            </div>
-                        </div>`;
-                }
-
-                const citationTags = (message.citations || []).map((citation, index) => `
-                    <button
-                        type="button"
-                        class="citation-trigger rounded-full bg-surface-container-high px-2 py-1 text-xs font-medium text-secondary transition hover:bg-surface-container-highest"
-                        data-document-id="${citation.documentId}"
-                        data-chunk-index="${citation.chunkIndex}"
-                        data-session-id="${state.sessionId || ""}"
-                        data-message-id="${message.messageId || ""}"
-                        data-document-title="${escapeAttribute(citation.documentTitle)}"
-                        data-chapter-title="${escapeAttribute(citation.chapterTitle)}"
-                        data-subject-code="${escapeAttribute(citation.subjectCode)}">
-                        [${citation.citationNumber || index + 1}] ${escapeHtml(citation.documentTitle)}
-                    </button>`).join("");
-
-                const cardClasses = message.isError
-                    ? "bg-red-50 border border-red-100"
-                    : "bg-surface-container-low";
-
-                const progressMarkup = message.isStreaming && !message.messageContent && message.progressStage
-                    ? renderProcessingProgress(message.progressStage)
-                    : null;
-                const assistantContent = progressMarkup
-                    ?? `${renderAssistantMarkdown(message.messageContent || (message.isStreaming ? "Thinking..." : ""), message.citations || [])}${message.isStreaming && message.messageContent ? "<span class=\"ml-1 inline-block h-5 w-0.5 animate-pulse bg-primary align-middle\"></span>" : ""}`;
-
-                return `
-                    <div class="flex gap-3">
-                        <div class="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
-                            <span class="material-symbols-outlined text-[18px]">bolt</span>
-                        </div>
-                        <div class="assistant-message max-w-[82%] min-w-0 rounded-3xl px-6 py-5 shadow-sm ${cardClasses}" data-message-key="${escapeAttribute(message.messageId || message.clientId || "")}">
-                            <div class="assistant-markdown break-words text-base leading-7 text-on-surface-variant">${assistantContent}</div>
-                            ${citationTags ? `<div class="mt-4 flex flex-wrap gap-2">${citationTags}</div>` : ""}
-                        </div>
-                    </div>`;
-            }).join("");
+            elements.chatMessages.innerHTML = state.messages.map(buildMessageHtml).join("");
 
             bindCitationTriggers(elements.chatMessages);
             bindAssistantCitationTriggers(elements.chatMessages);
+        }
+
+        function buildMessageHtml(message) {
+            if (String(message.senderRole || "").toLowerCase() !== "assistant") {
+                return `
+                    <div class="flex justify-end">
+                        <div class="max-w-[72%] rounded-3xl border border-outline-variant bg-surface-container-lowest px-6 py-4 shadow-sm">
+                            <p class="whitespace-pre-wrap text-base leading-7 text-on-surface">${escapeHtml(message.messageContent)}</p>
+                        </div>
+                    </div>`;
+            }
+
+            return `
+                <div class="flex gap-3">
+                    <div class="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
+                        <span class="material-symbols-outlined text-[18px]">bolt</span>
+                    </div>
+                    ${buildAssistantBubbleHtml(message)}
+                </div>`;
+        }
+
+        function buildAssistantBubbleHtml(message) {
+            const citationTags = (message.citations || []).map((citation, index) => `
+                <button
+                    type="button"
+                    class="citation-trigger rounded-full bg-surface-container-high px-2 py-1 text-xs font-medium text-secondary transition hover:bg-surface-container-highest"
+                    data-document-id="${citation.documentId}"
+                    data-chunk-index="${citation.chunkIndex}"
+                    data-session-id="${state.sessionId || ""}"
+                    data-message-id="${message.messageId || ""}"
+                    data-document-title="${escapeAttribute(citation.documentTitle)}"
+                    data-chapter-title="${escapeAttribute(citation.chapterTitle)}"
+                    data-subject-code="${escapeAttribute(citation.subjectCode)}">
+                    [${citation.citationNumber || index + 1}] ${escapeHtml(citation.documentTitle)}
+                </button>`).join("");
+
+            const cardClasses = message.isError
+                ? "bg-red-50 border border-red-100"
+                : "bg-surface-container-low";
+
+            const progressMarkup = message.isStreaming && !message.messageContent && message.progressStage
+                ? renderProcessingProgress(message.progressStage)
+                : null;
+            const assistantContent = progressMarkup
+                ?? `${renderAssistantMarkdown(message.messageContent || (message.isStreaming ? "Thinking..." : ""), message.citations || [])}${message.isStreaming && message.messageContent ? "<span class=\"ml-1 inline-block h-5 w-0.5 animate-pulse bg-primary align-middle\"></span>" : ""}`;
+
+            return `
+                <div class="assistant-message max-w-[82%] min-w-0 rounded-3xl px-6 py-5 shadow-sm ${cardClasses}" data-message-key="${escapeAttribute(message.messageId || message.clientId || "")}">
+                    <div class="assistant-markdown break-words text-base leading-7 text-on-surface-variant">${assistantContent}</div>
+                    ${citationTags ? `<div class="mt-4 flex flex-wrap gap-2">${citationTags}</div>` : ""}
+                </div>`;
+        }
+
+        function updateStreamingMessageDom(message) {
+            const key = String(message.messageId || message.clientId || "");
+            const node = key
+                ? elements.chatMessages.querySelector(`.assistant-message[data-message-key="${CSS.escape(key)}"]`)
+                : null;
+
+            if (!node) {
+                renderChat();
+                return;
+            }
+
+            node.outerHTML = buildAssistantBubbleHtml(message);
+            const refreshedNode = elements.chatMessages.querySelector(`.assistant-message[data-message-key="${CSS.escape(key)}"]`);
+            if (refreshedNode) {
+                bindAssistantCitationTriggers(refreshedNode);
+            }
         }
 
         const processingStages = [
@@ -947,7 +1037,7 @@
 
             if (eventName === "processing-progress" && assistantPlaceholder) {
                 assistantPlaceholder.progressStage = payload.stage || null;
-                renderChat();
+                updateStreamingMessageDom(assistantPlaceholder);
                 scrollChatToBottom();
                 return;
             }
@@ -1055,9 +1145,43 @@
                 closeCitationModal();
             }
         });
+
+        elements.subjectsToggle.addEventListener("click", () => toggleSubjectsDrawer());
+        elements.subjectsClose.addEventListener("click", () => toggleSubjectsDrawer(false));
+        elements.subjectsBackdrop.addEventListener("click", () => toggleSubjectsDrawer(false));
+
+        elements.sourcesToggle.addEventListener("click", () => toggleSourcesDrawer());
+        elements.sourcesClose.addEventListener("click", () => toggleSourcesDrawer(false));
+        elements.sourcesBackdrop.addEventListener("click", () => toggleSourcesDrawer(false));
+
+        window.matchMedia("(min-width: 768px)").addEventListener("change", event => {
+            if (event.matches) {
+                toggleSubjectsDrawer(false);
+            }
+        });
+        window.matchMedia("(min-width: 1024px)").addEventListener("change", event => {
+            if (event.matches) {
+                toggleSourcesDrawer(false);
+            }
+        });
+
         document.addEventListener("keydown", event => {
-            if (event.key === "Escape" && state.citationModalOpen) {
+            if (event.key !== "Escape") {
+                return;
+            }
+
+            if (state.citationModalOpen) {
                 closeCitationModal();
+                return;
+            }
+
+            if (elements.subjectsAside.classList.contains("translate-x-0")) {
+                toggleSubjectsDrawer(false);
+                return;
+            }
+
+            if (elements.sourcesAside.classList.contains("translate-x-0")) {
+                toggleSourcesDrawer(false);
             }
         });
 
