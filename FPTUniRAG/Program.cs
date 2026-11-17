@@ -51,6 +51,7 @@ builder.Logging.AddDebug();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
+builder.Services.AddScoped<FPTUniRAG.DataAccessLayer.Repositories.Seeding.IDemoDataRepository, FPTUniRAG.DataAccessLayer.Repositories.Seeding.DemoDataRepository>();
 builder.Services.AddScoped<IStudentChatRepository, StudentChatRepository>();
 builder.Services.AddScoped<IChatModelRepository, ChatModelRepository>();
 builder.Services.AddScoped<IChatBenchmarkRepository, ChatBenchmarkRepository>();

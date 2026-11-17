@@ -38,6 +38,10 @@ services:
       StudentCredentials__Password: ${STUDENT_PASSWORD:-Student@123}
       StudentCredentials__DisplayName: ${STUDENT_DISPLAY_NAME:-Default Student}
       StudentCredentials__StudentCode: ${STUDENT_CODE:-STU000001}
+      TeacherCredentials__Email: ${TEACHER_EMAIL:-teacher@fpt.edu.vn}
+      TeacherCredentials__Password: ${TEACHER_PASSWORD:-Teacher@123}
+      TeacherCredentials__DisplayName: ${TEACHER_DISPLAY_NAME:-Default Teacher}
+      DemoData__Enabled: ${DEMO_DATA_ENABLED:-true}
       RagIngestion__StorageRoot: /app/App_Data/teacher-uploads
       RagIngestion__OpenRouter__ApiKey: ${OPENROUTER_API_KEY:-}
       RagIngestion__OpenRouter__EmbeddingModel: ${OPENROUTER_EMBEDDING_MODEL:-google/gemini-embedding-001}
