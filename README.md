@@ -31,16 +31,18 @@
 
 ## 🚀 Quick start: try it as a student
 
-Log in with the demo **Student** account to experience the app right away:
+Everyone can try the live demo as a **Student** at: **[https://unirag.vientruong.site/](https://unirag.vientruong.site/)**
 
 | Field | Value |
 |---|---|
-| URL | `http://localhost:5056` |
+| Live demo | [https://unirag.vientruong.site/](https://unirag.vientruong.site/) |
 | Email | `student@fpt.edu.vn` |
 | Password | `Student@123` |
 
+To run it locally instead, use `http://localhost:5056`:
+
 1. Start the app: `docker compose up` (see [First-time setup](#first-time-setup) for details).
-2. Open `http://localhost:5056` and sign in with the account above.
+2. Open the live demo (or `http://localhost:5056` locally) and sign in with the account above.
 3. You land on `/StudentDashboard`: pick a subject and chat with its course material.
 4. Open `/StudentPlans` to view subscription plans and try Stripe Sandbox checkout.
 
