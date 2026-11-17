@@ -21,12 +21,30 @@
 
 <div align="center">
 
+<a href="#-quick-start-try-it-as-a-student">Try it</a> ·
 <a href="#-highlights">Highlights</a> ·
 <a href="#-architecture">Architecture</a> ·
 <a href="#first-time-setup">Setup</a> ·
 <a href="#-important-routes">Routes</a>
 
 </div>
+
+## 🚀 Quick start: try it as a student
+
+Log in with the demo **Student** account to experience the app right away:
+
+| Field | Value |
+|---|---|
+| URL | `http://localhost:5056` |
+| Email | `student@fpt.edu.vn` |
+| Password | `Student@123` |
+
+1. Start the app: `docker compose up` (see [First-time setup](#first-time-setup) for details).
+2. Open `http://localhost:5056` and sign in with the account above.
+3. You land on `/StudentDashboard`: pick a subject and chat with its course material.
+4. Open `/StudentPlans` to view subscription plans and try Stripe Sandbox checkout.
+
+> AI chat requires an OpenRouter API key, and checkout requires Stripe Sandbox keys. See [Enable optional integrations](#3-enable-optional-integrations). These credentials are for local development only.
 
 FPT UniRAG is an academic AI assistant for FPT University. Students chat with course material, teachers upload and process documents, and administrators manage subjects, accounts, subscription plans, quotas, and embedding configuration.
 
